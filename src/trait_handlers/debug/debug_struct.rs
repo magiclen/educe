@@ -169,18 +169,7 @@ impl TraitHandler for DebugStructHandler {
                                     name = None;
                                 }
                             }
-                            Lit::Bool(s) => {
-                                if name_is_set {
-                                    panic::reset_parameter("name");
-                                }
-
-                                name_is_set = true;
-
-                                if !s.value {
-                                    name = None;
-                                }
-                            }
-                            _ => panic::attribute_incorrect_format("Debug", &[stringify!(#[educe(Debug("new_name"))]), stringify!(#[educe(Debug(false))])])
+                            _ => panic::attribute_incorrect_format("Debug", &[stringify!(#[educe(Debug("new_name"))])])
                         }
                     }
                 }
@@ -523,11 +512,11 @@ impl TraitHandler for DebugStructHandler {
                                                     }
                                                 }
                                             }
-                                            _ => panic::attribute_incorrect_format("educe", &[stringify!(#[educe(Trait1, Trait2, ..., TraitN)])])
+                                            _ => panic::educe_format_incorrect()
                                         }
                                     }
                                 }
-                                _ => panic::attribute_incorrect_format("educe", &[stringify!(#[educe(Trait1, Trait2, ..., TraitN)])])
+                                _ => panic::educe_format_incorrect()
                             }
                             _ => ()
                         }
@@ -852,11 +841,11 @@ impl TraitHandler for DebugStructHandler {
                                                     }
                                                 }
                                             }
-                                            _ => panic::attribute_incorrect_format("educe", &[stringify!(#[educe(Trait1, Trait2, ..., TraitN)])])
+                                            _ => panic::educe_format_incorrect()
                                         }
                                     }
                                 }
-                                _ => panic::attribute_incorrect_format("educe", &[stringify!(#[educe(Trait1, Trait2, ..., TraitN)])])
+                                _ => panic::educe_format_incorrect()
                             }
                             _ => ()
                         }

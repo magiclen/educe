@@ -49,13 +49,30 @@ pub fn empty_parameter(parameter_name: &str) -> ! {
 }
 
 #[inline]
+pub fn unit_struct_need_name() -> ! {
+    panic!("A unit struct needs to have a name.")
+}
+
+#[inline]
+pub fn unit_enum_need_name() -> ! {
+    panic!("A unit enum needs to have a name.")
+}
+
+#[inline]
+pub fn unit_variant_need_name() -> ! {
+    panic!("A unit variant which doesn't use an enum name needs to have a name.")
+}
+
+// TODO patterns
+
+#[inline]
 pub fn debug_format_incorrect() -> ! {
     parameter_incorrect_format("format", &[stringify!(#[educe(Debug(format(method = "path_to_method")))]), stringify!(#[educe(Debug(format(trait = "path_to_trait")))]), stringify!(#[educe(Debug(format(trait = "path_to_trait", method = "path_to_method_in_trait")))]), stringify!(#[educe(Debug(format(method("path_to_method"))))]), stringify!(#[educe(Debug(format(trait("path_to_trait"))))]), stringify!(#[educe(Debug(format(trait("path_to_trait"), method("path_to_method_in_trait"))))]), stringify!(#[educe(Debug(format = "path_to_method"))]), stringify!(#[educe(Debug(format("path_to_method")))])])
 }
 
 #[inline]
-pub fn unit_struct_need_name() -> ! {
-    panic!("A unit struct needs to have a name.")
+pub fn educe_format_incorrect() -> ! {
+    attribute_incorrect_format("educe", &[stringify!(#[educe(Trait1, Trait2, ..., TraitN)])])
 }
 
 fn concat_string_slice_array(array: &[&str]) -> String {
