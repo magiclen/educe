@@ -1,56 +1,61 @@
 #[inline]
-pub fn reuse_a_trait(trait_name: &str) {
-    panic!("The trait `{}` is duplicately used.", trait_name);
+pub fn reuse_a_trait(trait_name: &str) -> ! {
+    panic!("The trait `{}` is duplicately used.", trait_name)
 }
 
 #[inline]
-pub fn trait_not_used(trait_name: &str) {
-    panic!("The `{}` trait is not used.", trait_name);
+pub fn trait_not_used(trait_name: &str) -> ! {
+    panic!("The `{}` trait is not used.", trait_name)
 }
 
 #[inline]
-pub fn attribute_incorrect_format(attribute_name: &str, correct_usage: &[&str]) {
-    panic!("You are using an incorrect format of the `{}` attribute. It needs to be formed into {}.", attribute_name, concat_string_slice_array(correct_usage));
+pub fn attribute_incorrect_format(attribute_name: &str, correct_usage: &[&str]) -> ! {
+    panic!("You are using an incorrect format of the `{}` attribute. It needs to be formed into {}.", attribute_name, concat_string_slice_array(correct_usage))
 }
 
 #[inline]
-pub fn parameter_incorrect_format(parameter_name: &str, correct_usage: &[&str]) {
-    panic!("You are using an incorrect format of the `{}` parameter. It needs to be formed into {}.", parameter_name, concat_string_slice_array(correct_usage));
+pub fn attribute_incorrect_format_without_correct_usage(attribute_name: &str) -> ! {
+    panic!("You are using an incorrect format of the `{}` attribute.", attribute_name)
 }
 
 #[inline]
-pub fn derive_attribute_not_set_up_yet(attribute_name: &str) {
-    panic!("You are using `{}` in the `derive` attribute, but it has not been set up yet.", attribute_name);
+pub fn parameter_incorrect_format(parameter_name: &str, correct_usage: &[&str]) -> ! {
+    panic!("You are using an incorrect format of the `{}` parameter. It needs to be formed into {}.", parameter_name, concat_string_slice_array(correct_usage))
 }
 
 #[inline]
-pub fn reset_parameter(parameter_name: &str) {
-    panic!("Try to reset the `{}` parameter.", parameter_name);
+pub fn derive_attribute_not_set_up_yet(attribute_name: &str) -> ! {
+    panic!("You are using `{}` in the `derive` attribute, but it has not been set up yet.", attribute_name)
 }
 
 #[inline]
-pub fn unknown_parameter(attribute_name: &str, parameter_name: &str) {
-    panic!("Unknown parameter `{}` used in the `{}` attribute.", parameter_name, attribute_name);
+pub fn reset_parameter(parameter_name: &str) -> ! {
+    panic!("Try to reset the `{}` parameter.", parameter_name)
 }
 
 #[inline]
-pub fn disable_named_field_name() {
-    panic!("You can't disable the name of a named field.");
+pub fn unknown_parameter(attribute_name: &str, parameter_name: &str) -> ! {
+    panic!("Unknown parameter `{}` used in the `{}` attribute.", parameter_name, attribute_name)
 }
 
 #[inline]
-pub fn empty_parameter(parameter_name: &str) {
-    panic!("You can't set the `{}` parameter to empty.", parameter_name);
+pub fn disable_named_field_name() -> ! {
+    panic!("You can't disable the name of a named field.")
 }
 
 #[inline]
-pub fn debug_format_incorrect() {
-    parameter_incorrect_format("format", &[stringify!(#[educe(Debug(format(method = "path_to_method")))]), stringify!(#[educe(Debug(format(trait = "path_to_trait")))]), stringify!(#[educe(Debug(format(trait = "path_to_trait", method = "path_to_method_in_trait")))]), stringify!(#[educe(Debug(format(method("path_to_method"))))]), stringify!(#[educe(Debug(format(trait("path_to_trait"))))]), stringify!(#[educe(Debug(format(trait("path_to_trait"), method("path_to_method_in_trait"))))]), stringify!(#[educe(Debug(format = "path_to_method"))]), stringify!(#[educe(Debug(format("path_to_method")))])]);
+pub fn empty_parameter(parameter_name: &str) -> ! {
+    panic!("You can't set the `{}` parameter to empty.", parameter_name)
 }
 
 #[inline]
-pub fn unit_struct_need_name() {
-    panic!("A unit struct needs to have a name.");
+pub fn debug_format_incorrect() -> ! {
+    parameter_incorrect_format("format", &[stringify!(#[educe(Debug(format(method = "path_to_method")))]), stringify!(#[educe(Debug(format(trait = "path_to_trait")))]), stringify!(#[educe(Debug(format(trait = "path_to_trait", method = "path_to_method_in_trait")))]), stringify!(#[educe(Debug(format(method("path_to_method"))))]), stringify!(#[educe(Debug(format(trait("path_to_trait"))))]), stringify!(#[educe(Debug(format(trait("path_to_trait"), method("path_to_method_in_trait"))))]), stringify!(#[educe(Debug(format = "path_to_method"))]), stringify!(#[educe(Debug(format("path_to_method")))])])
+}
+
+#[inline]
+pub fn unit_struct_need_name() -> ! {
+    panic!("A unit struct needs to have a name.")
 }
 
 fn concat_string_slice_array(array: &[&str]) -> String {

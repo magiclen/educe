@@ -1,4 +1,5 @@
 mod debug_struct;
+mod debug_union;
 
 use super::TraitHandler;
 
@@ -7,6 +8,7 @@ use crate::proc_macro2::TokenStream;
 use crate::syn::{DeriveInput, Meta, Data};
 
 use debug_struct::DebugStructHandler;
+use debug_union::DebugUnionHandler;
 
 pub struct DebugHandler;
 
@@ -17,7 +19,9 @@ impl TraitHandler for DebugHandler {
                 DebugStructHandler::trait_meta_handler(ast, tokens, traits, meta);
             }
             Data::Enum(_) => unimplemented!(),
-            Data::Union(_) => unimplemented!()
+            Data::Union(_) => {
+                DebugUnionHandler::trait_meta_handler(ast, tokens, traits, meta);
+            }
         }
     }
 }

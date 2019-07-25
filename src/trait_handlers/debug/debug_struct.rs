@@ -519,7 +519,7 @@ impl TraitHandler for DebugStructHandler {
                                                                 _ => panic::attribute_incorrect_format("Debug", &[stringify!(#[educe(Debug = "new_name")]), stringify!(#[educe(Debug = false)])])
                                                             }
                                                         }
-                                                        Meta::Word(_) => ()
+                                                        _ => panic::attribute_incorrect_format_without_correct_usage("Debug")
                                                     }
                                                 }
                                             }
@@ -830,7 +830,7 @@ impl TraitHandler for DebugStructHandler {
                                                                             _ => panic::unknown_parameter("Debug", meta_name.as_str())
                                                                         }
                                                                     }
-                                                                    _ => panic::attribute_incorrect_format("Debug", &[stringify!(#[educe(Debug(ignore))])])
+                                                                    _ => panic::attribute_incorrect_format_without_correct_usage("Debug")
                                                                 }
                                                             }
                                                         }
@@ -848,7 +848,7 @@ impl TraitHandler for DebugStructHandler {
                                                                 _ => panic::attribute_incorrect_format("Debug", &[stringify!(#[educe(Debug = false)])])
                                                             }
                                                         }
-                                                        Meta::Word(_) => ()
+                                                        _ => panic::attribute_incorrect_format_without_correct_usage("Debug")
                                                     }
                                                 }
                                             }

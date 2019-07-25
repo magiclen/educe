@@ -171,6 +171,82 @@ fn unnamed_2() {
 }
 
 #[test]
+fn unnamed_3() {
+    #[derive(Educe)]
+    #[educe(Debug = "")]
+    struct Struct {
+        f1: u8
+    };
+
+    assert_eq!("{f1: 1}", format!("{:?}", Struct {
+        f1: 1
+    }));
+
+    #[derive(Educe)]
+    #[educe(Debug = "")]
+    struct Tuple(u8);
+
+    assert_eq!("(1,)", format!("{:?}", Tuple(1)));
+}
+
+#[test]
+fn unnamed_4() {
+    #[derive(Educe)]
+    #[educe(Debug(""))]
+    struct Struct {
+        f1: u8
+    };
+
+    assert_eq!("{f1: 1}", format!("{:?}", Struct {
+        f1: 1
+    }));
+
+    #[derive(Educe)]
+    #[educe(Debug(""))]
+    struct Tuple(u8);
+
+    assert_eq!("(1,)", format!("{:?}", Tuple(1)));
+}
+
+#[test]
+fn unnamed_5() {
+    #[derive(Educe)]
+    #[educe(Debug(name = ""))]
+    struct Struct {
+        f1: u8
+    };
+
+    assert_eq!("{f1: 1}", format!("{:?}", Struct {
+        f1: 1
+    }));
+
+    #[derive(Educe)]
+    #[educe(Debug(name = ""))]
+    struct Tuple(u8);
+
+    assert_eq!("(1,)", format!("{:?}", Tuple(1)));
+}
+
+#[test]
+fn unnamed_6() {
+    #[derive(Educe)]
+    #[educe(Debug(name("")))]
+    struct Struct {
+        f1: u8
+    };
+
+    assert_eq!("{f1: 1}", format!("{:?}", Struct {
+        f1: 1
+    }));
+
+    #[derive(Educe)]
+    #[educe(Debug(name("")))]
+    struct Tuple(u8);
+
+    assert_eq!("(1,)", format!("{:?}", Tuple(1)));
+}
+
+#[test]
 fn named_field_1() {
     #[derive(Educe)]
     #[educe(Debug(named_field = false))]
