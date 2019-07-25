@@ -1,0 +1,20 @@
+[package]
+name = "educe"
+version = "0.1.0"
+authors = ["Magic Len <len@magiclen.org>"]
+edition = "2018"
+repository = "https://github.com/magiclen/educe"
+homepage = "https://magiclen.org/educe"
+keywords = ["derive", "macro", "trait"]
+categories = ["rust-patterns"]
+description= "This crate provides procedural macros to help you implement build-in traits quickly."
+readme = "README.md"
+license = "MIT"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "0.4"
+syn = {version = "0.15", features = ["full"]}
+quote = "0.6"
