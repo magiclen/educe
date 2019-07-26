@@ -7,7 +7,7 @@ impl Trait {
     #[inline]
     pub fn as_str(&self) -> &'static str {
         match self {
-            Self::Debug => "Debug"
+            Trait::Debug => "Debug"
         }
     }
 
@@ -17,13 +17,13 @@ impl Trait {
 
         match s {
             "Debug" => Trait::Debug,
-            _ => panic!("Unsupported trait `{}`. Available traits are {:?}", s, Self::support_traits())
+            _ => panic!("Unsupported trait `{}`. Available traits are {:?}", s, Trait::support_traits())
         }
     }
 
     #[inline]
     pub fn support_traits() -> [&'static str; 1] {
-        [Self::Debug.as_str()]
+        [Trait::Debug.as_str()]
     }
 }
 
