@@ -8,7 +8,7 @@ This crate provides procedural macros to help you implement Rust-build-in traits
 
 ## Debug
 
-Use `#[derive(Educe)]` and `#[educe(Debug)]` to implement the `Debug` trait for a struct, an enum, or an union. It supports to change the name of your types, variants and fields. You can also ignore some fields, or set a trait and/or a method to replace the `Debug` trait used as default. Also, you can even format a struct to a tuple, and vice versa.
+Use `#[derive(Educe)]` and `#[educe(Debug)]` to implement the `Debug` trait for a struct, an enum, or a union. It supports to change the name of your types, variants and fields. You can also ignore some fields, or set a trait and/or a method to replace the `Debug` trait used as default. Also, you can even format a struct to a tuple, and vice versa.
 
 #### Basic Usage
 
