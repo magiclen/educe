@@ -15,6 +15,7 @@ impl TraitHandler for DebugUnionHandler {
             enable_name: true,
             named_field: false,
             enable_named_field: false,
+            enable_bound: true,
         }.from_debug_meta(meta);
 
         let name = type_attribute.name.into_string_by_ident(&ast.ident);

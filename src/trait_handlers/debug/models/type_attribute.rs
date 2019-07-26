@@ -1,7 +1,7 @@
-use super::super::super::create_path_string_from_lit_str;
+use super::super::super::{create_path_string_from_lit_str, create_where_predicates_from_lit_str};
 
 use crate::Trait;
-use crate::syn::{Meta, NestedMeta, Lit, Ident, Attribute};
+use crate::syn::{Meta, NestedMeta, Lit, Ident, Attribute, WherePredicate, punctuated::Punctuated, token::Comma};
 use crate::panic;
 
 #[derive(Debug, Clone)]
@@ -21,10 +21,11 @@ impl TypeAttributeName {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct TypeAttribute {
     pub name: TypeAttributeName,
     pub named_field: bool,
+    pub bound: Option<Punctuated<WherePredicate, Comma>>,
 }
 
 #[derive(Debug, Clone)]
@@ -33,6 +34,7 @@ pub struct TypeAttributeBuilder {
     pub enable_name: bool,
     pub named_field: bool,
     pub enable_named_field: bool,
+    pub enable_bound: bool,
 }
 
 impl TypeAttributeBuilder {
@@ -40,6 +42,8 @@ impl TypeAttributeBuilder {
         let mut name = self.name.clone();
 
         let mut named_field = self.named_field.clone();
+
+        let mut bound = None;
 
         let correct_usage_for_debug = {
             let mut usage = vec![stringify!(#[educe(Debug)])];
@@ -76,6 +80,12 @@ impl TypeAttributeBuilder {
                 usage.push(stringify!(#[educe(Debug(named_field = false))]));
                 usage.push(stringify!(#[educe(Debug(named_field(false)))]));
             }
+
+            usage
+        };
+
+        let correct_usage_for_bound = {
+            let usage = vec![stringify!(#[educe(Debug(bound))]), stringify!(#[educe(Debug(bound = "where_predicates"))]), stringify!(#[educe(Debug(bound("where_predicates")))])];
 
             usage
         };
@@ -215,6 +225,62 @@ impl TypeAttributeBuilder {
                                         _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_named_field)
                                     }
                                 }
+                                "bound" => {
+                                    if !self.enable_bound {
+                                        panic::unknown_parameter("Debug", meta_name.as_str());
+                                    }
+
+                                    match meta {
+                                        Meta::List(list) => {
+                                            for p in list.nested.iter() {
+                                                match p {
+                                                    NestedMeta::Literal(lit) => match lit {
+                                                        Lit::Str(s) => {
+                                                            if bound.is_some() {
+                                                                panic::reset_parameter(meta_name.as_str());
+                                                            }
+
+                                                            let where_predicates = create_where_predicates_from_lit_str(s);
+
+                                                            bound = match where_predicates {
+                                                                Some(where_predicates) => Some(where_predicates),
+                                                                None => panic::empty_parameter(meta_name.as_str())
+                                                            };
+                                                        }
+                                                        _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_bound)
+                                                    }
+                                                    _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_bound)
+                                                }
+                                            }
+                                        }
+                                        Meta::NameValue(named_value) => {
+                                            let lit = &named_value.lit;
+
+                                            match lit {
+                                                Lit::Str(s) => {
+                                                    if bound.is_some() {
+                                                        panic::reset_parameter(meta_name.as_str());
+                                                    }
+
+                                                    let where_predicates = create_where_predicates_from_lit_str(s);
+
+                                                    bound = match where_predicates {
+                                                        Some(where_predicates) => Some(where_predicates),
+                                                        None => panic::empty_parameter(meta_name.as_str())
+                                                    };
+                                                }
+                                                _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_bound)
+                                            }
+                                        }
+                                        Meta::Word(_) => {
+                                            if bound.is_some() {
+                                                panic::reset_parameter(meta_name.as_str());
+                                            }
+
+                                            bound = Some(Punctuated::new());
+                                        }
+                                    }
+                                }
                                 _ => panic::unknown_parameter("Debug", meta_name.as_str())
                             }
                         }
@@ -269,6 +335,7 @@ impl TypeAttributeBuilder {
         TypeAttribute {
             name,
             named_field,
+            bound,
         }
     }
 
@@ -315,6 +382,7 @@ impl TypeAttributeBuilder {
         result.unwrap_or(TypeAttribute {
             name: self.name,
             named_field: self.named_field,
+            bound: None,
         })
     }
 }

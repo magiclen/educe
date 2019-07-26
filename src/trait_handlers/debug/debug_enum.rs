@@ -20,6 +20,7 @@ impl TraitHandler for DebugEnumHandler {
             enable_name: true,
             named_field: false,
             enable_named_field: false,
+            enable_bound: true,
         }.from_debug_meta(meta);
 
         let name = type_attribute.name.into_string_by_ident(&ast.ident);
@@ -40,6 +41,7 @@ impl TraitHandler for DebugEnumHandler {
                         false
                     },
                     enable_named_field: true,
+                    enable_bound: false,
                 }.from_attributes(&variant.attrs, traits);
 
                 let variant_name = type_attribute.name.into_string_by_ident(&variant.ident);
