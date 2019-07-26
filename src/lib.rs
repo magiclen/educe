@@ -44,9 +44,9 @@ struct Union {
 }
 ```
 
-#### Change the Name of a Type, Variant or a Field
+#### Change the Name of a Type, a Variant or a Field
 
-The `name` attribute can help you rename a type, variant or a field.
+The `name` attribute can help you rename a type, a variant or a field.
 
 ```rust
 #[macro_use] extern crate educe;
