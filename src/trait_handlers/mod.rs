@@ -13,8 +13,6 @@ pub trait TraitHandler {
     fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta);
 }
 
-
-
 #[inline]
 pub fn create_path_from_lit_str(s: &LitStr) -> Option<Path> {
     let s = s.value();
