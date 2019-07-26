@@ -173,7 +173,7 @@ enum Enum<T: A> {
 }
 ```
 
-#### Generaic Parameters Bound to the `Debug` Trait or Others
+#### Generic Parameters Bound to the `Debug` Trait or Others
 
 The `#[educe(Debug(bound))]` attribute can be used to add the `Debug` trait bound to all generaic parameters for the `Debug` implementation.
 
