@@ -42,7 +42,7 @@ impl TypeAttributeBuilder {
         let mut named_field = self.named_field.clone();
 
         let correct_usage_for_debug = {
-            let mut usage = vec![];
+            let mut usage = vec![stringify!(#[educe(Debug)])];
 
             if self.enable_name {
                 usage.push(stringify!(#[educe(Debug = "new_name")]));
