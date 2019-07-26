@@ -10,17 +10,12 @@ pub fn trait_not_used(trait_name: &str) -> ! {
 
 #[inline]
 pub fn attribute_incorrect_format(attribute_name: &str, correct_usage: &[&str]) -> ! {
-    panic!("You are using an incorrect format of the `{}` attribute. It needs to be formed into {}.", attribute_name, concat_string_slice_array(correct_usage))
-}
-
-#[inline]
-pub fn attribute_incorrect_format_without_correct_usage(attribute_name: &str) -> ! {
-    panic!("You are using an incorrect format of the `{}` attribute.", attribute_name)
+    panic!("You are using an incorrect format of the `{}` attribute.{}", attribute_name, concat_string_slice_array(correct_usage))
 }
 
 #[inline]
 pub fn parameter_incorrect_format(parameter_name: &str, correct_usage: &[&str]) -> ! {
-    panic!("You are using an incorrect format of the `{}` parameter. It needs to be formed into {}.", parameter_name, concat_string_slice_array(correct_usage))
+    panic!("You are using an incorrect format of the `{}` parameter.{}", parameter_name, concat_string_slice_array(correct_usage))
 }
 
 #[inline]
@@ -78,31 +73,35 @@ pub fn educe_format_incorrect() -> ! {
 fn concat_string_slice_array(array: &[&str]) -> String {
     let len = array.len();
 
-    assert!(len > 0);
+    if len == 0 {
+        String::new()
+    } else {
+        let mut string = String::from("It needs to be formed into ");
 
-    let mut string = String::new();
+        let mut iter = array.iter();
 
-    let mut iter = array.iter();
+        let first = iter.next().unwrap();
 
-    let first = iter.next().unwrap();
+        string.push('`');
+        string.push_str(&first.replace("\n", ""));
+        string.push('`');
 
-    string.push('`');
-    string.push_str(&first.replace("\n", ""));
-    string.push('`');
+        if len > 2 {
+            for s in iter.take(len - 2) {
+                string.push_str(", `");
+                string.push_str(&s.replace("\n", ""));
+                string.push('`');
+            }
+        }
 
-    if len > 2 {
-        for s in iter.take(len - 2) {
-            string.push_str(", `");
-            string.push_str(&s.replace("\n", ""));
+        if len > 1 {
+            string.push_str(", or `");
+            string.push_str(&array[len - 1].replace("\n", ""));
             string.push('`');
         }
-    }
 
-    if len > 1 {
-        string.push_str(", or `");
-        string.push_str(&array[len - 1].replace("\n", ""));
-        string.push('`');
-    }
+        string.push('.');
 
-    string
+        string
+    }
 }

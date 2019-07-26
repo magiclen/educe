@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use super::super::{TraitHandler, create_path_string_from_lit_str};
+use super::models::{TypeAttributeBuilder, TypeAttributeName};
 
 use crate::Trait;
 use crate::proc_macro2::TokenStream;
@@ -25,185 +26,16 @@ impl TraitHandler for DebugStructHandler {
             is_tuple
         };
 
-        let mut name: Option<Option<String>> = Some(None);
+        let type_attribute = TypeAttributeBuilder {
+            name: TypeAttributeName::Default,
+            enable_name: true,
+            named_field: !is_tuple,
+            enable_named_field: true,
+        }.from_debug_meta(meta);
 
-        let mut named_field = !is_tuple;
+        let name = type_attribute.name.into_string_by_ident(&ast.ident);
 
-        match meta {
-            Meta::List(list) => {
-                let mut name_is_set = false;
-                let mut named_field_is_set = false;
-
-                for p in list.nested.iter() {
-                    match p {
-                        NestedMeta::Meta(meta) => {
-                            let meta_name = meta.name().to_string();
-
-                            match meta_name.as_str() {
-                                "name" | "rename" => match meta {
-                                    Meta::List(list) => {
-                                        for p in list.nested.iter() {
-                                            match p {
-                                                NestedMeta::Literal(lit) => match lit {
-                                                    Lit::Str(s) => {
-                                                        if name_is_set {
-                                                            panic::reset_parameter(meta_name.as_str());
-                                                        }
-
-                                                        name_is_set = true;
-
-                                                        let s = create_path_string_from_lit_str(s);
-
-                                                        if s.is_some() {
-                                                            name = Some(s);
-                                                        } else {
-                                                            name = None;
-                                                        }
-                                                    }
-                                                    Lit::Bool(s) => {
-                                                        if name_is_set {
-                                                            panic::reset_parameter(meta_name.as_str());
-                                                        }
-
-                                                        name_is_set = true;
-
-                                                        if !s.value {
-                                                            name = None;
-                                                        }
-                                                    }
-                                                    _ => panic::parameter_incorrect_format(meta_name.as_str(), &[stringify!(#[educe(Debug(name("new_name")))]), stringify!(#[educe(Debug(name(false)))])])
-                                                }
-                                                _ => panic::parameter_incorrect_format(meta_name.as_str(), &[stringify!(#[educe(Debug(name("new_name")))]), stringify!(#[educe(Debug(name(false)))])])
-                                            }
-                                        }
-                                    }
-                                    Meta::NameValue(named_value) => {
-                                        let lit = &named_value.lit;
-
-                                        match lit {
-                                            Lit::Str(s) => {
-                                                if name_is_set {
-                                                    panic::reset_parameter(meta_name.as_str());
-                                                }
-
-                                                name_is_set = true;
-
-                                                let s = create_path_string_from_lit_str(s);
-
-                                                if s.is_some() {
-                                                    name = Some(s);
-                                                } else {
-                                                    name = None;
-                                                }
-                                            }
-                                            Lit::Bool(s) => {
-                                                if name_is_set {
-                                                    panic::reset_parameter(meta_name.as_str());
-                                                }
-
-                                                name_is_set = true;
-
-                                                if !s.value {
-                                                    name = None;
-                                                }
-                                            }
-                                            _ => panic::parameter_incorrect_format(meta_name.as_str(), &[stringify!(#[educe(Debug(name = "new_name"))]), stringify!(#[educe(Debug(name = false))])])
-                                        }
-                                    }
-                                    _ => panic::parameter_incorrect_format(meta_name.as_str(), &[stringify!(#[educe(Debug(name("new_name")))]), stringify!(#[educe(Debug(name(false)))]), stringify!(#[educe(Debug(name = "new_name"))]), stringify!(#[educe(Debug(name = false))])])
-                                }
-                                "named_field" => match meta {
-                                    Meta::List(list) => {
-                                        for p in list.nested.iter() {
-                                            match p {
-                                                NestedMeta::Literal(lit) => match lit {
-                                                    Lit::Bool(s) => {
-                                                        if named_field_is_set {
-                                                            panic::reset_parameter(meta_name.as_str());
-                                                        }
-
-                                                        named_field_is_set = true;
-
-                                                        named_field = s.value;
-                                                    }
-                                                    _ => panic::parameter_incorrect_format(meta_name.as_str(), &[stringify!(#[educe(Debug(named_field(false)))])])
-                                                }
-                                                _ => panic::parameter_incorrect_format(meta_name.as_str(), &[stringify!(#[educe(Debug(named_field(false)))])])
-                                            }
-                                        }
-                                    }
-                                    Meta::NameValue(named_value) => {
-                                        let lit = &named_value.lit;
-
-                                        match lit {
-                                            Lit::Bool(s) => {
-                                                if named_field_is_set {
-                                                    panic::reset_parameter(meta_name.as_str());
-                                                }
-
-                                                named_field_is_set = true;
-
-                                                named_field = s.value;
-                                            }
-                                            _ => panic::parameter_incorrect_format(meta_name.as_str(), &[stringify!(#[educe(Debug(named_field = false))])])
-                                        }
-                                    }
-                                    _ => panic::parameter_incorrect_format(meta_name.as_str(), &[stringify!(#[educe(Debug(named_field(false)))]), stringify!(#[educe(Debug(named_field = false))])])
-                                }
-                                _ => panic::unknown_parameter("Debug", meta_name.as_str())
-                            }
-                        }
-                        NestedMeta::Literal(lit) => match lit {
-                            Lit::Str(s) => {
-                                if name_is_set {
-                                    panic::reset_parameter("name");
-                                }
-
-                                name_is_set = true;
-
-                                let s = create_path_string_from_lit_str(s);
-
-                                if s.is_some() {
-                                    name = Some(s);
-                                } else {
-                                    name = None;
-                                }
-                            }
-                            _ => panic::attribute_incorrect_format("Debug", &[stringify!(#[educe(Debug("new_name"))])])
-                        }
-                    }
-                }
-            }
-            Meta::NameValue(named_value) => {
-                let lit = &named_value.lit;
-
-                match lit {
-                    Lit::Str(s) => {
-                        let s = create_path_string_from_lit_str(s);
-
-                        if s.is_some() {
-                            name = Some(s);
-                        } else {
-                            name = None;
-                        }
-                    }
-                    __ => panic::attribute_incorrect_format("Debug", &[stringify!(#[educe(Debug = "new_name")])])
-                }
-            }
-            Meta::Word(_) => ()
-        }
-
-        let name = match name {
-            Some(name) => {
-                match name {
-                    Some(name) => name,
-                    None => {
-                        ast.ident.to_string()
-                    }
-                }
-            }
-            None => String::new()
-        };
+        let named_field = type_attribute.named_field;
 
         let mut builder_tokens = TokenStream::new();
         let mut has_fields = false;
@@ -508,7 +340,7 @@ impl TraitHandler for DebugStructHandler {
                                                                 _ => panic::attribute_incorrect_format("Debug", &[stringify!(#[educe(Debug = "new_name")]), stringify!(#[educe(Debug = false)])])
                                                             }
                                                         }
-                                                        _ => panic::attribute_incorrect_format_without_correct_usage("Debug")
+                                                        _ => panic::attribute_incorrect_format("Debug", &[])
                                                     }
                                                 }
                                             }
@@ -819,7 +651,7 @@ impl TraitHandler for DebugStructHandler {
                                                                             _ => panic::unknown_parameter("Debug", meta_name.as_str())
                                                                         }
                                                                     }
-                                                                    _ => panic::attribute_incorrect_format_without_correct_usage("Debug")
+                                                                    _ => panic::attribute_incorrect_format("Debug", &[])
                                                                 }
                                                             }
                                                         }
@@ -837,7 +669,7 @@ impl TraitHandler for DebugStructHandler {
                                                                 _ => panic::attribute_incorrect_format("Debug", &[stringify!(#[educe(Debug = false)])])
                                                             }
                                                         }
-                                                        _ => panic::attribute_incorrect_format_without_correct_usage("Debug")
+                                                        _ => panic::attribute_incorrect_format("Debug", &[])
                                                     }
                                                 }
                                             }

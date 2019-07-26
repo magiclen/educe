@@ -1,145 +1,26 @@
 use std::str::FromStr;
 use std::fmt::Write;
 
-use super::super::{TraitHandler, create_path_string_from_lit_str};
+use super::super::TraitHandler;
+use super::models::{TypeAttributeBuilder, TypeAttributeName};
 
 use crate::Trait;
 use crate::proc_macro2::TokenStream;
-use crate::syn::{DeriveInput, Meta, NestedMeta, Lit, Data, Fields, export::ToTokens};
+use crate::syn::{DeriveInput, Meta, Data, Fields};
 use crate::panic;
 
 pub struct DebugEnumHandler;
 
 impl TraitHandler for DebugEnumHandler {
     fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta) {
-        let mut name: Option<Option<String>> = None;
+        let type_attribute = TypeAttributeBuilder {
+            name: TypeAttributeName::Disable,
+            enable_name: true,
+            named_field: false,
+            enable_named_field: false,
+        }.from_debug_meta(meta);
 
-        match meta {
-            Meta::List(list) => {
-                let mut name_is_set = false;
-
-                for p in list.nested.iter() {
-                    match p {
-                        NestedMeta::Meta(meta) => {
-                            let meta_name = meta.name().to_string();
-
-                            match meta_name.as_str() {
-                                "name" | "rename" => match meta {
-                                    Meta::List(list) => {
-                                        for p in list.nested.iter() {
-                                            match p {
-                                                NestedMeta::Literal(lit) => match lit {
-                                                    Lit::Str(s) => {
-                                                        if name_is_set {
-                                                            panic::reset_parameter(meta_name.as_str());
-                                                        }
-
-                                                        name_is_set = true;
-
-                                                        let s = create_path_string_from_lit_str(s);
-
-                                                        if s.is_some() {
-                                                            name = Some(s);
-                                                        }
-                                                    }
-                                                    Lit::Bool(s) => {
-                                                        if name_is_set {
-                                                            panic::reset_parameter(meta_name.as_str());
-                                                        }
-
-                                                        name_is_set = true;
-
-                                                        if s.value {
-                                                            name = Some(None);
-                                                        }
-                                                    }
-                                                    _ => panic::parameter_incorrect_format(meta_name.as_str(), &[stringify!(#[educe(Debug(name("new_name")))]), stringify!(#[educe(Debug(name(true)))])])
-                                                }
-                                                _ => panic::parameter_incorrect_format(meta_name.as_str(), &[stringify!(#[educe(Debug(name("new_name")))]), stringify!(#[educe(Debug(name(true)))])])
-                                            }
-                                        }
-                                    }
-                                    Meta::NameValue(named_value) => {
-                                        let lit = &named_value.lit;
-
-                                        match lit {
-                                            Lit::Str(s) => {
-                                                if name_is_set {
-                                                    panic::reset_parameter(meta_name.as_str());
-                                                }
-
-                                                name_is_set = true;
-
-                                                let s = create_path_string_from_lit_str(s);
-
-                                                if s.is_some() {
-                                                    name = Some(s);
-                                                }
-                                            }
-                                            Lit::Bool(s) => {
-                                                if name_is_set {
-                                                    panic::reset_parameter(meta_name.as_str());
-                                                }
-
-                                                name_is_set = true;
-
-                                                if s.value {
-                                                    name = Some(None);
-                                                }
-                                            }
-                                            _ => panic::parameter_incorrect_format(meta_name.as_str(), &[stringify!(#[educe(Debug(name = "new_name"))]), stringify!(#[educe(Debug(name = true))])])
-                                        }
-                                    }
-                                    _ => panic::parameter_incorrect_format(meta_name.as_str(), &[stringify!(#[educe(Debug(name("new_name")))]), stringify!(#[educe(Debug(name(true)))]), stringify!(#[educe(Debug(name = "new_name"))]), stringify!(#[educe(Debug(name = true))])])
-                                }
-                                _ => panic::unknown_parameter("Debug", meta_name.as_str())
-                            }
-                        }
-                        NestedMeta::Literal(lit) => match lit {
-                            Lit::Str(s) => {
-                                if name_is_set {
-                                    panic::reset_parameter("name");
-                                }
-
-                                name_is_set = true;
-
-                                let s = create_path_string_from_lit_str(s);
-
-                                if s.is_some() {
-                                    name = Some(s);
-                                }
-                            }
-                            _ => panic::attribute_incorrect_format("Debug", &[stringify!(#[educe(Debug("new_name"))])])
-                        }
-                    }
-                }
-            }
-            Meta::NameValue(named_value) => {
-                let lit = &named_value.lit;
-
-                match lit {
-                    Lit::Str(s) => {
-                        let s = create_path_string_from_lit_str(s);
-
-                        name = Some(s);
-                    }
-                    __ => panic::attribute_incorrect_format("Debug", &[stringify!(#[educe(Debug = "new_name")])])
-                }
-            }
-            Meta::Word(_) => ()
-        }
-
-        let name = match name {
-            Some(name) => {
-                match name {
-                    Some(name) => name,
-                    None => {
-                        ast.ident.to_string()
-                    }
-                }
-            }
-            None => String::new()
-        };
+        let name = type_attribute.name.into_string_by_ident(&ast.ident);
 
         let mut builder_tokens = TokenStream::new();
         let mut has_variants = false;
@@ -148,181 +29,32 @@ impl TraitHandler for DebugEnumHandler {
 
         if let Data::Enum(data) = &ast.data {
             for variant in data.variants.iter() {
+                let type_attribute = TypeAttributeBuilder {
+                    name: TypeAttributeName::Default,
+                    enable_name: true,
+                    named_field: if let Fields::Named(_) = &variant.fields {
+                        true
+                    } else {
+                        false
+                    },
+                    enable_named_field: true,
+                }.from_attributes(&variant.attrs, traits);
+
+                let variant_name = type_attribute.name.into_string_by_ident(&variant.ident);
+
+                let named_field = type_attribute.named_field;
+
                 let variant_ident = variant.ident.to_string();
+
+                let variant_name = combine_names(&name, variant_name);
 
                 match &variant.fields {
                     Fields::Unit => { // TODO Unit
-                        let mut variant_name: Option<Option<String>> = Some(None);
-
-                        for attr in variant.attrs.iter() {
-                            let attr_meta = attr.parse_meta().unwrap();
-
-                            let attr_meta_name = attr_meta.name().to_string();
-
-                            match attr_meta_name.as_str() {
-                                "educe" => match attr_meta {
-                                    Meta::List(list) => {
-                                        let mut name_is_set = false;
-
-                                        for p in list.nested.iter() {
-                                            match p {
-                                                NestedMeta::Meta(meta) => {
-                                                    let meta_name = meta.name().to_string();
-
-                                                    let t = Trait::from_str(meta_name);
-
-                                                    if let Err(_) = traits.binary_search(&t) {
-                                                        panic::trait_not_used(t.as_str());
-                                                    }
-
-                                                    if t == Trait::Debug {
-                                                        match meta {
-                                                            Meta::List(list) => {
-                                                                for p in list.nested.iter() {
-                                                                    match p {
-                                                                        NestedMeta::Meta(meta) => {
-                                                                            let meta_name = meta.name().to_string();
-
-                                                                            match meta_name.as_str() {
-                                                                                "name" | "rename" => match meta {
-                                                                                    Meta::List(list) => {
-                                                                                        for p in list.nested.iter() {
-                                                                                            match p {
-                                                                                                NestedMeta::Literal(lit) => match lit {
-                                                                                                    Lit::Str(s) => {
-                                                                                                        if name_is_set {
-                                                                                                            panic::reset_parameter(meta_name.as_str());
-                                                                                                        }
-
-                                                                                                        name_is_set = true;
-
-                                                                                                        let s = create_path_string_from_lit_str(s);
-
-                                                                                                        if s.is_some() {
-                                                                                                            variant_name = Some(s);
-                                                                                                        } else {
-                                                                                                            variant_name = None;
-                                                                                                        }
-                                                                                                    }
-                                                                                                    Lit::Bool(s) => {
-                                                                                                        if name_is_set {
-                                                                                                            panic::reset_parameter(meta_name.as_str());
-                                                                                                        }
-
-                                                                                                        name_is_set = true;
-
-                                                                                                        if !s.value {
-                                                                                                            variant_name = None;
-                                                                                                        }
-                                                                                                    }
-                                                                                                    _ => panic::parameter_incorrect_format(meta_name.as_str(), &[stringify!(#[educe(Debug(name("new_name")))]), stringify!(#[educe(Debug(name(false)))])])
-                                                                                                }
-                                                                                                _ => panic::parameter_incorrect_format(meta_name.as_str(), &[stringify!(#[educe(Debug(name("new_name")))]), stringify!(#[educe(Debug(name(false)))])])
-                                                                                            }
-                                                                                        }
-                                                                                    }
-                                                                                    Meta::NameValue(named_value) => {
-                                                                                        let lit = &named_value.lit;
-
-                                                                                        match lit {
-                                                                                            Lit::Str(s) => {
-                                                                                                if name_is_set {
-                                                                                                    panic::reset_parameter(meta_name.as_str());
-                                                                                                }
-
-                                                                                                name_is_set = true;
-
-                                                                                                let s = create_path_string_from_lit_str(s);
-
-                                                                                                if s.is_some() {
-                                                                                                    variant_name = Some(s);
-                                                                                                } else {
-                                                                                                    variant_name = None;
-                                                                                                }
-                                                                                            }
-                                                                                            Lit::Bool(s) => {
-                                                                                                if name_is_set {
-                                                                                                    panic::reset_parameter(meta_name.as_str());
-                                                                                                }
-
-                                                                                                name_is_set = true;
-
-                                                                                                if !s.value {
-                                                                                                    variant_name = None;
-                                                                                                }
-                                                                                            }
-                                                                                            _ => panic::parameter_incorrect_format(meta_name.as_str(), &[stringify!(#[educe(Debug(name = "new_name"))]), stringify!(#[educe(Debug(name = false))])])
-                                                                                        }
-                                                                                    }
-                                                                                    _ => panic::parameter_incorrect_format(meta_name.as_str(), &[stringify!(#[educe(Debug(name("new_name")))]), stringify!(#[educe(Debug(name(false)))]), stringify!(#[educe(Debug(name = "new_name"))]), stringify!(#[educe(Debug(name = false))])])
-                                                                                }
-                                                                                _ => panic::unknown_parameter("Debug", meta_name.as_str())
-                                                                            }
-                                                                        }
-                                                                        NestedMeta::Literal(lit) => match lit {
-                                                                            Lit::Str(s) => {
-                                                                                if name_is_set {
-                                                                                    panic::reset_parameter("name");
-                                                                                }
-
-                                                                                name_is_set = true;
-
-                                                                                let s = create_path_string_from_lit_str(s);
-
-                                                                                if s.is_some() {
-                                                                                    variant_name = Some(s);
-                                                                                } else {
-                                                                                    variant_name = None;
-                                                                                }
-                                                                            }
-                                                                            _ => panic::attribute_incorrect_format("Debug", &[stringify!(#[educe(Debug("new_name"))])])
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                            Meta::NameValue(named_value) => {
-                                                                let lit = &named_value.lit;
-
-                                                                match lit {
-                                                                    Lit::Str(s) => {
-                                                                        if name_is_set {
-                                                                            panic::reset_parameter("name");
-                                                                        }
-
-                                                                        name_is_set = true;
-
-                                                                        let s = create_path_string_from_lit_str(s);
-
-                                                                        if s.is_some() {
-                                                                            variant_name = Some(s);
-                                                                        } else {
-                                                                            variant_name = None;
-                                                                        }
-                                                                    }
-                                                                    _ => panic::attribute_incorrect_format("Debug", &[stringify!(#[educe(Debug("new_name"))])])
-                                                                }
-                                                            }
-                                                            _ => panic::attribute_incorrect_format_without_correct_usage("Debug")
-                                                        }
-                                                    }
-                                                }
-                                                _ => panic::educe_format_incorrect()
-                                            }
-                                        }
-                                    }
-                                    _ => panic::educe_format_incorrect()
-                                }
-                                _ => ()
-                            }
-                        }
-
-                        let variant_name = combine_names(&name, variant_name, &variant_ident);
-
                         if variant_name.is_empty() {
                             panic::unit_variant_need_name();
                         }
 
-                        match_tokens.write_fmt(format_args!("Self::{variant_ident} => {{ formatter.write_str({variant_name:?}) }}", variant_ident = variant_ident, variant_name = variant_name));
+                        match_tokens.write_fmt(format_args!("Self::{variant_ident} => {{ formatter.write_str({variant_name:?}) }}", variant_ident = variant_ident, variant_name = variant_name)).unwrap();
 
                         has_variants = true;
                     }
@@ -360,37 +92,22 @@ impl TraitHandler for DebugEnumHandler {
     }
 }
 
-fn combine_names(name: &str, variant_name: Option<Option<String>>, variant_ident: &str) -> String {
+fn combine_names(name: &str, variant_name: String) -> String {
     if name.is_empty() {
-        match variant_name {
-            Some(name) => {
-                match name {
-                    Some(name) => name,
-                    None => {
-                        variant_ident.to_string()
-                    }
-                }
-            }
-            None => String::new()
+        if variant_name.is_empty() {
+            String::new()
+        } else {
+            variant_name
         }
     } else {
         let mut name = name.to_string();
 
-        if let Some(variant_name) = variant_name {
-            match variant_name {
-                Some(variant_name) => {
-                    if !variant_name.starts_with("::") {
-                        name.push_str("::");
-                    }
-
-                    name.push_str(&variant_name);
-                }
-                None => {
-                    name.push_str("::");
-
-                    name.push_str(variant_ident);
-                }
+        if !variant_name.is_empty() {
+            if !variant_name.starts_with("::") {
+                name.push_str("::");
             }
+
+            name.push_str(&variant_name);
         }
 
         name

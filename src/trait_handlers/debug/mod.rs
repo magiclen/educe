@@ -1,3 +1,5 @@
+mod models;
+
 mod debug_struct;
 mod debug_enum;
 mod debug_union;
