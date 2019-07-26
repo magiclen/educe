@@ -6,7 +6,8 @@ use super::models::{FieldAttributeBuilder, FieldAttributeName};
 
 use crate::Trait;
 use crate::proc_macro2::TokenStream;
-use crate::syn::{DeriveInput, Meta, Data, export::ToTokens};
+use crate::syn::{DeriveInput, Meta, Data};
+use crate::quote::ToTokens;
 use crate::panic;
 
 pub struct DebugStructHandler;

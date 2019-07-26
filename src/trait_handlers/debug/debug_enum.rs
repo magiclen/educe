@@ -3,10 +3,12 @@ use std::fmt::Write;
 
 use super::super::TraitHandler;
 use super::models::{TypeAttributeBuilder, TypeAttributeName};
+use super::models::{FieldAttributeBuilder, FieldAttributeName};
 
 use crate::Trait;
 use crate::proc_macro2::TokenStream;
 use crate::syn::{DeriveInput, Meta, Data, Fields};
+use crate::quote::ToTokens;
 use crate::panic;
 
 pub struct DebugEnumHandler;
@@ -46,29 +48,493 @@ impl TraitHandler for DebugEnumHandler {
 
                 let variant_ident = variant.ident.to_string();
 
-                let variant_name = combine_names(&name, variant_name);
+                let name = combine_names(&name, variant_name);
 
                 match &variant.fields {
                     Fields::Unit => { // TODO Unit
-                        if variant_name.is_empty() {
+                        if name.is_empty() {
                             panic::unit_variant_need_name();
                         }
 
-                        match_tokens.write_fmt(format_args!("Self::{variant_ident} => {{ formatter.write_str({variant_name:?}) }}", variant_ident = variant_ident, variant_name = variant_name)).unwrap();
+                        match_tokens.write_fmt(format_args!("Self::{variant_ident} => {{ formatter.write_str({name:?}) }}", variant_ident = variant_ident, name = name)).unwrap();
 
                         has_variants = true;
                     }
                     Fields::Named(fields) => {  // TODO Struct
+                        let mut has_fields = false;
+
+                        let mut pattern_tokens = String::new();
+                        let mut block_tokens = String::new();
+
+                        if named_field {
+                            if name.is_empty() {
+                                block_tokens.push_str("
+                                    struct RawString(&'static str);
+
+                                    impl core::fmt::Debug for RawString {{
+                                        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {{
+                                            f.write_str(self.0)
+                                        }}
+                                    }}
+                                ");
+
+                                block_tokens.push_str("let mut builder = formatter.debug_map();");
+                            } else {
+                                block_tokens.write_fmt(format_args!("let mut builder = formatter.debug_struct({name:?});", name = name)).unwrap();
+                            }
+
+                            for (index, field) in fields.named.iter().enumerate() {
+                                let field_attribute = FieldAttributeBuilder {
+                                    name: FieldAttributeName::Default,
+                                    enable_name: true,
+                                    enable_ignore: true,
+                                    enable_format: true,
+                                }.from_attributes(&field.attrs, traits);
+
+                                if field_attribute.ignore {
+                                    continue;
+                                }
+
+                                let rename = field_attribute.name.into_option_string();
+
+                                let format_trait = field_attribute.format_trait;
+
+                                let format_method = match format_trait.as_ref() {
+                                    Some(_) => match field_attribute.format_method {
+                                        Some(format_method) => Some(format_method),
+                                        None => Some("fmt".to_string())
+                                    }
+                                    None => field_attribute.format_method
+                                };
+
+                                let (key, field_name) = match rename {
+                                    Some(rename) => {
+                                        if let Some(ident) = field.ident.as_ref() {
+                                            (rename, ident.to_string())
+                                        } else {
+                                            (rename, format!("{}", index))
+                                        }
+                                    }
+                                    None => {
+                                        if let Some(ident) = field.ident.as_ref() {
+                                            (ident.to_string(), ident.to_string())
+                                        } else {
+                                            (format!("_{}", index), format!("{}", index))
+                                        }
+                                    }
+                                };
+
+                                if !pattern_tokens.is_empty() {
+                                    pattern_tokens.push(',');
+                                }
+                                pattern_tokens.write_fmt(format_args!("{field_name}", field_name = field_name)).unwrap();
+
+                                match format_trait {
+                                    Some(format_trait) => {
+                                        let format_method = format_method.unwrap();
+
+                                        block_tokens.write_fmt(format_args!("
+                                            let arg = {{
+                                                struct MyDebug<'a, T: {format_trait}>(&'a T);
+
+                                                impl<'a, T: {format_trait}> core::fmt::Debug for MyDebug<'a, T> {{
+                                                    fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {{
+                                                        {format_trait}::{format_method}(self.0, formatter)
+                                                    }}
+                                                }}
+
+                                                MyDebug({field_name})
+                                            }};
+                                        ", format_trait = format_trait, format_method = format_method, field_name = field_name)).unwrap();
+
+                                        let statement = if name.is_empty() {
+                                            format!("builder.entry(&RawString({key:?}), &arg);", key = key)
+                                        } else {
+                                            format!("builder.field({key:?}, &arg);", key = key)
+                                        };
+
+                                        block_tokens.push_str(&statement);
+                                    }
+                                    None => {
+                                        match format_method {
+                                            Some(format_method) => {
+                                                let ty = field.ty.clone().into_token_stream().to_string();
+
+                                                block_tokens.write_fmt(format_args!("
+                                                    let arg = {{
+                                                        struct MyDebug<'a>(&'a {ty});
+
+                                                        impl<'a> core::fmt::Debug for MyDebug<'a> {{
+                                                            fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {{
+                                                                {format_method}(self.0, formatter)
+                                                            }}
+                                                        }}
+
+                                                        MyDebug({field_name})
+                                                    }};
+                                                ", ty = ty, format_method = format_method, field_name = field_name)).unwrap();
+
+                                                let statement = if name.is_empty() {
+                                                    format!("builder.entry(&RawString({key:?}), &arg);", key = key)
+                                                } else {
+                                                    format!("builder.field({key:?}, &arg);", key = key)
+                                                };
+
+                                                block_tokens.push_str(&statement);
+                                            }
+                                            None => {
+                                                let statement = if name.is_empty() {
+                                                    format!("builder.entry(&RawString({key:?}), {field_name});", key = key, field_name = field_name)
+                                                } else {
+                                                    format!("builder.field({key:?}, {field_name});", key = key, field_name = field_name)
+                                                };
+
+                                                block_tokens.push_str(&statement);
+                                            }
+                                        }
+                                    }
+                                }
+
+                                has_fields = true;
+                            }
+                        } else {
+                            block_tokens.write_fmt(format_args!("let mut builder = formatter.debug_tuple({name:?});", name = name)).unwrap();
+
+                            for (index, field) in fields.named.iter().enumerate() {
+                                let field_attribute = FieldAttributeBuilder {
+                                    name: FieldAttributeName::Default,
+                                    enable_name: false,
+                                    enable_ignore: true,
+                                    enable_format: true,
+                                }.from_attributes(&field.attrs, traits);
+
+                                if field_attribute.ignore {
+                                    continue;
+                                }
+
+                                let format_trait = field_attribute.format_trait;
+
+                                let format_method = match format_trait.as_ref() {
+                                    Some(_) => match field_attribute.format_method {
+                                        Some(format_method) => Some(format_method),
+                                        None => Some("fmt".to_string())
+                                    }
+                                    None => field_attribute.format_method
+                                };
+
+                                let field_name = if let Some(ident) = field.ident.as_ref() {
+                                    ident.to_string()
+                                } else {
+                                    format!("{}", index)
+                                };
+
+                                if !pattern_tokens.is_empty() {
+                                    pattern_tokens.push(',');
+                                }
+                                pattern_tokens.write_fmt(format_args!("{field_name}", field_name = field_name)).unwrap();
+
+                                match format_trait {
+                                    Some(format_trait) => {
+                                        let format_method = format_method.unwrap();
+
+                                        block_tokens.write_fmt(format_args!("
+                                            let arg = {{
+                                                struct MyDebug<'a, T: {format_trait}>(&'a T);
+
+                                                impl<'a, T: {format_trait}> core::fmt::Debug for MyDebug<'a, T> {{
+                                                    fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {{
+                                                        {format_trait}::{format_method}(self.0, formatter)
+                                                    }}
+                                                }}
+
+                                                MyDebug({field_name})
+                                            }};
+                                        ", format_trait = format_trait, format_method = format_method, field_name = field_name)).unwrap();
+
+                                        block_tokens.push_str("builder.field(&arg);");
+                                    }
+                                    None => {
+                                        match format_method {
+                                            Some(format_method) => {
+                                                let ty = field.ty.clone().into_token_stream().to_string();
+
+                                                block_tokens.write_fmt(format_args!("
+                                                    let arg = {{
+                                                        struct MyDebug<'a>(&'a {ty});
+
+                                                        impl<'a> core::fmt::Debug for MyDebug<'a> {{
+                                                            fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {{
+                                                                {format_method}(self.0, formatter)
+                                                            }}
+                                                        }}
+
+                                                        MyDebug({field_name})
+                                                    }};
+                                                ", ty = ty, format_method = format_method, field_name = field_name)).unwrap();
+
+                                                block_tokens.push_str("builder.field(&arg);");
+                                            }
+                                            None => {
+                                                let statement = format!("builder.field({field_name});", field_name = field_name);
+
+                                                block_tokens.push_str(&statement);
+                                            }
+                                        }
+                                    }
+                                }
+
+                                has_fields = true;
+                            }
+                        }
+
+                        if name.is_empty() && !has_fields {
+                            panic::unit_struct_need_name();
+                        }
+
+                        block_tokens.push_str("return builder.finish();");
+
+                        match_tokens.write_fmt(format_args!("Self::{variant_ident}{{ {pattern_tokens}, .. }} => {{ {block_tokens} }}", variant_ident = variant_ident, pattern_tokens = pattern_tokens, block_tokens = block_tokens)).unwrap();
+
+                        has_variants = true;
                     }
                     Fields::Unnamed(fields) => {  // TODO Tuple
+                        let mut has_fields = false;
+
+                        let mut pattern_tokens = String::new();
+                        let mut block_tokens = String::new();
+
+                        if named_field {
+                            if name.is_empty() {
+                                block_tokens.push_str("
+                                    struct RawString(&'static str);
+
+                                    impl core::fmt::Debug for RawString {{
+                                        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {{
+                                            f.write_str(self.0)
+                                        }}
+                                    }}
+                                ");
+
+                                block_tokens.push_str("let mut builder = formatter.debug_map();");
+                            } else {
+                                block_tokens.write_fmt(format_args!("let mut builder = formatter.debug_struct({name:?});", name = name)).unwrap();
+                            }
+
+                            for (index, field) in fields.unnamed.iter().enumerate() {
+                                let field_attribute = FieldAttributeBuilder {
+                                    name: FieldAttributeName::Default,
+                                    enable_name: true,
+                                    enable_ignore: true,
+                                    enable_format: true,
+                                }.from_attributes(&field.attrs, traits);
+
+                                if field_attribute.ignore {
+                                    pattern_tokens.push_str("_,");
+                                    continue;
+                                }
+
+                                let rename = field_attribute.name.into_option_string();
+
+                                let format_trait = field_attribute.format_trait;
+
+                                let format_method = match format_trait.as_ref() {
+                                    Some(_) => match field_attribute.format_method {
+                                        Some(format_method) => Some(format_method),
+                                        None => Some("fmt".to_string())
+                                    }
+                                    None => field_attribute.format_method
+                                };
+
+                                let (key, field_name) = match rename {
+                                    Some(rename) => {
+                                        if let Some(ident) = field.ident.as_ref() {
+                                            (rename, ident.to_string())
+                                        } else {
+                                            (rename, format!("{}", index))
+                                        }
+                                    }
+                                    None => {
+                                        if let Some(ident) = field.ident.as_ref() {
+                                            (ident.to_string(), ident.to_string())
+                                        } else {
+                                            (format!("_{}", index), format!("{}", index))
+                                        }
+                                    }
+                                };
+
+                                pattern_tokens.write_fmt(format_args!("_{field_name},", field_name = field_name)).unwrap();
+
+                                match format_trait {
+                                    Some(format_trait) => {
+                                        let format_method = format_method.unwrap();
+
+                                        block_tokens.write_fmt(format_args!("
+                                            let arg = {{
+                                                struct MyDebug<'a, T: {format_trait}>(&'a T);
+
+                                                impl<'a, T: {format_trait}> core::fmt::Debug for MyDebug<'a, T> {{
+                                                    fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {{
+                                                        {format_trait}::{format_method}(self.0, formatter)
+                                                    }}
+                                                }}
+
+                                                MyDebug(_{field_name})
+                                            }};
+                                        ", format_trait = format_trait, format_method = format_method, field_name = field_name)).unwrap();
+
+                                        let statement = if name.is_empty() {
+                                            format!("builder.entry(&RawString({key:?}), &arg);", key = key)
+                                        } else {
+                                            format!("builder.field({key:?}, &arg);", key = key)
+                                        };
+
+                                        block_tokens.push_str(&statement);
+                                    }
+                                    None => {
+                                        match format_method {
+                                            Some(format_method) => {
+                                                let ty = field.ty.clone().into_token_stream().to_string();
+
+                                                block_tokens.write_fmt(format_args!("
+                                                    let arg = {{
+                                                        struct MyDebug<'a>(&'a {ty});
+
+                                                        impl<'a> core::fmt::Debug for MyDebug<'a> {{
+                                                            fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {{
+                                                                {format_method}(self.0, formatter)
+                                                            }}
+                                                        }}
+
+                                                        MyDebug(_{field_name})
+                                                    }};
+                                                ", ty = ty, format_method = format_method, field_name = field_name)).unwrap();
+
+                                                let statement = if name.is_empty() {
+                                                    format!("builder.entry(&RawString({key:?}), &arg);", key = key)
+                                                } else {
+                                                    format!("builder.field({key:?}, &arg);", key = key)
+                                                };
+
+                                                block_tokens.push_str(&statement);
+                                            }
+                                            None => {
+                                                let statement = if name.is_empty() {
+                                                    format!("builder.entry(&RawString({key:?}), {field_name});", key = key, field_name = field_name)
+                                                } else {
+                                                    format!("builder.field({key:?}, _{field_name});", key = key, field_name = field_name)
+                                                };
+
+                                                block_tokens.push_str(&statement);
+                                            }
+                                        }
+                                    }
+                                }
+
+                                has_fields = true;
+                            }
+                        } else {
+                            block_tokens.write_fmt(format_args!("let mut builder = formatter.debug_tuple({name:?});", name = name)).unwrap();
+
+                            for (index, field) in fields.unnamed.iter().enumerate() {
+                                let field_attribute = FieldAttributeBuilder {
+                                    name: FieldAttributeName::Default,
+                                    enable_name: false,
+                                    enable_ignore: true,
+                                    enable_format: true,
+                                }.from_attributes(&field.attrs, traits);
+
+                                if field_attribute.ignore {
+                                    pattern_tokens.push_str("_,");
+                                    continue;
+                                }
+
+                                let format_trait = field_attribute.format_trait;
+
+                                let format_method = match format_trait.as_ref() {
+                                    Some(_) => match field_attribute.format_method {
+                                        Some(format_method) => Some(format_method),
+                                        None => Some("fmt".to_string())
+                                    }
+                                    None => field_attribute.format_method
+                                };
+
+                                let field_name = if let Some(ident) = field.ident.as_ref() {
+                                    ident.to_string()
+                                } else {
+                                    format!("{}", index)
+                                };
+
+                                pattern_tokens.write_fmt(format_args!("_{field_name},", field_name = field_name)).unwrap();
+
+                                match format_trait {
+                                    Some(format_trait) => {
+                                        let format_method = format_method.unwrap();
+
+                                        block_tokens.write_fmt(format_args!("
+                                            let arg = {{
+                                                struct MyDebug<'a, T: {format_trait}>(&'a T);
+
+                                                impl<'a, T: {format_trait}> core::fmt::Debug for MyDebug<'a, T> {{
+                                                    fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {{
+                                                        {format_trait}::{format_method}(self.0, formatter)
+                                                    }}
+                                                }}
+
+                                                MyDebug(_{field_name})
+                                            }};
+                                        ", format_trait = format_trait, format_method = format_method, field_name = field_name)).unwrap();
+
+                                        block_tokens.push_str("builder.field(&arg);");
+                                    }
+                                    None => {
+                                        match format_method {
+                                            Some(format_method) => {
+                                                let ty = field.ty.clone().into_token_stream().to_string();
+
+                                                block_tokens.write_fmt(format_args!("
+                                                    let arg = {{
+                                                        struct MyDebug<'a>(&'a {ty});
+
+                                                        impl<'a> core::fmt::Debug for MyDebug<'a> {{
+                                                            fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {{
+                                                                {format_method}(self.0, formatter)
+                                                            }}
+                                                        }}
+
+                                                        MyDebug(_{field_name})
+                                                    }};
+                                                ", ty = ty, format_method = format_method, field_name = field_name)).unwrap();
+
+                                                block_tokens.push_str("builder.field(&arg);");
+                                            }
+                                            None => {
+                                                let statement = format!("builder.field(_{field_name});", field_name = field_name);
+
+                                                block_tokens.push_str(&statement);
+                                            }
+                                        }
+                                    }
+                                }
+
+                                has_fields = true;
+                            }
+                        }
+
+                        if name.is_empty() && !has_fields {
+                            panic::unit_struct_need_name();
+                        }
+
+                        block_tokens.push_str("return builder.finish();");
+
+                        match_tokens.write_fmt(format_args!("Self::{variant_ident}( {pattern_tokens} ) => {{ {block_tokens} }}", variant_ident = variant_ident, pattern_tokens = pattern_tokens, block_tokens = block_tokens)).unwrap();
+
+                        has_variants = true;
                     }
                 }
             }
         }
 
         match_tokens.push_str(" }");
-
-        println!("{}", match_tokens);
 
         builder_tokens.extend(TokenStream::from_str(&match_tokens).unwrap());
 

@@ -354,6 +354,29 @@ fn rename_field_3() {
 }
 
 #[test]
+fn rename_field_4() {
+    #[derive(Educe)]
+    #[educe(Debug)]
+    struct Struct {
+        #[educe(Debug(name("f")))]
+        f1: u8
+    };
+
+    assert_eq!("Struct { f: 1 }", format!("{:?}", Struct {
+        f1: 1
+    }));
+
+    #[derive(Educe)]
+    #[educe(Debug(named_field(true)))]
+    struct Tuple(
+        #[educe(Debug(name("f")))]
+        u8
+    );
+
+    assert_eq!("Tuple { f: 1 }", format!("{:?}", Tuple(1)));
+}
+
+#[test]
 #[allow(dead_code)]
 fn ignore_1() {
     #[derive(Educe)]
@@ -383,6 +406,33 @@ fn ignore_1() {
 #[test]
 #[allow(dead_code)]
 fn ignore_2() {
+    #[derive(Educe)]
+    #[educe(Debug)]
+    struct Struct {
+        #[educe(Debug(false))]
+        f1: u8,
+        f2: u8,
+    };
+
+    assert_eq!("Struct { f2: 2 }", format!("{:?}", Struct {
+        f1: 1,
+        f2: 2,
+    }));
+
+    #[derive(Educe)]
+    #[educe(Debug)]
+    struct Tuple(
+        #[educe(Debug(false))]
+        u8,
+        u8,
+    );
+
+    assert_eq!("Tuple(2)", format!("{:?}", Tuple(1, 2)));
+}
+
+#[test]
+#[allow(dead_code)]
+fn ignore_3() {
     #[derive(Educe)]
     #[educe(Debug)]
     struct Struct {
@@ -571,7 +621,7 @@ fn format_with_trait_2() {
     #[derive(Educe)]
     #[educe(Debug)]
     struct Struct<T: A> {
-        #[educe(Debug(format(trait("A"))))]
+        #[educe(Debug(format(trait ("A"))))]
         f1: T,
     };
 
@@ -582,7 +632,7 @@ fn format_with_trait_2() {
     #[derive(Educe)]
     #[educe(Debug)]
     struct Tuple<T: A>(
-        #[educe(Debug(format(trait("A"))))]
+        #[educe(Debug(format(trait ("A"))))]
         T
     );
 
@@ -637,7 +687,7 @@ fn format_with_trait_4() {
     #[derive(Educe)]
     #[educe(Debug)]
     struct Struct<T: A> {
-        #[educe(Debug(format(trait("A"), method("format"))))]
+        #[educe(Debug(format(trait ("A"), method("format"))))]
         f1: T,
     };
 
@@ -648,7 +698,7 @@ fn format_with_trait_4() {
     #[derive(Educe)]
     #[educe(Debug)]
     struct Tuple<T: A>(
-        #[educe(Debug(format(trait("A"), method("format"))))]
+        #[educe(Debug(format(trait ("A"), method("format"))))]
         T
     );
 
