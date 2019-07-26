@@ -83,7 +83,7 @@ impl TraitHandler for DebugEnumHandler {
                                 block_tokens.write_fmt(format_args!("let mut builder = formatter.debug_struct({name:?});", name = name)).unwrap();
                             }
 
-                            for (index, field) in fields.named.iter().enumerate() {
+                            for field in fields.named.iter() {
                                 let field_attribute = FieldAttributeBuilder {
                                     name: FieldAttributeName::Default,
                                     enable_name: true,
@@ -91,7 +91,10 @@ impl TraitHandler for DebugEnumHandler {
                                     enable_format: true,
                                 }.from_attributes(&field.attrs, traits);
 
+                                let field_name = field.ident.as_ref().unwrap().to_string();
+
                                 if field_attribute.ignore {
+                                    pattern_tokens.write_fmt(format_args!("{field_name}: _,", field_name = field_name)).unwrap();
                                     continue;
                                 }
 
@@ -107,27 +110,9 @@ impl TraitHandler for DebugEnumHandler {
                                     None => field_attribute.format_method
                                 };
 
-                                let (key, field_name) = match rename {
-                                    Some(rename) => {
-                                        if let Some(ident) = field.ident.as_ref() {
-                                            (rename, ident.to_string())
-                                        } else {
-                                            (rename, format!("{}", index))
-                                        }
-                                    }
-                                    None => {
-                                        if let Some(ident) = field.ident.as_ref() {
-                                            (ident.to_string(), ident.to_string())
-                                        } else {
-                                            (format!("_{}", index), format!("{}", index))
-                                        }
-                                    }
-                                };
+                                let key = rename.unwrap_or(field_name.clone());
 
-                                if !pattern_tokens.is_empty() {
-                                    pattern_tokens.push(',');
-                                }
-                                pattern_tokens.write_fmt(format_args!("{field_name}", field_name = field_name)).unwrap();
+                                pattern_tokens.write_fmt(format_args!("{field_name},", field_name = field_name)).unwrap();
 
                                 match format_trait {
                                     Some(format_trait) => {
@@ -200,7 +185,7 @@ impl TraitHandler for DebugEnumHandler {
                         } else {
                             block_tokens.write_fmt(format_args!("let mut builder = formatter.debug_tuple({name:?});", name = name)).unwrap();
 
-                            for (index, field) in fields.named.iter().enumerate() {
+                            for field in fields.named.iter() {
                                 let field_attribute = FieldAttributeBuilder {
                                     name: FieldAttributeName::Default,
                                     enable_name: false,
@@ -208,7 +193,10 @@ impl TraitHandler for DebugEnumHandler {
                                     enable_format: true,
                                 }.from_attributes(&field.attrs, traits);
 
+                                let field_name = field.ident.as_ref().unwrap().to_string();
+
                                 if field_attribute.ignore {
+                                    pattern_tokens.write_fmt(format_args!("{field_name}: _,", field_name = field_name)).unwrap();
                                     continue;
                                 }
 
@@ -222,16 +210,7 @@ impl TraitHandler for DebugEnumHandler {
                                     None => field_attribute.format_method
                                 };
 
-                                let field_name = if let Some(ident) = field.ident.as_ref() {
-                                    ident.to_string()
-                                } else {
-                                    format!("{}", index)
-                                };
-
-                                if !pattern_tokens.is_empty() {
-                                    pattern_tokens.push(',');
-                                }
-                                pattern_tokens.write_fmt(format_args!("{field_name}", field_name = field_name)).unwrap();
+                                pattern_tokens.write_fmt(format_args!("{field_name},", field_name = field_name)).unwrap();
 
                                 match format_trait {
                                     Some(format_trait) => {
@@ -293,7 +272,7 @@ impl TraitHandler for DebugEnumHandler {
 
                         block_tokens.push_str("return builder.finish();");
 
-                        match_tokens.write_fmt(format_args!("Self::{variant_ident}{{ {pattern_tokens}, .. }} => {{ {block_tokens} }}", variant_ident = variant_ident, pattern_tokens = pattern_tokens, block_tokens = block_tokens)).unwrap();
+                        match_tokens.write_fmt(format_args!("Self::{variant_ident}{{ {pattern_tokens} }} => {{ {block_tokens} }}", variant_ident = variant_ident, pattern_tokens = pattern_tokens, block_tokens = block_tokens)).unwrap();
 
                         has_variants = true;
                     }
@@ -346,20 +325,8 @@ impl TraitHandler for DebugEnumHandler {
                                 };
 
                                 let (key, field_name) = match rename {
-                                    Some(rename) => {
-                                        if let Some(ident) = field.ident.as_ref() {
-                                            (rename, ident.to_string())
-                                        } else {
-                                            (rename, format!("{}", index))
-                                        }
-                                    }
-                                    None => {
-                                        if let Some(ident) = field.ident.as_ref() {
-                                            (ident.to_string(), ident.to_string())
-                                        } else {
-                                            (format!("_{}", index), format!("{}", index))
-                                        }
-                                    }
+                                    Some(rename) => (rename, format!("{}", index)),
+                                    None => (format!("_{}", index), format!("{}", index))
                                 };
 
                                 pattern_tokens.write_fmt(format_args!("_{field_name},", field_name = field_name)).unwrap();
@@ -458,11 +425,7 @@ impl TraitHandler for DebugEnumHandler {
                                     None => field_attribute.format_method
                                 };
 
-                                let field_name = if let Some(ident) = field.ident.as_ref() {
-                                    ident.to_string()
-                                } else {
-                                    format!("{}", index)
-                                };
+                                let field_name = format!("{}", index);
 
                                 pattern_tokens.write_fmt(format_args!("_{field_name},", field_name = field_name)).unwrap();
 
