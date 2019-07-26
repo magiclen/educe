@@ -1,6 +1,6 @@
 [package]
 name = "educe"
-version = "0.0.2"
+version = "0.0.3"
 authors = ["Magic Len <len@magiclen.org>"]
 edition = "2018"
 repository = "https://github.com/magiclen/educe"
@@ -10,6 +10,10 @@ categories = ["no-std", "rust-patterns"]
 description= "This crate provides procedural macros to help you implement Rust-build-in traits quickly."
 readme = "README.md"
 license = "MIT"
+
+[badges]
+travis-ci = { repository = "magiclen/educe", branch = "master" }
+appveyor = { repository = "magiclen/educe", branch = "master", service = "github" }
 
 [lib]
 proc-macro = true
