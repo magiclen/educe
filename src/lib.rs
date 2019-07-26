@@ -170,6 +170,60 @@ enum Enum<T: A> {
 }
 ```
 
+#### Generaic Parameters Bound to the `Debug` trait or others
+
+The `#[educe(Debug(bound))]` attribute can be used to add the `Debug` trait bound to all generaic parameters for the `Debug` implementation.
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(Debug(bound))]
+enum Enum<T, K> {
+    V1,
+    V2 {
+        f1: K,
+    },
+    V3(
+        T
+    ),
+}
+```
+
+Or you can set the where predicates by yourself.
+
+```rust
+#[macro_use] extern crate educe;
+
+use std::fmt::{self, Formatter};
+
+fn fmt(_s: &u8, f: &mut Formatter) -> fmt::Result {
+    f.write_str("Hi")
+}
+
+trait A {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.write_str("Hi")
+    }
+}
+
+impl A for i32 {};
+impl A for u64 {};
+
+#[derive(Educe)]
+#[educe(Debug(bound = "T: std::fmt::Debug, K: A"))]
+enum Enum<T, K> {
+    V1,
+    V2 {
+        #[educe(Debug(format(trait = "A")))]
+        f1: K,
+    },
+    V3(
+        T
+    ),
+}
+```
+
 ## TODO
 
 There is a lot of work to be done. Unimplemented traits are listed below:
@@ -191,7 +245,7 @@ There is a lot of work to be done. Unimplemented traits are listed below:
 
 */
 
-#![recursion_limit="128"]
+#![recursion_limit = "128"]
 
 extern crate proc_macro;
 extern crate proc_macro2;

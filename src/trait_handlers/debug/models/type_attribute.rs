@@ -1,7 +1,7 @@
-use super::super::super::{create_path_string_from_lit_str, create_where_predicates_from_lit_str};
+use super::super::super::{create_path_string_from_lit_str, create_where_predicates_from_lit_str, create_where_predicates_from_generic_parameters};
 
 use crate::Trait;
-use crate::syn::{Meta, NestedMeta, Lit, Ident, Attribute, WherePredicate, punctuated::Punctuated, token::Comma};
+use crate::syn::{Meta, NestedMeta, Lit, Ident, Attribute, WherePredicate, GenericParam, punctuated::Punctuated, token::Comma};
 use crate::panic;
 
 #[derive(Debug, Clone)]
@@ -26,6 +26,23 @@ pub struct TypeAttribute {
     pub name: TypeAttributeName,
     pub named_field: bool,
     pub bound: Option<Punctuated<WherePredicate, Comma>>,
+}
+
+impl TypeAttribute {
+    pub fn make_bound(bound: Option<Punctuated<WherePredicate, Comma>>, params: &Punctuated<GenericParam, Comma>) -> Punctuated<WherePredicate, Comma> {
+        match bound {
+            Some(where_predicates) => {
+                if where_predicates.is_empty() {
+                    create_where_predicates_from_generic_parameters(params, &syn::parse(quote!(core::fmt::Debug).into()).unwrap())
+                } else {
+                    where_predicates
+                }
+            }
+            None => {
+                Punctuated::new()
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

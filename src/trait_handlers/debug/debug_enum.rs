@@ -2,12 +2,12 @@ use std::str::FromStr;
 use std::fmt::Write;
 
 use super::super::TraitHandler;
-use super::models::{TypeAttributeBuilder, TypeAttributeName};
+use super::models::{TypeAttribute, TypeAttributeBuilder, TypeAttributeName};
 use super::models::{FieldAttributeBuilder, FieldAttributeName};
 
 use crate::Trait;
 use crate::proc_macro2::TokenStream;
-use crate::syn::{DeriveInput, Meta, Data, Fields};
+use crate::syn::{DeriveInput, Meta, Data, Fields, Generics};
 use crate::quote::ToTokens;
 use crate::panic;
 
@@ -23,7 +23,11 @@ impl TraitHandler for DebugEnumHandler {
             enable_bound: true,
         }.from_debug_meta(meta);
 
+        let enum_name= ast.ident.to_string();
+
         let name = type_attribute.name.into_string_by_ident(&ast.ident);
+
+        let bound = TypeAttribute::make_bound(type_attribute.bound, &ast.generics.params);
 
         let mut builder_tokens = TokenStream::new();
         let mut has_variants = false;
@@ -58,7 +62,7 @@ impl TraitHandler for DebugEnumHandler {
                             panic::unit_variant_need_name();
                         }
 
-                        match_tokens.write_fmt(format_args!("Self::{variant_ident} => {{ formatter.write_str({name:?}) }}", variant_ident = variant_ident, name = name)).unwrap();
+                        match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident} => {{ formatter.write_str({name:?}) }}", enum_name = enum_name, variant_ident = variant_ident, name = name)).unwrap();
 
                         has_variants = true;
                     }
@@ -274,7 +278,7 @@ impl TraitHandler for DebugEnumHandler {
 
                         block_tokens.push_str("return builder.finish();");
 
-                        match_tokens.write_fmt(format_args!("Self::{variant_ident}{{ {pattern_tokens} }} => {{ {block_tokens} }}", variant_ident = variant_ident, pattern_tokens = pattern_tokens, block_tokens = block_tokens)).unwrap();
+                        match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident}{{ {pattern_tokens} }} => {{ {block_tokens} }}", enum_name = enum_name, variant_ident = variant_ident, pattern_tokens = pattern_tokens, block_tokens = block_tokens)).unwrap();
 
                         has_variants = true;
                     }
@@ -491,7 +495,7 @@ impl TraitHandler for DebugEnumHandler {
 
                         block_tokens.push_str("return builder.finish();");
 
-                        match_tokens.write_fmt(format_args!("Self::{variant_ident}( {pattern_tokens} ) => {{ {block_tokens} }}", variant_ident = variant_ident, pattern_tokens = pattern_tokens, block_tokens = block_tokens)).unwrap();
+                        match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident}( {pattern_tokens} ) => {{ {block_tokens} }}", enum_name = enum_name, variant_ident = variant_ident, pattern_tokens = pattern_tokens, block_tokens = block_tokens)).unwrap();
 
                         has_variants = true;
                     }
@@ -509,7 +513,15 @@ impl TraitHandler for DebugEnumHandler {
 
         let ident = &ast.ident;
 
-        let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
+        let mut generics_cloned: Generics = ast.generics.clone();
+
+        let where_clause = generics_cloned.make_where_clause();
+
+        for where_predicate in bound {
+            where_clause.predicates.push(where_predicate);
+        }
+
+        let (impl_generics, ty_generics, where_clause) = generics_cloned.split_for_impl();
 
         let debug_impl = quote! {
             impl #impl_generics core::fmt::Debug for #ident #ty_generics #where_clause {

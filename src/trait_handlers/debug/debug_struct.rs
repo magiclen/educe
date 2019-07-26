@@ -1,12 +1,12 @@
 use std::str::FromStr;
 
 use super::super::TraitHandler;
-use super::models::{TypeAttributeBuilder, TypeAttributeName};
+use super::models::{TypeAttribute, TypeAttributeBuilder, TypeAttributeName};
 use super::models::{FieldAttributeBuilder, FieldAttributeName};
 
 use crate::Trait;
 use crate::proc_macro2::TokenStream;
-use crate::syn::{DeriveInput, Meta, Data};
+use crate::syn::{DeriveInput, Meta, Data, Generics};
 use crate::quote::ToTokens;
 use crate::panic;
 
@@ -39,6 +39,8 @@ impl TraitHandler for DebugStructHandler {
         let name = type_attribute.name.into_string_by_ident(&ast.ident);
 
         let named_field = type_attribute.named_field;
+
+        let bound = TypeAttribute::make_bound(type_attribute.bound, &ast.generics.params);
 
         let mut builder_tokens = TokenStream::new();
         let mut has_fields = false;
@@ -263,7 +265,15 @@ impl TraitHandler for DebugStructHandler {
 
         let ident = &ast.ident;
 
-        let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
+        let mut generics_cloned: Generics = ast.generics.clone();
+
+        let where_clause = generics_cloned.make_where_clause();
+
+        for where_predicate in bound {
+            where_clause.predicates.push(where_predicate);
+        }
+
+        let (impl_generics, ty_generics, where_clause) = generics_cloned.split_for_impl();
 
         let debug_impl = quote! {
             impl #impl_generics core::fmt::Debug for #ident #ty_generics #where_clause {

@@ -1,9 +1,9 @@
 use super::super::TraitHandler;
-use super::models::{TypeAttributeBuilder, TypeAttributeName};
+use super::models::{TypeAttribute, TypeAttributeBuilder, TypeAttributeName};
 
 use crate::Trait;
 use crate::proc_macro2::TokenStream;
-use crate::syn::{DeriveInput, Meta, NestedMeta, Data};
+use crate::syn::{DeriveInput, Meta, NestedMeta, Data, Generics};
 use crate::panic;
 
 pub struct DebugUnionHandler;
@@ -19,6 +19,8 @@ impl TraitHandler for DebugUnionHandler {
         }.from_debug_meta(meta);
 
         let name = type_attribute.name.into_string_by_ident(&ast.ident);
+
+        let bound = TypeAttribute::make_bound(type_attribute.bound, &ast.generics.params);
 
         let mut builder_tokens = TokenStream::new();
 
@@ -82,7 +84,13 @@ impl TraitHandler for DebugUnionHandler {
 
         let ident = &ast.ident;
 
-        let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
+        let mut generics_cloned: Generics = ast.generics.clone();
+
+        let where_clause = generics_cloned.make_where_clause();
+
+        where_clause.predicates.extend(bound.iter().cloned());
+
+        let (impl_generics, ty_generics, where_clause) = generics_cloned.split_for_impl();
 
         let debug_impl = quote! {
             impl #impl_generics core::fmt::Debug for #ident #ty_generics #where_clause {

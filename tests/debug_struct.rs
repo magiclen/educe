@@ -704,3 +704,60 @@ fn format_with_trait_4() {
 
     assert_eq!("Tuple(Hi)", format!("{:?}", Tuple(1)));
 }
+
+#[test]
+fn bound_1() {
+    #[derive(Educe)]
+    #[educe(Debug(bound))]
+    struct Struct<T> {
+        f1: T
+    };
+
+    assert_eq!("Struct { f1: 1 }", format!("{:?}", Struct {
+        f1: 1
+    }));
+
+    #[derive(Educe)]
+    #[educe(Debug(bound))]
+    struct Tuple<T>(T);
+
+    assert_eq!("Tuple(1)", format!("{:?}", Tuple(1)));
+}
+
+#[test]
+fn bound_2() {
+    #[derive(Educe)]
+    #[educe(Debug(bound = "T: core::fmt::Debug"))]
+    struct Struct<T> {
+        f1: T
+    };
+
+    assert_eq!("Struct { f1: 1 }", format!("{:?}", Struct {
+        f1: 1
+    }));
+
+    #[derive(Educe)]
+    #[educe(Debug(bound = "T: core::fmt::Debug"))]
+    struct Tuple<T>(T);
+
+    assert_eq!("Tuple(1)", format!("{:?}", Tuple(1)));
+}
+
+#[test]
+fn bound_3() {
+    #[derive(Educe)]
+    #[educe(Debug(bound("T: core::fmt::Debug")))]
+    struct Struct<T> {
+        f1: T
+    };
+
+    assert_eq!("Struct { f1: 1 }", format!("{:?}", Struct {
+        f1: 1
+    }));
+
+    #[derive(Educe)]
+    #[educe(Debug(bound("T: core::fmt::Debug")))]
+    struct Tuple<T>(T);
+
+    assert_eq!("Tuple(1)", format!("{:?}", Tuple(1)));
+}

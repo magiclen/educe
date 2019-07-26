@@ -4,7 +4,7 @@ use std::str::FromStr;
 
 use crate::Trait;
 use crate::proc_macro2::TokenStream;
-use crate::syn::{self, DeriveInput, Meta, LitStr, Path, WhereClause, WherePredicate, punctuated::Punctuated, token::Comma};
+use crate::syn::{self, DeriveInput, Meta, LitStr, Path, WhereClause, WherePredicate, GenericParam, punctuated::Punctuated, token::Comma};
 use crate::quote::ToTokens;
 
 pub use debug::DebugHandler;
@@ -50,4 +50,19 @@ pub fn create_where_predicates_from_lit_str(s: &LitStr) -> Option<Punctuated<Whe
 
         Some(where_clause.predicates)
     }
+}
+
+#[inline]
+pub fn create_where_predicates_from_generic_parameters(p: &Punctuated<GenericParam, Comma>, bound_trait: &Path) -> Punctuated<WherePredicate, Comma> {
+    let mut where_predicates = Punctuated::new();
+
+    for param in p.iter() {
+        if let GenericParam::Type(typ) = param {
+            let ident = &typ.ident;
+
+            where_predicates.push(syn::parse(quote! { #ident: #bound_trait }.into()).unwrap());
+        }
+    }
+
+    where_predicates
 }

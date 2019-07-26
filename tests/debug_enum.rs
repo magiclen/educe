@@ -932,3 +932,63 @@ fn format_with_trait_4() {
     }));
     assert_eq!("Tuple(Hi)", format!("{:?}", Enum::Tuple(1)));
 }
+
+#[test]
+#[allow(dead_code)]
+fn bound_1() {
+    #[derive(Educe)]
+    #[educe(Debug(bound))]
+    enum Enum<T> {
+        Unit,
+        Struct {
+            f1: T
+        },
+        Tuple(T),
+    };
+
+    assert_eq!("Unit", format!("{:?}", Enum::<u8>::Unit));
+    assert_eq!("Struct { f1: 1 }", format!("{:?}", Enum::Struct {
+        f1: 1
+    }));
+    assert_eq!("Tuple(1)", format!("{:?}", Enum::Tuple(1)));
+}
+
+#[test]
+#[allow(dead_code)]
+fn bound_2() {
+    #[derive(Educe)]
+    #[educe(Debug(bound = "T: core::fmt::Debug"))]
+    enum Enum<T> {
+        Unit,
+        Struct {
+            f1: T
+        },
+        Tuple(T),
+    };
+
+    assert_eq!("Unit", format!("{:?}", Enum::<u8>::Unit));
+    assert_eq!("Struct { f1: 1 }", format!("{:?}", Enum::Struct {
+        f1: 1
+    }));
+    assert_eq!("Tuple(1)", format!("{:?}", Enum::Tuple(1)));
+}
+
+#[test]
+#[allow(dead_code)]
+fn bound_3() {
+    #[derive(Educe)]
+    #[educe(Debug(bound("T: core::fmt::Debug")))]
+    enum Enum<T> {
+        Unit,
+        Struct {
+            f1: T
+        },
+        Tuple(T),
+    };
+
+    assert_eq!("Unit", format!("{:?}", Enum::<u8>::Unit));
+    assert_eq!("Struct { f1: 1 }", format!("{:?}", Enum::Struct {
+        f1: 1
+    }));
+    assert_eq!("Tuple(1)", format!("{:?}", Enum::Tuple(1)));
+}

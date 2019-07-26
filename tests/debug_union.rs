@@ -159,3 +159,45 @@ fn unnamed_6() {
         f1: 1
     }));
 }
+
+#[test]
+#[allow(dead_code)]
+fn bound_1() {
+    #[derive(Educe)]
+    #[educe(Debug(bound))]
+    union Union<T: Copy> {
+        f1: T
+    };
+
+    assert_eq!("Union([1])", format!("{:?}", Union {
+        f1: 1u8
+    }));
+}
+
+#[test]
+#[allow(dead_code)]
+fn bound_2() {
+    #[derive(Educe)]
+    #[educe(Debug(bound = "T: core::fmt::Debug"))]
+    union Union<T: Copy> {
+        f1: T
+    };
+
+    assert_eq!("Union([1])", format!("{:?}", Union {
+        f1: 1u8
+    }));
+}
+
+#[test]
+#[allow(dead_code)]
+fn bound_3() {
+    #[derive(Educe)]
+    #[educe(Debug(bound = "T: core::fmt::Debug"))]
+    union Union<T: Copy> {
+        f1: T
+    };
+
+    assert_eq!("Union([1])", format!("{:?}", Union {
+        f1: 1u8
+    }));
+}
