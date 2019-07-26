@@ -137,7 +137,7 @@ enum Enum {
 
 #### Use Another Method or Trait to Do the Format Thing
 
-The `format` attribute has two parameters: `trait` and `method`. They can be used to replace the `Debug` trait on fields. If you only set the `trait` parameter, the `method` will be set to `fmt` automatically as default.
+The `format` attribute has two parameters: `trait` and `method`. They can be used to replace the `Debug` trait on fields. If you only set the `trait` parameter, the `method` will be set to `fmt` automatically by default.
 
 ```rust
 #[macro_use] extern crate educe;
