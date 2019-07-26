@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use super::super::TraitHandler;
-use super::models::{TypeAttribute, TypeAttributeBuilder, TypeAttributeName};
+use super::models::{TypeAttributeBuilder, TypeAttributeName};
 use super::models::{FieldAttributeBuilder, FieldAttributeName};
 
 use crate::Trait;
@@ -40,7 +40,7 @@ impl TraitHandler for DebugStructHandler {
 
         let named_field = type_attribute.named_field;
 
-        let bound = TypeAttribute::make_bound(type_attribute.bound, &ast.generics.params);
+        let bound = type_attribute.bound.into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
 
         let mut builder_tokens = TokenStream::new();
         let mut has_fields = false;

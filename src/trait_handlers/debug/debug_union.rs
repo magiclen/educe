@@ -1,5 +1,5 @@
 use super::super::TraitHandler;
-use super::models::{TypeAttribute, TypeAttributeBuilder, TypeAttributeName};
+use super::models::{TypeAttributeBuilder, TypeAttributeName};
 
 use crate::Trait;
 use crate::proc_macro2::TokenStream;
@@ -20,7 +20,7 @@ impl TraitHandler for DebugUnionHandler {
 
         let name = type_attribute.name.into_string_by_ident(&ast.ident);
 
-        let bound = TypeAttribute::make_bound(type_attribute.bound, &ast.generics.params);
+        let bound = type_attribute.bound.into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
 
         let mut builder_tokens = TokenStream::new();
 

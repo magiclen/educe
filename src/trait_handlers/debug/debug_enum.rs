@@ -2,7 +2,7 @@ use std::str::FromStr;
 use std::fmt::Write;
 
 use super::super::TraitHandler;
-use super::models::{TypeAttribute, TypeAttributeBuilder, TypeAttributeName};
+use super::models::{TypeAttributeBuilder, TypeAttributeName};
 use super::models::{FieldAttributeBuilder, FieldAttributeName};
 
 use crate::Trait;
@@ -27,7 +27,7 @@ impl TraitHandler for DebugEnumHandler {
 
         let name = type_attribute.name.into_string_by_ident(&ast.ident);
 
-        let bound = TypeAttribute::make_bound(type_attribute.bound, &ast.generics.params);
+        let bound = type_attribute.bound.into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
 
         let mut builder_tokens = TokenStream::new();
         let mut has_variants = false;

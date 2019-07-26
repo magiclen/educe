@@ -13,8 +13,8 @@ pub enum FieldAttributeName {
 impl FieldAttributeName {
     pub fn into_option_string(self) -> Option<String> {
         match self {
-            Self::Default => None,
-            Self::Custom(s) => Some(s)
+            FieldAttributeName::Default => None,
+            FieldAttributeName::Custom(s) => Some(s)
         }
     }
 }
@@ -241,7 +241,7 @@ impl FieldAttributeBuilder {
                                                                                 panic::empty_parameter("format_method");
                                                                             }
                                                                         }
-                                                                        _ =>panic::parameter_incorrect_format("format_method", &correct_usage_for_format)
+                                                                        _ => panic::parameter_incorrect_format("format_method", &correct_usage_for_format)
                                                                     }
                                                                 }
                                                                 _ => panic::parameter_incorrect_format("format_method", &correct_usage_for_format)
@@ -287,7 +287,7 @@ impl FieldAttributeBuilder {
                                                                                 panic::empty_parameter("format_trait");
                                                                             }
                                                                         }
-                                                                        _ =>panic::parameter_incorrect_format("format_trait", &correct_usage_for_format)
+                                                                        _ => panic::parameter_incorrect_format("format_trait", &correct_usage_for_format)
                                                                     }
                                                                 }
                                                                 _ => panic::parameter_incorrect_format("format_trait", &correct_usage_for_format)

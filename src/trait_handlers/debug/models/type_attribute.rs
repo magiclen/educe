@@ -14,9 +14,26 @@ pub enum TypeAttributeName {
 impl TypeAttributeName {
     pub fn into_string_by_ident(self, ident: &Ident) -> String {
         match self {
-            Self::Disable => String::new(),
-            Self::Default => ident.to_string(),
-            Self::Custom(s) => s
+            TypeAttributeName::Disable => String::new(),
+            TypeAttributeName::Default => ident.to_string(),
+            TypeAttributeName::Custom(s) => s
+        }
+    }
+}
+
+#[derive(Clone)]
+pub enum TypeAttributeBound {
+    None,
+    Auto,
+    Custom(Punctuated<WherePredicate, Comma>),
+}
+
+impl TypeAttributeBound {
+    pub fn into_punctuated_where_predicates_by_generic_parameters(self, params: &Punctuated<GenericParam, Comma>) -> Punctuated<WherePredicate, Comma> {
+        match self {
+            TypeAttributeBound::None => Punctuated::new(),
+            TypeAttributeBound::Auto => create_where_predicates_from_generic_parameters(params, &syn::parse(quote!(core::fmt::Debug).into()).unwrap()),
+            TypeAttributeBound::Custom(where_predicates) => where_predicates
         }
     }
 }
@@ -25,24 +42,7 @@ impl TypeAttributeName {
 pub struct TypeAttribute {
     pub name: TypeAttributeName,
     pub named_field: bool,
-    pub bound: Option<Punctuated<WherePredicate, Comma>>,
-}
-
-impl TypeAttribute {
-    pub fn make_bound(bound: Option<Punctuated<WherePredicate, Comma>>, params: &Punctuated<GenericParam, Comma>) -> Punctuated<WherePredicate, Comma> {
-        match bound {
-            Some(where_predicates) => {
-                if where_predicates.is_empty() {
-                    create_where_predicates_from_generic_parameters(params, &syn::parse(quote!(core::fmt::Debug).into()).unwrap())
-                } else {
-                    where_predicates
-                }
-            }
-            None => {
-                Punctuated::new()
-            }
-        }
-    }
+    pub bound: TypeAttributeBound,
 }
 
 #[derive(Debug, Clone)]
@@ -60,7 +60,7 @@ impl TypeAttributeBuilder {
 
         let mut named_field = self.named_field.clone();
 
-        let mut bound = None;
+        let mut bound = TypeAttributeBound::None;
 
         let correct_usage_for_debug = {
             let mut usage = vec![stringify!(#[educe(Debug)])];
@@ -111,6 +111,7 @@ impl TypeAttributeBuilder {
             Meta::List(list) => {
                 let mut name_is_set = false;
                 let mut named_field_is_set = false;
+                let mut bound_is_set = false;
 
                 for p in list.nested.iter() {
                     match p {
@@ -253,14 +254,16 @@ impl TypeAttributeBuilder {
                                                 match p {
                                                     NestedMeta::Literal(lit) => match lit {
                                                         Lit::Str(s) => {
-                                                            if bound.is_some() {
+                                                            if bound_is_set {
                                                                 panic::reset_parameter(meta_name.as_str());
                                                             }
+
+                                                            bound_is_set = true;
 
                                                             let where_predicates = create_where_predicates_from_lit_str(s);
 
                                                             bound = match where_predicates {
-                                                                Some(where_predicates) => Some(where_predicates),
+                                                                Some(where_predicates) => TypeAttributeBound::Custom(where_predicates),
                                                                 None => panic::empty_parameter(meta_name.as_str())
                                                             };
                                                         }
@@ -275,14 +278,16 @@ impl TypeAttributeBuilder {
 
                                             match lit {
                                                 Lit::Str(s) => {
-                                                    if bound.is_some() {
+                                                    if bound_is_set {
                                                         panic::reset_parameter(meta_name.as_str());
                                                     }
+
+                                                    bound_is_set = true;
 
                                                     let where_predicates = create_where_predicates_from_lit_str(s);
 
                                                     bound = match where_predicates {
-                                                        Some(where_predicates) => Some(where_predicates),
+                                                        Some(where_predicates) => TypeAttributeBound::Custom(where_predicates),
                                                         None => panic::empty_parameter(meta_name.as_str())
                                                     };
                                                 }
@@ -290,11 +295,13 @@ impl TypeAttributeBuilder {
                                             }
                                         }
                                         Meta::Word(_) => {
-                                            if bound.is_some() {
+                                            if bound_is_set {
                                                 panic::reset_parameter(meta_name.as_str());
                                             }
 
-                                            bound = Some(Punctuated::new());
+                                            bound_is_set = true;
+
+                                            bound = TypeAttributeBound::Auto;
                                         }
                                     }
                                 }
@@ -399,7 +406,7 @@ impl TypeAttributeBuilder {
         result.unwrap_or(TypeAttribute {
             name: self.name,
             named_field: self.named_field,
-            bound: None,
+            bound: TypeAttributeBound::None,
         })
     }
 }
