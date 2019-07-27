@@ -85,7 +85,7 @@ impl TraitHandler for HashStructHandler {
 
         let (impl_generics, ty_generics, where_clause) = generics_cloned.split_for_impl();
 
-        let debug_impl = quote! {
+        let hash_impl = quote! {
             impl #impl_generics core::hash::Hash for #ident #ty_generics #where_clause {
                 #[allow(dead_code)]
                 fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
@@ -94,6 +94,6 @@ impl TraitHandler for HashStructHandler {
             }
         };
 
-        tokens.extend(debug_impl);
+        tokens.extend(hash_impl);
     }
 }
