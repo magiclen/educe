@@ -163,6 +163,7 @@ enum Enum<T: A> {
         f1: u8,
     },
     V3(
+        #[educe(Debug(format(trait = "std::fmt::UpperHex")))]
         u8,
         #[educe(Debug(format(trait = "A")))]
         T
