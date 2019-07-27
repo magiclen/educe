@@ -1,4 +1,5 @@
 mod debug;
+mod hash;
 
 use std::str::FromStr;
 
@@ -8,6 +9,7 @@ use crate::syn::{self, DeriveInput, Meta, LitStr, Path, WhereClause, WherePredic
 use crate::quote::ToTokens;
 
 pub use debug::DebugHandler;
+pub use hash::HashHandler;
 
 pub trait TraitHandler {
     fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta);

@@ -9,6 +9,11 @@ pub fn trait_not_used(trait_name: &str) -> ! {
 }
 
 #[inline]
+pub fn trait_not_support_union(trait_name: &str) -> ! {
+    panic!("The `{}` trait does not support to a union.", trait_name)
+}
+
+#[inline]
 pub fn attribute_incorrect_format(attribute_name: &str, correct_usage: &[&str]) -> ! {
     panic!("You are using an incorrect format of the `{}` attribute.{}", attribute_name, concat_string_slice_array(correct_usage))
 }

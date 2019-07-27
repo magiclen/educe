@@ -44,7 +44,7 @@ impl FieldAttributeBuilder {
         let mut format_method = None;
         let mut format_trait = None;
 
-        let correct_usage_for_debug = {
+        let correct_usage_for_debug_attribute = {
             let mut usage = vec![];
 
             if self.enable_name {
@@ -344,7 +344,7 @@ impl FieldAttributeBuilder {
                             match lit {
                                 Lit::Str(s) => {
                                     if !self.enable_name {
-                                        panic::attribute_incorrect_format("Debug", &correct_usage_for_debug)
+                                        panic::attribute_incorrect_format("Debug", &correct_usage_for_debug_attribute)
                                     }
 
                                     if name_is_set {
@@ -362,7 +362,7 @@ impl FieldAttributeBuilder {
                                 }
                                 Lit::Bool(b) => {
                                     if !self.enable_ignore {
-                                        panic::attribute_incorrect_format("Debug", &correct_usage_for_debug)
+                                        panic::attribute_incorrect_format("Debug", &correct_usage_for_debug_attribute)
                                     }
 
                                     if ignore_is_set {
@@ -373,7 +373,7 @@ impl FieldAttributeBuilder {
 
                                     ignore = !b.value;
                                 }
-                                _ => panic::attribute_incorrect_format("Debug", &correct_usage_for_debug)
+                                _ => panic::attribute_incorrect_format("Debug", &correct_usage_for_debug_attribute)
                             }
                         }
                     }
@@ -385,7 +385,7 @@ impl FieldAttributeBuilder {
                 match lit {
                     Lit::Str(s) => {
                         if !self.enable_name {
-                            panic::attribute_incorrect_format("Debug", &correct_usage_for_debug)
+                            panic::attribute_incorrect_format("Debug", &correct_usage_for_debug_attribute)
                         }
 
                         let s = create_path_string_from_lit_str(s);
@@ -397,15 +397,15 @@ impl FieldAttributeBuilder {
                     }
                     Lit::Bool(b) => {
                         if !self.enable_ignore {
-                            panic::attribute_incorrect_format("Debug", &correct_usage_for_debug)
+                            panic::attribute_incorrect_format("Debug", &correct_usage_for_debug_attribute)
                         }
 
                         ignore = !b.value;
                     }
-                    _ => panic::attribute_incorrect_format("Debug", &correct_usage_for_debug)
+                    _ => panic::attribute_incorrect_format("Debug", &correct_usage_for_debug_attribute)
                 }
             }
-            _ => panic::attribute_incorrect_format("Debug", &correct_usage_for_debug)
+            _ => panic::attribute_incorrect_format("Debug", &correct_usage_for_debug_attribute)
         }
 
         FieldAttribute {

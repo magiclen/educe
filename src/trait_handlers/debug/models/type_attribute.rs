@@ -62,12 +62,16 @@ impl TypeAttributeBuilder {
 
         let mut bound = TypeAttributeBound::None;
 
-        let correct_usage_for_debug = {
+        let correct_usage_for_debug_attribute = {
             let mut usage = vec![stringify!(#[educe(Debug)])];
 
             if self.enable_name {
                 usage.push(stringify!(#[educe(Debug = "new_name")]));
                 usage.push(stringify!(#[educe(Debug("new_name"))]));
+            }
+
+            if self.enable_bound {
+                usage.push(stringify!(#[educe(Debug(ignore))]));
             }
 
             usage
@@ -312,7 +316,7 @@ impl TypeAttributeBuilder {
                             match lit {
                                 Lit::Str(s) => {
                                     if !self.enable_name {
-                                        panic::attribute_incorrect_format("Debug", &correct_usage_for_debug)
+                                        panic::attribute_incorrect_format("Debug", &correct_usage_for_debug_attribute)
                                     }
 
                                     if name_is_set {
@@ -328,7 +332,7 @@ impl TypeAttributeBuilder {
                                         None => TypeAttributeName::Disable
                                     };
                                 }
-                                _ => panic::attribute_incorrect_format("Debug", &correct_usage_for_debug)
+                                _ => panic::attribute_incorrect_format("Debug", &correct_usage_for_debug_attribute)
                             }
                         }
                     }
@@ -340,7 +344,7 @@ impl TypeAttributeBuilder {
                 match lit {
                     Lit::Str(s) => {
                         if !self.enable_name {
-                            panic::attribute_incorrect_format("Debug", &correct_usage_for_debug)
+                            panic::attribute_incorrect_format("Debug", &correct_usage_for_debug_attribute)
                         }
 
                         let s = create_path_string_from_lit_str(s);
@@ -350,7 +354,7 @@ impl TypeAttributeBuilder {
                             None => TypeAttributeName::Disable
                         };
                     }
-                    _ => panic::attribute_incorrect_format("Debug", &correct_usage_for_debug)
+                    _ => panic::attribute_incorrect_format("Debug", &correct_usage_for_debug_attribute)
                 }
             }
             Meta::Word(_) => ()
