@@ -95,7 +95,7 @@ impl FieldAttributeBuilder {
                                                                             NestedMeta::Literal(lit) => match lit {
                                                                                 Lit::Str(s) => {
                                                                                     if hash_method.is_some() {
-                                                                                        panic::reset_parameter("format_method");
+                                                                                        panic::reset_parameter("hash_method");
                                                                                     }
 
                                                                                     let s = create_path_string_from_lit_str(s);
@@ -103,12 +103,12 @@ impl FieldAttributeBuilder {
                                                                                     if let Some(s) = s {
                                                                                         hash_method = Some(s);
                                                                                     } else {
-                                                                                        panic::empty_parameter("format_method");
+                                                                                        panic::empty_parameter("hash_method");
                                                                                     }
                                                                                 }
-                                                                                _ => panic::parameter_incorrect_format("format_method", &correct_usage_for_hash)
+                                                                                _ => panic::parameter_incorrect_format("hash_method", &correct_usage_for_hash)
                                                                             }
-                                                                            _ => panic::parameter_incorrect_format("format_method", &correct_usage_for_hash)
+                                                                            _ => panic::parameter_incorrect_format("hash_method", &correct_usage_for_hash)
                                                                         }
                                                                     }
                                                                 }
@@ -118,7 +118,7 @@ impl FieldAttributeBuilder {
                                                                     match lit {
                                                                         Lit::Str(s) => {
                                                                             if hash_method.is_some() {
-                                                                                panic::reset_parameter("format_method");
+                                                                                panic::reset_parameter("hash_method");
                                                                             }
 
                                                                             let s = create_path_string_from_lit_str(s);
@@ -126,13 +126,13 @@ impl FieldAttributeBuilder {
                                                                             if let Some(s) = s {
                                                                                 hash_method = Some(s);
                                                                             } else {
-                                                                                panic::empty_parameter("format_method");
+                                                                                panic::empty_parameter("hash_method");
                                                                             }
                                                                         }
-                                                                        _ => panic::parameter_incorrect_format("format_method", &correct_usage_for_hash)
+                                                                        _ => panic::parameter_incorrect_format("hash_method", &correct_usage_for_hash)
                                                                     }
                                                                 }
-                                                                _ => panic::parameter_incorrect_format("format_method", &correct_usage_for_hash)
+                                                                _ => panic::parameter_incorrect_format("hash_method", &correct_usage_for_hash)
                                                             }
                                                             "trait" => match meta {
                                                                 Meta::List(list) => {
@@ -141,7 +141,7 @@ impl FieldAttributeBuilder {
                                                                             NestedMeta::Literal(lit) => match lit {
                                                                                 Lit::Str(s) => {
                                                                                     if hash_trait.is_some() {
-                                                                                        panic::reset_parameter("format_trait");
+                                                                                        panic::reset_parameter("hash_trait");
                                                                                     }
 
                                                                                     let s = create_path_string_from_lit_str(s);
@@ -149,12 +149,12 @@ impl FieldAttributeBuilder {
                                                                                     if let Some(s) = s {
                                                                                         hash_trait = Some(s);
                                                                                     } else {
-                                                                                        panic::empty_parameter("format_trait");
+                                                                                        panic::empty_parameter("hash_trait");
                                                                                     }
                                                                                 }
-                                                                                _ => panic::parameter_incorrect_format("format_trait", &correct_usage_for_hash)
+                                                                                _ => panic::parameter_incorrect_format("hash_trait", &correct_usage_for_hash)
                                                                             }
-                                                                            _ => panic::parameter_incorrect_format("format_trait", &correct_usage_for_hash)
+                                                                            _ => panic::parameter_incorrect_format("hash_trait", &correct_usage_for_hash)
                                                                         }
                                                                     }
                                                                 }
@@ -164,7 +164,7 @@ impl FieldAttributeBuilder {
                                                                     match lit {
                                                                         Lit::Str(s) => {
                                                                             if hash_trait.is_some() {
-                                                                                panic::reset_parameter("format_trait");
+                                                                                panic::reset_parameter("hash_trait");
                                                                             }
 
                                                                             let s = create_path_string_from_lit_str(s);
@@ -172,13 +172,13 @@ impl FieldAttributeBuilder {
                                                                             if let Some(s) = s {
                                                                                 hash_trait = Some(s);
                                                                             } else {
-                                                                                panic::empty_parameter("format_trait");
+                                                                                panic::empty_parameter("hash_trait");
                                                                             }
                                                                         }
-                                                                        _ => panic::parameter_incorrect_format("format_trait", &correct_usage_for_hash)
+                                                                        _ => panic::parameter_incorrect_format("hash_trait", &correct_usage_for_hash)
                                                                     }
                                                                 }
-                                                                _ => panic::parameter_incorrect_format("format_trait", &correct_usage_for_hash)
+                                                                _ => panic::parameter_incorrect_format("hash_trait", &correct_usage_for_hash)
                                                             }
                                                             _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_hash)
                                                         }
@@ -186,7 +186,7 @@ impl FieldAttributeBuilder {
                                                     NestedMeta::Literal(lit) => match lit {
                                                         Lit::Str(s) => {
                                                             if hash_method.is_some() {
-                                                                panic::reset_parameter("format_method");
+                                                                panic::reset_parameter("hash_method");
                                                             }
 
                                                             let s = create_path_string_from_lit_str(s);
@@ -194,7 +194,7 @@ impl FieldAttributeBuilder {
                                                             if let Some(s) = s {
                                                                 hash_method = Some(s);
                                                             } else {
-                                                                panic::empty_parameter("format_method");
+                                                                panic::empty_parameter("hash_method");
                                                             }
                                                         }
                                                         _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_hash)
@@ -208,7 +208,7 @@ impl FieldAttributeBuilder {
                                             match lit {
                                                 Lit::Str(s) => {
                                                     if hash_method.is_some() {
-                                                        panic::reset_parameter("format_method");
+                                                        panic::reset_parameter("hash_method");
                                                     }
 
                                                     let s = create_path_string_from_lit_str(s);
@@ -216,7 +216,7 @@ impl FieldAttributeBuilder {
                                                     if let Some(s) = s {
                                                         hash_method = Some(s);
                                                     } else {
-                                                        panic::empty_parameter("format_method");
+                                                        panic::empty_parameter("hash_method");
                                                     }
                                                 }
                                                 _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_hash)

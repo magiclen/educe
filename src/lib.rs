@@ -5,7 +5,7 @@ This crate provides procedural macros to help you implement Rust-build-in traits
 
 ## Debug
 
-Use `#[derive(Educe)]` and `#[educe(Debug)]` to implement the `Debug` trait for a struct, an enum, or a union. It supports to change the name of your types, variants and fields. You can also ignore some fields, or set a trait and/or a method to replace the `Debug` trait used as default. Also, you can even format a struct to a tuple, and vice versa.
+Use `#[derive(Educe)]` and `#[educe(Debug)]` to implement the `Debug` trait for a struct, an enum, or a union. It supports to change the name of your types, variants and fields. You can also ignore some fields, or set a trait and/or a method to replace the `Debug` trait used by default. Also, you can even format a struct to a tuple, and vice versa.
 
 #### Basic Usage
 
@@ -26,21 +26,6 @@ enum Enum {
         f1: u8,
     },
     V3(u8),
-}
-```
-
-#### Union
-
-A union will be formatted to a `u8` slice, because we don't know it's field at runtime.
-
-```rust
-#[macro_use] extern crate educe;
-
-#[derive(Educe)]
-#[educe(Debug)]
-struct Union {
-    f1: u8,
-    f2: i32,
 }
 ```
 
@@ -225,6 +210,167 @@ enum Enum<T, K> {
 }
 ```
 
+#### Union
+
+A union will be formatted to a `u8` slice, because we don't know it's field at runtime. The fileds of a union cannot be ignored, renamed or formated with other methods or traits.
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(Debug)]
+struct Union {
+    f1: u8,
+    f2: i32,
+}
+```
+
+## Hash
+
+Use `#[derive(Educe)]` and `#[educe(Hash)]` to implement the `Hash` trait for a struct or an enum. It supports to ignore some fields, or set a trait and/or a method to replace the `Hash` trait used by default.
+
+#### Basic Usage
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(Hash)]
+struct Struct {
+    f1: u8
+}
+
+#[derive(Educe)]
+#[educe(Hash)]
+enum Enum {
+    V1,
+    V2 {
+        f1: u8,
+    },
+    V3(u8),
+}
+```
+
+#### Ignore Fields
+
+The `ignore` attribute can ignore specific fields.
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(Hash)]
+struct Struct {
+    #[educe(Hash(ignore))]
+    f1: u8
+}
+
+#[derive(Educe)]
+#[educe(Hash)]
+enum Enum {
+    V1,
+    V2 {
+        #[educe(Hash(ignore))]
+        f1: u8,
+    },
+    V3(
+        #[educe(Hash(ignore))]
+        u8
+    ),
+}
+```
+
+#### Use Another Method or Trait to Do Hashing
+
+The `hash` attribute has two parameters: `trait` and `method`. They can be used to replace the `Hash` trait on fields. If you only set the `trait` parameter, the `method` will be set to `hash` automatically by default.
+
+```rust
+#[macro_use] extern crate educe;
+
+use std::hash::{Hash, Hasher};
+
+fn hash<H: Hasher>(_s: &u8, state: &mut H) {
+    Hash::hash(&100, state)
+}
+
+trait A {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        Hash::hash(&100, state)
+    }
+}
+
+impl A for i32 {};
+impl A for u64 {};
+
+#[derive(Educe)]
+#[educe(Hash)]
+enum Enum<T: A> {
+    V1,
+    V2 {
+        #[educe(Hash(hash(method = "hash")))]
+        f1: u8,
+    },
+    V3(
+        #[educe(Hash(hash(trait = "A")))]
+        T
+    ),
+}
+```
+
+#### Generic Parameters Bound to the `Hash` Trait or Others
+
+The `#[educe(Hash(bound))]` attribute can be used to add the `Hash` trait bound to all generaic parameters for the `Hash` implementation.
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(Hash(bound))]
+enum Enum<T, K> {
+    V1,
+    V2 {
+        f1: K,
+    },
+    V3(
+        T
+    ),
+}
+```
+
+Or you can set the where predicates by yourself.
+
+```rust
+#[macro_use] extern crate educe;
+
+use std::hash::{Hash, Hasher};
+
+fn hash<H: Hasher>(_s: &u8, state: &mut H) {
+    Hash::hash(&100, state)
+}
+
+trait A {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        Hash::hash(&100, state)
+    }
+}
+
+impl A for i32 {};
+impl A for u64 {};
+
+#[derive(Educe)]
+#[educe(Hash(bound = "T: std::hash::Hash, K: A"))]
+enum Enum<T, K> {
+    V1,
+    V2 {
+        #[educe(Hash(hash(trait = "A")))]
+        f1: K,
+    },
+    V3(
+        T
+    ),
+}
+```
+
 ## TODO
 
 There is a lot of work to be done. Unimplemented traits are listed below:
@@ -232,7 +378,6 @@ There is a lot of work to be done. Unimplemented traits are listed below:
 1. `Default`
 1. `Clone`
 1. `Copy`
-1. `Hash`
 1. `PartialEq`
 1. `Eq`
 1. `PartialOrd`

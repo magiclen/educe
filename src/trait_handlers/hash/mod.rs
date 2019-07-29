@@ -1,8 +1,7 @@
 mod models;
 
 mod hash_struct;
-//mod debug_enum;
-//mod debug_union;
+mod hash_enum;
 
 use super::TraitHandler;
 
@@ -12,8 +11,7 @@ use crate::syn::{DeriveInput, Meta, Data};
 use crate::panic;
 
 use hash_struct::HashStructHandler;
-//use debug_enum::DebugEnumHandler;
-//use debug_union::DebugUnionHandler;
+use hash_enum::HashEnumHandler;
 
 pub struct HashHandler;
 
@@ -24,7 +22,7 @@ impl TraitHandler for HashHandler {
                 HashStructHandler::trait_meta_handler(ast, tokens, traits, meta);
             }
             Data::Enum(_) => {
-                unimplemented!();
+                HashEnumHandler::trait_meta_handler(ast, tokens, traits, meta);
             }
             Data::Union(_) => panic::trait_not_support_union("Hash")
         }

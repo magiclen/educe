@@ -17,7 +17,7 @@ fn name_1() {
             f1: u8
         },
         Tuple(u8),
-    };
+    }
 
     assert_eq!("Unit", format!("{:?}", Enum::Unit));
     assert_eq!("Struct { f1: 1 }", format!("{:?}", Enum::Struct {
@@ -37,7 +37,7 @@ fn name_2() {
             f1: u8
         },
         Tuple(u8),
-    };
+    }
 
     assert_eq!("Hi::Unit", format!("{:?}", Enum::Unit));
     assert_eq!("Hi::Struct { f1: 1 }", format!("{:?}", Enum::Struct {
@@ -57,7 +57,7 @@ fn name_3() {
             f1: u8
         },
         Tuple(u8),
-    };
+    }
 
     assert_eq!("Hi::Unit", format!("{:?}", Enum::Unit));
     assert_eq!("Hi::Struct { f1: 1 }", format!("{:?}", Enum::Struct {
@@ -77,7 +77,7 @@ fn name_4() {
             f1: u8
         },
         Tuple(u8),
-    };
+    }
 
     assert_eq!("Hi::Unit", format!("{:?}", Enum::Unit));
     assert_eq!("Hi::Struct { f1: 1 }", format!("{:?}", Enum::Struct {
@@ -97,7 +97,7 @@ fn name_5() {
             f1: u8
         },
         Tuple(u8),
-    };
+    }
 
     assert_eq!("Hi::Unit", format!("{:?}", Enum::Unit));
     assert_eq!("Hi::Struct { f1: 1 }", format!("{:?}", Enum::Struct {
@@ -117,7 +117,7 @@ fn name_7() {
             f1: u8
         },
         Tuple(u8),
-    };
+    }
 
     assert_eq!("Enum::Unit", format!("{:?}", Enum::Unit));
     assert_eq!("Enum::Struct { f1: 1 }", format!("{:?}", Enum::Struct {
@@ -137,7 +137,7 @@ fn name_8() {
             f1: u8
         },
         Tuple(u8),
-    };
+    }
 
     assert_eq!("Enum::Unit", format!("{:?}", Enum::Unit));
     assert_eq!("Enum::Struct { f1: 1 }", format!("{:?}", Enum::Struct {
@@ -160,7 +160,7 @@ fn unnamed_variant_1() {
         },
         #[educe(Debug(name = false))]
         Tuple(u8),
-    };
+    }
 
     assert_eq!("Enum", format!("{:?}", Enum::Unit));
     assert_eq!("Enum { f1: 1 }", format!("{:?}", Enum::Struct {
@@ -183,7 +183,7 @@ fn unnamed_variant_2() {
         },
         #[educe(Debug(name(false)))]
         Tuple(u8),
-    };
+    }
 
     assert_eq!("Enum", format!("{:?}", Enum::Unit));
     assert_eq!("Enum { f1: 1 }", format!("{:?}", Enum::Struct {
@@ -206,7 +206,7 @@ fn unnamed_variant_3() {
         },
         #[educe(Debug(name = ""))]
         Tuple(u8),
-    };
+    }
 
     assert_eq!("Enum", format!("{:?}", Enum::Unit));
     assert_eq!("Enum { f1: 1 }", format!("{:?}", Enum::Struct {
@@ -229,7 +229,7 @@ fn unnamed_variant_4() {
         },
         #[educe(Debug(name("")))]
         Tuple(u8),
-    };
+    }
 
     assert_eq!("Enum", format!("{:?}", Enum::Unit));
     assert_eq!("Enum { f1: 1 }", format!("{:?}", Enum::Struct {
@@ -252,7 +252,7 @@ fn unnamed_variant_5() {
         },
         #[educe(Debug = "")]
         Tuple(u8),
-    };
+    }
 
     assert_eq!("Enum", format!("{:?}", Enum::Unit));
     assert_eq!("Enum { f1: 1 }", format!("{:?}", Enum::Struct {
@@ -275,7 +275,7 @@ fn unnamed_variant_6() {
         },
         #[educe(Debug(""))]
         Tuple(u8),
-    };
+    }
 
     assert_eq!("Enum", format!("{:?}", Enum::Unit));
     assert_eq!("Enum { f1: 1 }", format!("{:?}", Enum::Struct {
@@ -296,7 +296,7 @@ fn named_field_1() {
         },
         #[educe(Debug(named_field = true))]
         Tuple(u8),
-    };
+    }
 
     assert_eq!("Struct(1)", format!("{:?}", Enum::Struct {
         f1: 1
@@ -316,7 +316,7 @@ fn named_field_2() {
         },
         #[educe(Debug(named_field(true)))]
         Tuple(u8),
-    };
+    }
 
     assert_eq!("Struct(1)", format!("{:?}", Enum::Struct {
         f1: 1
@@ -346,7 +346,7 @@ fn named_field_3() {
             #[educe(Debug(format = "fmt"))]
             u8
         ),
-    };
+    }
 
     assert_eq!("Struct(Hi)", format!("{:?}", Enum::Struct {
         f1: 1
@@ -365,7 +365,7 @@ fn named_field_4() {
         }
     }
 
-    impl A for u8 {};
+    impl A for u8 {}
 
     #[derive(Educe)]
     #[educe(Debug)]
@@ -380,7 +380,7 @@ fn named_field_4() {
             #[educe(Debug(format(trait = "A")))]
             T
         ),
-    };
+    }
 
     assert_eq!("Struct(Hi)", format!("{:?}", Enum::Struct {
         f1: 1
@@ -402,7 +402,7 @@ fn rename_variant_1() {
         },
         #[educe(Debug = "Hi")]
         Tuple(u8),
-    };
+    }
 
     assert_eq!("Hi", format!("{:?}", Enum::Unit));
     assert_eq!("Hi { f1: 1 }", format!("{:?}", Enum::Struct {
@@ -425,7 +425,7 @@ fn rename_variant_2() {
         },
         #[educe(Debug("Hi"))]
         Tuple(u8),
-    };
+    }
 
     assert_eq!("Hi", format!("{:?}", Enum::Unit));
     assert_eq!("Hi { f1: 1 }", format!("{:?}", Enum::Struct {
@@ -448,7 +448,7 @@ fn rename_variant_3() {
         },
         #[educe(Debug(name = "Hi"))]
         Tuple(u8),
-    };
+    }
 
     assert_eq!("Hi", format!("{:?}", Enum::Unit));
     assert_eq!("Hi { f1: 1 }", format!("{:?}", Enum::Struct {
@@ -471,7 +471,7 @@ fn rename_variant_4() {
         },
         #[educe(Debug(name("Hi")))]
         Tuple(u8),
-    };
+    }
 
     assert_eq!("Hi", format!("{:?}", Enum::Unit));
     assert_eq!("Hi { f1: 1 }", format!("{:?}", Enum::Struct {
@@ -494,7 +494,7 @@ fn rename_variant_5() {
         },
         #[educe(Debug(name("Hi")))]
         Tuple(u8),
-    };
+    }
 
     assert_eq!("Enum::Hi", format!("{:?}", Enum::Unit));
     assert_eq!("Enum::Hi { f1: 1 }", format!("{:?}", Enum::Struct {
@@ -517,7 +517,7 @@ fn rename_variant_6() {
         },
         #[educe(Debug(name("::Hi")))]
         Tuple(u8),
-    };
+    }
 
     assert_eq!("Enum::Hi", format!("{:?}", Enum::Unit));
     assert_eq!("Enum::Hi { f1: 1 }", format!("{:?}", Enum::Struct {
@@ -541,7 +541,7 @@ fn rename_field_1() {
             #[educe(Debug = "f")]
             u8
         ),
-    };
+    }
 
     assert_eq!("Struct { f: 1 }", format!("{:?}", Enum::Struct {
         f1: 1
@@ -564,7 +564,7 @@ fn rename_field_2() {
             #[educe(Debug = "f")]
             u8
         ),
-    };
+    }
 
     assert_eq!("Struct { f: 1 }", format!("{:?}", Enum::Struct {
         f1: 1
@@ -587,7 +587,7 @@ fn rename_field_3() {
             #[educe(Debug = "f")]
             u8
         ),
-    };
+    }
 
     assert_eq!("Struct { f: 1 }", format!("{:?}", Enum::Struct {
         f1: 1
@@ -610,7 +610,7 @@ fn rename_field_4() {
             #[educe(Debug = "f")]
             u8
         ),
-    };
+    }
 
     assert_eq!("Struct { f: 1 }", format!("{:?}", Enum::Struct {
         f1: 1
@@ -634,7 +634,7 @@ fn ignore_1() {
             u8,
             u8,
         ),
-    };
+    }
 
     assert_eq!("Struct { f2: 2 }", format!("{:?}", Enum::Struct {
         f1: 1,
@@ -659,7 +659,7 @@ fn ignore_2() {
             u8,
             u8,
         ),
-    };
+    }
 
     assert_eq!("Struct { f2: 2 }", format!("{:?}", Enum::Struct {
         f1: 1,
@@ -684,7 +684,7 @@ fn ignore_3() {
             u8,
             u8,
         ),
-    };
+    }
 
     assert_eq!("Struct { f2: 2 }", format!("{:?}", Enum::Struct {
         f1: 1,
@@ -713,7 +713,7 @@ fn format_without_trait_1() {
             #[educe(Debug(format = "fmt"))]
             u8
         ),
-    };
+    }
 
     assert_eq!("Struct { f1: Hi }", format!("{:?}", Enum::Struct {
         f1: 1
@@ -741,7 +741,7 @@ fn format_without_trait_2() {
             #[educe(Debug(format("fmt")))]
             u8
         ),
-    };
+    }
 
     assert_eq!("Struct { f1: Hi }", format!("{:?}", Enum::Struct {
         f1: 1
@@ -769,7 +769,7 @@ fn format_without_trait_3() {
             #[educe(Debug(format(method = "fmt")))]
             u8
         ),
-    };
+    }
 
     assert_eq!("Struct { f1: Hi }", format!("{:?}", Enum::Struct {
         f1: 1
@@ -797,7 +797,7 @@ fn format_without_trait_4() {
             #[educe(Debug(format(method("fmt"))))]
             u8
         ),
-    };
+    }
 
     assert_eq!("Struct { f1: Hi }", format!("{:?}", Enum::Struct {
         f1: 1
@@ -816,7 +816,7 @@ fn format_with_trait_1() {
         }
     }
 
-    impl A for u8 {};
+    impl A for u8 {}
 
     #[derive(Educe)]
     #[educe(Debug)]
@@ -829,7 +829,7 @@ fn format_with_trait_1() {
             #[educe(Debug(format(trait = "A")))]
             T
         ),
-    };
+    }
 
     assert_eq!("Struct { f1: Hi }", format!("{:?}", Enum::Struct {
         f1: 1
@@ -848,7 +848,7 @@ fn format_with_trait_2() {
         }
     }
 
-    impl A for u8 {};
+    impl A for u8 {}
 
     #[derive(Educe)]
     #[educe(Debug)]
@@ -861,7 +861,7 @@ fn format_with_trait_2() {
             #[educe(Debug(format(trait ("A"))))]
             T
         ),
-    };
+    }
 
     assert_eq!("Struct { f1: Hi }", format!("{:?}", Enum::Struct {
         f1: 1
@@ -880,7 +880,7 @@ fn format_with_trait_3() {
         }
     }
 
-    impl A for u8 {};
+    impl A for u8 {}
 
     #[derive(Educe)]
     #[educe(Debug)]
@@ -893,7 +893,7 @@ fn format_with_trait_3() {
             #[educe(Debug(format(trait = "A", method = "format")))]
             T
         ),
-    };
+    }
 
     assert_eq!("Struct { f1: Hi }", format!("{:?}", Enum::Struct {
         f1: 1
@@ -912,7 +912,7 @@ fn format_with_trait_4() {
         }
     }
 
-    impl A for u8 {};
+    impl A for u8 {}
 
     #[derive(Educe)]
     #[educe(Debug)]
@@ -925,7 +925,7 @@ fn format_with_trait_4() {
             #[educe(Debug(format(trait ("A"), method("format"))))]
             T
         ),
-    };
+    }
 
     assert_eq!("Struct { f1: Hi }", format!("{:?}", Enum::Struct {
         f1: 1
@@ -944,7 +944,7 @@ fn bound_1() {
             f1: T
         },
         Tuple(T),
-    };
+    }
 
     assert_eq!("Unit", format!("{:?}", Enum::<u8>::Unit));
     assert_eq!("Struct { f1: 1 }", format!("{:?}", Enum::Struct {
@@ -964,7 +964,7 @@ fn bound_2() {
             f1: T
         },
         Tuple(T),
-    };
+    }
 
     assert_eq!("Unit", format!("{:?}", Enum::<u8>::Unit));
     assert_eq!("Struct { f1: 1 }", format!("{:?}", Enum::Struct {
@@ -984,7 +984,7 @@ fn bound_3() {
             f1: T
         },
         Tuple(T),
-    };
+    }
 
     assert_eq!("Unit", format!("{:?}", Enum::<u8>::Unit));
     assert_eq!("Struct { f1: 1 }", format!("{:?}", Enum::Struct {

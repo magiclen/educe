@@ -1,7 +1,6 @@
 use super::super::super::{create_where_predicates_from_lit_str, create_where_predicates_from_generic_parameters};
 
-use crate::Trait;
-use crate::syn::{Meta, NestedMeta, Lit, Attribute, WherePredicate, GenericParam, punctuated::Punctuated, token::Comma};
+use crate::syn::{Meta, NestedMeta, Lit, WherePredicate, GenericParam, punctuated::Punctuated, token::Comma};
 use crate::panic;
 
 #[derive(Clone)]
@@ -15,7 +14,7 @@ impl TypeAttributeBound {
     pub fn into_punctuated_where_predicates_by_generic_parameters(self, params: &Punctuated<GenericParam, Comma>) -> Punctuated<WherePredicate, Comma> {
         match self {
             TypeAttributeBound::None => Punctuated::new(),
-            TypeAttributeBound::Auto => create_where_predicates_from_generic_parameters(params, &syn::parse(quote!(core::fmt::Hash).into()).unwrap()),
+            TypeAttributeBound::Auto => create_where_predicates_from_generic_parameters(params, &syn::parse(quote!(core::hash::Hash).into()).unwrap()),
             TypeAttributeBound::Custom(where_predicates) => where_predicates
         }
     }
@@ -133,50 +132,5 @@ impl TypeAttributeBuilder {
         TypeAttribute {
             bound,
         }
-    }
-
-    pub fn from_attributes(self, attributes: &[Attribute], traits: &[Trait]) -> TypeAttribute {
-        let mut result = None;
-
-        for attribute in attributes.iter() {
-            let meta = attribute.parse_meta().unwrap();
-
-            let meta_name = meta.name().to_string();
-
-            match meta_name.as_str() {
-                "educe" => match meta {
-                    Meta::List(list) => {
-                        for p in list.nested.iter() {
-                            match p {
-                                NestedMeta::Meta(meta) => {
-                                    let meta_name = meta.name().to_string();
-
-                                    let t = Trait::from_str(meta_name);
-
-                                    if let Err(_) = traits.binary_search(&t) {
-                                        panic::trait_not_used(t.as_str());
-                                    }
-
-                                    if t == Trait::Hash {
-                                        if result.is_some() {
-                                            panic::reuse_a_trait(t.as_str());
-                                        }
-
-                                        result = Some(self.from_hash_meta(&meta));
-                                    }
-                                }
-                                _ => panic::educe_format_incorrect()
-                            }
-                        }
-                    }
-                    _ => panic::educe_format_incorrect()
-                }
-                _ => ()
-            }
-        }
-
-        result.unwrap_or(TypeAttribute {
-            bound: TypeAttributeBound::None,
-        })
     }
 }

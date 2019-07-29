@@ -13,7 +13,7 @@ fn name_1() {
     #[educe(Debug)]
     union Union {
         f1: u8
-    };
+    }
 
     assert_eq!("Union([1])", format!("{:?}", Union {
         f1: 1
@@ -27,7 +27,7 @@ fn name_2() {
     #[educe(Debug = "A")]
     union Union {
         f1: u8
-    };
+    }
 
     assert_eq!("A([1])", format!("{:?}", Union {
         f1: 1
@@ -41,7 +41,7 @@ fn name_3() {
     #[educe(Debug("A"))]
     union Union {
         f1: u8
-    };
+    }
 
     assert_eq!("A([1])", format!("{:?}", Union {
         f1: 1
@@ -55,7 +55,7 @@ fn name_4() {
     #[educe(Debug(name = "A"))]
     union Union {
         f1: u8
-    };
+    }
 
     assert_eq!("A([1])", format!("{:?}", Union {
         f1: 1
@@ -69,7 +69,7 @@ fn name_5() {
     #[educe(Debug(name("A")))]
     union Union {
         f1: u8
-    };
+    }
 
     assert_eq!("A([1])", format!("{:?}", Union {
         f1: 1
@@ -83,7 +83,7 @@ fn unnamed_1() {
     #[educe(Debug(name = false))]
     union Union {
         f1: u8
-    };
+    }
 
     assert_eq!("[1]", format!("{:?}", Union {
         f1: 1
@@ -97,7 +97,7 @@ fn unnamed_2() {
     #[educe(Debug(name(false)))]
     union Union {
         f1: u8
-    };
+    }
 
     assert_eq!("[1]", format!("{:?}", Union {
         f1: 1
@@ -111,7 +111,7 @@ fn unnamed_3() {
     #[educe(Debug = "")]
     union Union {
         f1: u8
-    };
+    }
 
     assert_eq!("[1]", format!("{:?}", Union {
         f1: 1
@@ -125,7 +125,7 @@ fn unnamed_4() {
     #[educe(Debug(""))]
     union Union {
         f1: u8
-    };
+    }
 
     assert_eq!("[1]", format!("{:?}", Union {
         f1: 1
@@ -139,7 +139,7 @@ fn unnamed_5() {
     #[educe(Debug(name = ""))]
     union Union {
         f1: u8
-    };
+    }
 
     assert_eq!("[1]", format!("{:?}", Union {
         f1: 1
@@ -153,7 +153,7 @@ fn unnamed_6() {
     #[educe(Debug(name("")))]
     union Union {
         f1: u8
-    };
+    }
 
     assert_eq!("[1]", format!("{:?}", Union {
         f1: 1
@@ -167,7 +167,7 @@ fn bound_1() {
     #[educe(Debug(bound))]
     union Union<T: Copy> {
         f1: T
-    };
+    }
 
     assert_eq!("Union([1])", format!("{:?}", Union {
         f1: 1u8
@@ -181,7 +181,7 @@ fn bound_2() {
     #[educe(Debug(bound = "T: core::fmt::Debug"))]
     union Union<T: Copy> {
         f1: T
-    };
+    }
 
     assert_eq!("Union([1])", format!("{:?}", Union {
         f1: 1u8
@@ -192,10 +192,10 @@ fn bound_2() {
 #[allow(dead_code)]
 fn bound_3() {
     #[derive(Educe)]
-    #[educe(Debug(bound = "T: core::fmt::Debug"))]
+    #[educe(Debug(bound("T: core::fmt::Debug")))]
     union Union<T: Copy> {
         f1: T
-    };
+    }
 
     assert_eq!("Union([1])", format!("{:?}", Union {
         f1: 1u8

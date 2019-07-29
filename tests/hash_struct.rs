@@ -15,7 +15,7 @@ fn basic() {
     #[educe(Hash)]
     struct Struct {
         f1: u8
-    };
+    }
 
     #[derive(Educe)]
     #[educe(Hash)]
@@ -63,7 +63,7 @@ fn ignore() {
     struct Struct {
         #[educe(Hash(ignore))]
         f1: u8
-    };
+    }
 
     #[derive(Educe)]
     #[educe(Hash)]
@@ -106,7 +106,7 @@ fn ignore() {
 fn hash_without_trait_1() {
     use core::hash::Hasher;
 
-    fn hash<H: core::hash::Hasher>(_s: &u8, state: &mut H) {
+    fn hash<H: Hasher>(_s: &u8, state: &mut H) {
         100.hash(state)
     }
 
@@ -119,13 +119,13 @@ fn hash_without_trait_1() {
     struct Struct {
         #[educe(Hash(hash = "hash"))]
         f1: u8
-    };
+    }
 
     #[derive(Educe)]
     #[educe(Hash)]
     struct Struct2 {
         f1: u8
-    };
+    }
 
     #[derive(Educe)]
     #[educe(Hash)]
@@ -179,7 +179,7 @@ fn hash_without_trait_1() {
 fn hash_without_trait_2() {
     use core::hash::Hasher;
 
-    fn hash<H: core::hash::Hasher>(_s: &u8, state: &mut H) {
+    fn hash<H: Hasher>(_s: &u8, state: &mut H) {
         100.hash(state)
     }
 
@@ -192,13 +192,13 @@ fn hash_without_trait_2() {
     struct Struct {
         #[educe(Hash(hash("hash")))]
         f1: u8
-    };
+    }
 
     #[derive(Educe)]
     #[educe(Hash)]
     struct Struct2 {
         f1: u8
-    };
+    }
 
     #[derive(Educe)]
     #[educe(Hash)]
@@ -252,7 +252,7 @@ fn hash_without_trait_2() {
 fn hash_without_trait_3() {
     use core::hash::Hasher;
 
-    fn hash<H: core::hash::Hasher>(_s: &u8, state: &mut H) {
+    fn hash<H: Hasher>(_s: &u8, state: &mut H) {
         100.hash(state)
     }
 
@@ -265,13 +265,13 @@ fn hash_without_trait_3() {
     struct Struct {
         #[educe(Hash(hash(method = "hash")))]
         f1: u8
-    };
+    }
 
     #[derive(Educe)]
     #[educe(Hash)]
     struct Struct2 {
         f1: u8
-    };
+    }
 
     #[derive(Educe)]
     #[educe(Hash)]
@@ -325,7 +325,7 @@ fn hash_without_trait_3() {
 fn hash_without_trait_4() {
     use core::hash::Hasher;
 
-    fn hash<H: core::hash::Hasher>(_s: &u8, state: &mut H) {
+    fn hash<H: Hasher>(_s: &u8, state: &mut H) {
         100.hash(state)
     }
 
@@ -338,13 +338,13 @@ fn hash_without_trait_4() {
     struct Struct {
         #[educe(Hash(hash(method("hash"))))]
         f1: u8
-    };
+    }
 
     #[derive(Educe)]
     #[educe(Hash)]
     struct Struct2 {
         f1: u8
-    };
+    }
 
     #[derive(Educe)]
     #[educe(Hash)]
@@ -415,13 +415,13 @@ fn hash_with_trait_1() {
     struct Struct {
         #[educe(Hash(hash(trait = "A")))]
         f1: u8
-    };
+    }
 
     #[derive(Educe)]
     #[educe(Hash)]
     struct Struct2 {
         f1: u8
-    };
+    }
 
     #[derive(Educe)]
     #[educe(Hash)]
@@ -492,13 +492,13 @@ fn hash_with_trait_2() {
     struct Struct {
         #[educe(Hash(hash(trait("A"))))]
         f1: u8
-    };
+    }
 
     #[derive(Educe)]
     #[educe(Hash)]
     struct Struct2 {
         f1: u8
-    };
+    }
 
     #[derive(Educe)]
     #[educe(Hash)]
@@ -569,13 +569,13 @@ fn hash_with_trait_3() {
     struct Struct {
         #[educe(Hash(hash(trait = "A", method = "my_hash")))]
         f1: u8
-    };
+    }
 
     #[derive(Educe)]
     #[educe(Hash)]
     struct Struct2 {
         f1: u8
-    };
+    }
 
     #[derive(Educe)]
     #[educe(Hash)]
@@ -646,13 +646,13 @@ fn hash_with_trait_4() {
     struct Struct {
         #[educe(Hash(hash(trait("A"), method("my_hash"))))]
         f1: u8
-    };
+    }
 
     #[derive(Educe)]
     #[educe(Hash)]
     struct Struct2 {
         f1: u8
-    };
+    }
 
     #[derive(Educe)]
     #[educe(Hash)]
@@ -699,5 +699,104 @@ fn hash_with_trait_4() {
 
     assert_ne!(unit_hash, struct_hash);
     assert_ne!(struct_hash, struct2_hash);
+    assert_eq!(struct_hash, tuple_hash);
+}
+
+#[test]
+fn bound_1() {
+    #[derive(Educe)]
+    #[educe(Hash(bound))]
+    struct Struct<T> {
+        f1: T
+    }
+
+    #[derive(Educe)]
+    #[educe(Hash(bound))]
+    struct Tuple<T>(T);
+
+    let struct_hash = {
+        let mut hasher = DefaultHasher::new();
+
+        Struct {
+            f1: 1,
+        }.hash(&mut hasher);
+
+        hasher.finish()
+    };
+
+    let tuple_hash = {
+        let mut hasher = DefaultHasher::new();
+
+        Tuple(1).hash(&mut hasher);
+
+        hasher.finish()
+    };
+
+    assert_eq!(struct_hash, tuple_hash);
+}
+
+#[test]
+fn bound_2() {
+    #[derive(Educe)]
+    #[educe(Hash(bound = "T: core::hash::Hash"))]
+    struct Struct<T> {
+        f1: T
+    }
+
+    #[derive(Educe)]
+    #[educe(Hash(bound = "T: core::hash::Hash"))]
+    struct Tuple<T>(T);
+
+    let struct_hash = {
+        let mut hasher = DefaultHasher::new();
+
+        Struct {
+            f1: 1,
+        }.hash(&mut hasher);
+
+        hasher.finish()
+    };
+
+    let tuple_hash = {
+        let mut hasher = DefaultHasher::new();
+
+        Tuple(1).hash(&mut hasher);
+
+        hasher.finish()
+    };
+
+    assert_eq!(struct_hash, tuple_hash);
+}
+
+#[test]
+fn bound_3() {
+    #[derive(Educe)]
+    #[educe(Hash(bound("T: core::hash::Hash")))]
+    struct Struct<T> {
+        f1: T
+    }
+
+    #[derive(Educe)]
+    #[educe(Hash(bound("T: core::hash::Hash")))]
+    struct Tuple<T>(T);
+
+    let struct_hash = {
+        let mut hasher = DefaultHasher::new();
+
+        Struct {
+            f1: 1,
+        }.hash(&mut hasher);
+
+        hasher.finish()
+    };
+
+    let tuple_hash = {
+        let mut hasher = DefaultHasher::new();
+
+        Tuple(1).hash(&mut hasher);
+
+        hasher.finish()
+    };
+
     assert_eq!(struct_hash, tuple_hash);
 }
