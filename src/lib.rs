@@ -212,7 +212,7 @@ enum Enum<T, K> {
 
 #### Union
 
-A union will be formatted to a `u8` slice, because we don't know it's field at runtime. The fileds of a union cannot be ignored, renamed or formated with other methods or traits.
+A union will be formatted to a `u8` slice, because we don't know it's field at runtime. The fields of a union cannot be ignored, renamed or formated with other methods or traits.
 
 ```rust
 #[macro_use] extern crate educe;
