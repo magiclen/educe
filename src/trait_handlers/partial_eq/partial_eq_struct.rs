@@ -18,7 +18,7 @@ impl TraitHandler for PartialEqStructHandler {
 
         let bound = type_attribute.bound.into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
 
-        let mut compare_tokens = TokenStream::new();
+        let mut comparer_tokens = TokenStream::new();
 
         if let Data::Struct(data) = &ast.data {
             for (index, field) in data.fields.iter().enumerate() {
@@ -53,19 +53,19 @@ impl TraitHandler for PartialEqStructHandler {
 
                         let statement = format!("if !{compare_trait}::{compare_method}(&self.{field_name}, &other.{field_name}) {{ return false }}", compare_trait = compare_trait, compare_method = compare_method, field_name = field_name);
 
-                        compare_tokens.extend(TokenStream::from_str(&statement).unwrap());
+                        comparer_tokens.extend(TokenStream::from_str(&statement).unwrap());
                     }
                     None => {
                         match compare_method {
                             Some(compare_method) => {
                                 let statement = format!("if !{compare_method}(&self.{field_name}, &other.{field_name}) {{ return false; }}", compare_method = compare_method, field_name = field_name);
 
-                                compare_tokens.extend(TokenStream::from_str(&statement).unwrap());
+                                comparer_tokens.extend(TokenStream::from_str(&statement).unwrap());
                             }
                             None => {
-                                let statement = format!("if !core::cmp::PartialEq::eq(&self.{field_name}, &other.{field_name}) {{ return false; }}", field_name = field_name);
+                                let statement = format!("if core::cmp::PartialEq::ne(&self.{field_name}, &other.{field_name}) {{ return false; }}", field_name = field_name);
 
-                                compare_tokens.extend(TokenStream::from_str(&statement).unwrap());
+                                comparer_tokens.extend(TokenStream::from_str(&statement).unwrap());
                             }
                         }
                     }
@@ -89,7 +89,7 @@ impl TraitHandler for PartialEqStructHandler {
             impl #impl_generics core::cmp::PartialEq for #ident #ty_generics #where_clause {
                 #[allow(unused_mut)]
                 fn eq(&self, other: &Self) -> bool {
-                    #compare_tokens
+                    #comparer_tokens
 
                     true
                 }
