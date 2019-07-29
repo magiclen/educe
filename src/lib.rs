@@ -410,7 +410,7 @@ use syn::{DeriveInput, Meta, NestedMeta};
 
 use support_traits::Trait;
 
-use trait_handlers::{TraitHandler, DebugHandler, HashHandler};
+use trait_handlers::{TraitHandler, DebugHandler, PartialEqHandler, HashHandler};
 
 fn derive_input_handler(ast: DeriveInput) -> TokenStream {
     let mut tokens = TokenStream::new();
@@ -453,6 +453,10 @@ fn derive_input_handler(ast: DeriveInput) -> TokenStream {
 
     if let Ok(index) = traits.binary_search(&Trait::Debug) {
         DebugHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
+    }
+
+    if let Ok(index) = traits.binary_search(&Trait::PartialEq) {
+        PartialEqHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
     }
 
     if let Ok(index) = traits.binary_search(&Trait::Hash) {

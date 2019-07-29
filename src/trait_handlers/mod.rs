@@ -1,5 +1,6 @@
 mod debug;
 mod hash;
+mod partial_eq;
 
 use std::str::FromStr;
 
@@ -10,6 +11,7 @@ use crate::quote::ToTokens;
 
 pub use debug::DebugHandler;
 pub use hash::HashHandler;
+pub use partial_eq::PartialEqHandler;
 
 pub trait TraitHandler {
     fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta);
