@@ -1,6 +1,6 @@
 #[inline]
 pub fn reuse_a_trait(trait_name: &str) -> ! {
-    panic!("The trait `{}` is duplicately used.", trait_name)
+    panic!("The trait `{}` is repeatedly used.", trait_name)
 }
 
 #[inline]
@@ -41,6 +41,16 @@ pub fn unknown_parameter(attribute_name: &str, parameter_name: &str) -> ! {
 #[inline]
 pub fn set_value_expression() -> ! {
     panic!("The default value and the expression parameter can not be set at the same time.")
+}
+
+#[inline]
+pub fn no_default_field() -> ! {
+    panic!("There is no field set as default.")
+}
+
+#[inline]
+pub fn multiple_default_fields() -> ! {
+    panic!("Multiple default fields are set.")
 }
 
 #[inline]

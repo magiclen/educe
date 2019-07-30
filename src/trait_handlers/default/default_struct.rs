@@ -29,6 +29,7 @@ impl TraitHandler for DefaultStructHandler {
                 Some(expression) => {
                     for field in data.fields.iter() {
                         let _ = FieldAttributeBuilder {
+                            enable_flag: false,
                             enable_value: false,
                             enable_expression: false,
                         }.from_attributes(&field.attrs, traits);
@@ -55,6 +56,7 @@ impl TraitHandler for DefaultStructHandler {
 
                     for (index, field) in data.fields.iter().enumerate() {
                         let field_attribute = FieldAttributeBuilder {
+                            enable_flag: true,
                             enable_value: true,
                             enable_expression: true,
                         }.from_attributes(&field.attrs, traits);
@@ -67,7 +69,7 @@ impl TraitHandler for DefaultStructHandler {
 
                         field_attributes.push(field_attribute);
                         field_names.push(field_name);
-                        types.push(field.ty.clone());
+                        types.push(field.ty.clone().into_token_stream().to_string());
                     }
 
                     if field_names.is_empty() {
@@ -85,7 +87,6 @@ impl TraitHandler for DefaultStructHandler {
 
                         for (index, field_attribute) in field_attributes.into_iter().enumerate() {
                             let field_name = &field_names[index];
-                            let typ = &types[index];
 
                             if !is_tuple {
                                 struct_tokens.write_fmt(format_args!("{field_name}: ", field_name = field_name)).unwrap();
@@ -107,7 +108,7 @@ impl TraitHandler for DefaultStructHandler {
                                         struct_tokens.push_str(&expression);
                                     }
                                     None => {
-                                        let typ = typ.into_token_stream().to_string();
+                                        let typ = &types[index];
 
                                         struct_tokens.write_fmt(format_args!("<{typ} as core::default::Default>::default()", typ = typ)).unwrap();
                                     }
@@ -154,8 +155,9 @@ impl TraitHandler for DefaultStructHandler {
         if type_attribute.new {
             let new_impl = quote! {
                 impl #impl_generics #ident #ty_generics #where_clause {
+                    /// Returns the "default value" for a type.
                     #[inline]
-                    fn new() -> Self {
+                    pub fn new() -> Self {
                         <Self as core::default::Default>::default()
                     }
                 }

@@ -6,23 +6,30 @@ use crate::panic;
 
 #[derive(Clone)]
 pub struct FieldAttribute {
+    pub flag: bool,
     pub value: Option<Lit>,
     pub expression: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 pub struct FieldAttributeBuilder {
+    pub enable_flag: bool,
     pub enable_value: bool,
     pub enable_expression: bool,
 }
 
 impl FieldAttributeBuilder {
     pub fn from_default_meta(&self, meta: &Meta) -> FieldAttribute {
+        let mut flag = false;
         let mut value: Option<Lit> = None;
         let mut expression: Option<String> = None;
 
         let correct_usage_for_default_attribute = {
             let mut usage = vec![];
+
+            if self.enable_flag {
+                usage.push(stringify!(#[educe(Default)]));
+            }
 
             if self.enable_value {
                 usage.push(stringify!(#[educe(Default = value)]));
@@ -124,7 +131,13 @@ impl FieldAttributeBuilder {
 
                 value = Some(lit.clone());
             }
-            _ => panic::attribute_incorrect_format("Default", &correct_usage_for_default_attribute)
+            Meta::Word(_) => {
+                if !self.enable_flag {
+                    panic::attribute_incorrect_format("Default", &correct_usage_for_default_attribute);
+                }
+
+                flag = true;
+            }
         }
 
         if value.is_some() && expression.is_some() {
@@ -132,6 +145,7 @@ impl FieldAttributeBuilder {
         }
 
         FieldAttribute {
+            flag,
             value,
             expression,
         }
@@ -178,6 +192,7 @@ impl FieldAttributeBuilder {
         }
 
         result.unwrap_or(FieldAttribute {
+            flag: false,
             value: None,
             expression: None,
         })
