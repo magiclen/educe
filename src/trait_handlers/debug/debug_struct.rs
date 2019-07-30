@@ -77,14 +77,7 @@ impl TraitHandler for DebugStructHandler {
                     let rename = field_attribute.name.into_option_string();
 
                     let format_trait = field_attribute.format_trait;
-
-                    let format_method = match format_trait.as_ref() {
-                        Some(_) => match field_attribute.format_method {
-                            Some(format_method) => Some(format_method),
-                            None => Some("fmt".to_string())
-                        }
-                        None => field_attribute.format_method
-                    };
+                    let format_method = field_attribute.format_method;
 
                     let (key, field_name) = match rename {
                         Some(rename) => {
@@ -189,14 +182,7 @@ impl TraitHandler for DebugStructHandler {
                     }
 
                     let format_trait = field_attribute.format_trait;
-
-                    let format_method = match format_trait.as_ref() {
-                        Some(_) => match field_attribute.format_method {
-                            Some(format_method) => Some(format_method),
-                            None => Some("fmt".to_string())
-                        }
-                        None => field_attribute.format_method
-                    };
+                    let format_method = field_attribute.format_method;
 
                     let field_name = if let Some(ident) = field.ident.as_ref() {
                         ident.to_string()

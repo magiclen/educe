@@ -32,14 +32,7 @@ impl TraitHandler for HashStructHandler {
                 }
 
                 let hash_trait = field_attribute.hash_trait;
-
-                let hash_method = match hash_trait.as_ref() {
-                    Some(_) => match field_attribute.hash_method {
-                        Some(hash_method) => Some(hash_method),
-                        None => Some("hash".to_string())
-                    }
-                    None => field_attribute.hash_method
-                };
+                let hash_method = field_attribute.hash_method;
 
                 let field_name = if let Some(ident) = field.ident.as_ref() {
                     ident.to_string()

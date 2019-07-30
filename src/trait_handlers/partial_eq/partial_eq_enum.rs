@@ -35,8 +35,8 @@ impl TraitHandler for PartialEqEnumHandler {
                     }
                     Fields::Named(fields) => {  // TODO Struct
                         let mut pattern_tokens = String::new();
+                        let mut pattern_2_tokens = String::new();
                         let mut block_tokens = String::new();
-                        let mut renamed_tokens = String::new();
 
                         let mut field_attributes = Vec::new();
                         let mut field_names = Vec::new();
@@ -51,10 +51,12 @@ impl TraitHandler for PartialEqEnumHandler {
 
                             if field_attribute.ignore {
                                 pattern_tokens.write_fmt(format_args!("{field_name}: _,", field_name = field_name)).unwrap();
+                                pattern_2_tokens.write_fmt(format_args!("{field_name}: _,", field_name = field_name)).unwrap();
                                 continue;
                             }
 
                             pattern_tokens.write_fmt(format_args!("{field_name},", field_name = field_name)).unwrap();
+                            pattern_2_tokens.write_fmt(format_args!("{field_name}: ___{field_name},", field_name = field_name)).unwrap();
 
                             field_attributes.push(field_attribute);
                             field_names.push(field_name);
@@ -64,16 +66,7 @@ impl TraitHandler for PartialEqEnumHandler {
                             let field_name = field_names.remove(index);
 
                             let compare_trait = field_attribute.compare_trait;
-
-                            let compare_method = match compare_trait.as_ref() {
-                                Some(_) => match field_attribute.compare_method {
-                                    Some(compare_method) => Some(compare_method),
-                                    None => Some("eq".to_string())
-                                }
-                                None => field_attribute.compare_method
-                            };
-
-                            renamed_tokens.write_fmt(format_args!("let ___{field_name} = {field_name};", field_name = field_name)).unwrap();
+                            let compare_method = field_attribute.compare_method;
 
                             match compare_trait {
                                 Some(compare_trait) => {
@@ -94,7 +87,7 @@ impl TraitHandler for PartialEqEnumHandler {
                             }
                         }
 
-                        match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident}{{ {pattern_tokens} }} => {{ {renamed_tokens} if let {enum_name}::{variant_ident} {{ {pattern_tokens} }} = other {{ {block_tokens} }} }}", enum_name = enum_name, variant_ident = variant_ident, pattern_tokens = pattern_tokens, renamed_tokens = renamed_tokens, block_tokens = block_tokens)).unwrap();
+                        match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident}{{ {pattern_tokens} }} => {{ if let {enum_name}::{variant_ident} {{ {pattern_2_tokens} }} = other {{ {block_tokens} }} }}", enum_name = enum_name, variant_ident = variant_ident, pattern_tokens = pattern_tokens, pattern_2_tokens = pattern_2_tokens, block_tokens = block_tokens)).unwrap();
                     }
                     Fields::Unnamed(fields) => { // TODO Tuple
                         let mut pattern_tokens = String::new();
@@ -129,14 +122,7 @@ impl TraitHandler for PartialEqEnumHandler {
                             let field_name = field_names.remove(index);
 
                             let compare_trait = field_attribute.compare_trait;
-
-                            let compare_method = match compare_trait.as_ref() {
-                                Some(_) => match field_attribute.compare_method {
-                                    Some(compare_method) => Some(compare_method),
-                                    None => Some("eq".to_string())
-                                }
-                                None => field_attribute.compare_method
-                            };
+                            let compare_method = field_attribute.compare_method;
 
                             match compare_trait {
                                 Some(compare_trait) => {

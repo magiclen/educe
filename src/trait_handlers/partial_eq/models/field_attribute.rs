@@ -235,6 +235,12 @@ impl FieldAttributeBuilder {
             _ => panic::attribute_incorrect_format("PartialEq", &correct_usage_for_compare_attribute)
         }
 
+        if compare_trait.is_some() {
+            if compare_method.is_none() {
+                compare_method = Some("eq".to_string());
+            }
+        }
+
         FieldAttribute {
             ignore,
             compare_method,

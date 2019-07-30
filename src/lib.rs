@@ -225,6 +225,247 @@ struct Union {
 }
 ```
 
+## PartialEq
+
+Use `#[derive(Educe)]` and `#[educe(ParitalEq)]` to implement the `ParitalEq` trait for a struct or an enum. It supports to ignore some fields, or set a trait and/or a method to replace the `ParitalEq` trait used by default.
+
+#### Basic Usage
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(PartialEq)]
+struct Struct {
+    f1: u8
+}
+
+#[derive(Educe)]
+#[educe(PartialEq)]
+enum Enum {
+    V1,
+    V2 {
+        f1: u8,
+    },
+    V3(u8),
+}
+```
+
+#### Ignore Fields
+
+The `ignore` attribute can ignore specific fields.
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(PartialEq)]
+struct Struct {
+    #[educe(PartialEq(ignore))]
+    f1: u8
+}
+
+#[derive(Educe)]
+#[educe(PartialEq)]
+enum Enum {
+    V1,
+    V2 {
+        #[educe(PartialEq(ignore))]
+        f1: u8,
+    },
+    V3(
+        #[educe(PartialEq(ignore))]
+        u8
+    ),
+}
+```
+
+#### Use Another Method or Trait to Do Comparing
+
+The `compare` attribute has two parameters: `trait` and `method`. They can be used to replace the `PartialEq` trait on fields. If you only set the `trait` parameter, the `method` will be set to `hacomparesh` automatically by default.
+
+```rust
+#[macro_use] extern crate educe;
+
+fn eq(a: &u8, b: &u8) -> bool {
+        a + 1 == *b
+}
+
+trait A {
+    fn eq(&self, b: &Self) -> bool;
+}
+
+impl A for i32 {
+    fn eq(&self, b: &i32) -> bool {
+        self + 1 == *b
+    }
+}
+
+impl A for u64 {
+    fn eq(&self, b: &u64) -> bool {
+        self + 1 == *b
+    }
+}
+
+#[derive(Educe)]
+#[educe(PartialEq)]
+enum Enum<T: A> {
+    V1,
+    V2 {
+        #[educe(PartialEq(compare(method = "eq")))]
+        f1: u8,
+    },
+    V3(
+        #[educe(PartialEq(compare(trait = "A")))]
+        T
+    ),
+}
+```
+
+#### Generic Parameters Bound to the `PartialEq` Trait or Others
+
+The `#[educe(PartialEq(bound))]` attribute can be used to add the `PartialEq` trait bound to all generaic parameters for the `PartialEq` implementation.
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(PartialEq(bound))]
+enum Enum<T, K> {
+    V1,
+    V2 {
+        f1: K,
+    },
+    V3(
+        T
+    ),
+}
+```
+
+Or you can set the where predicates by yourself.
+
+```rust
+#[macro_use] extern crate educe;
+
+fn eq(a: &u8, b: &u8) -> bool {
+        a + 1 == *b
+}
+
+trait A {
+    fn eq(&self, b: &Self) -> bool;
+}
+
+impl A for i32 {
+    fn eq(&self, b: &i32) -> bool {
+        self + 1 == *b
+    }
+}
+
+impl A for u64 {
+    fn eq(&self, b: &u64) -> bool {
+        self + 1 == *b
+    }
+}
+
+#[derive(Educe)]
+#[educe(PartialEq(bound = "T: std::cmp::PartialEq, K: A"))]
+enum Enum<T, K> {
+    V1,
+    V2 {
+        #[educe(PartialEq(compare(trait = "A")))]
+        f1: K,
+    },
+    V3(
+        T
+    ),
+}
+```
+
+## Eq
+
+Use `#[derive(Educe)]` and `#[educe(Eq)]` to implement the `Eq` trait for a struct, an enum or a union.
+
+#### Basic Usage
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(PartialEq, Eq)]
+struct Struct {
+    f1: u8
+}
+
+#[derive(Educe)]
+#[educe(PartialEq, Eq)]
+enum Enum {
+    V1,
+    V2 {
+        f1: u8,
+    },
+    V3(u8),
+}
+```
+
+#### Generic Parameters Bound to the `Eq` Trait or Others
+
+The `#[educe(Eq(bound))]` attribute can be used to add the `Eq` trait bound to all generaic parameters for the `Eq` implementation.
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(PartialEq(bound), Eq(bound))]
+enum Enum<T, K> {
+    V1,
+    V2 {
+        f1: K,
+    },
+    V3(
+        T
+    ),
+}
+```
+
+Or you can set the where predicates by yourself. (NOTE: The `Eq` trait depends on the `PartialEq` (`PartialEq<Self>`) trait.)
+
+```rust
+#[macro_use] extern crate educe;
+
+fn eq(a: &u8, b: &u8) -> bool {
+        a + 1 == *b
+}
+
+trait A {
+    fn eq(&self, b: &Self) -> bool;
+}
+
+impl A for i32 {
+    fn eq(&self, b: &i32) -> bool {
+        self + 1 == *b
+    }
+}
+
+impl A for u64 {
+    fn eq(&self, b: &u64) -> bool {
+        self + 1 == *b
+    }
+}
+
+#[derive(Educe)]
+#[educe(PartialEq(bound = "T: std::cmp::PartialEq, K: A"), Eq(bound = "T: std::cmp::PartialEq, K: A"))]
+enum Enum<T, K> {
+    V1,
+    V2 {
+        #[educe(PartialEq(compare(trait = "A")))]
+        f1: K,
+    },
+    V3(
+        T
+    ),
+}
+```
+
 ## Hash
 
 Use `#[derive(Educe)]` and `#[educe(Hash)]` to implement the `Hash` trait for a struct or an enum. It supports to ignore some fields, or set a trait and/or a method to replace the `Hash` trait used by default.
@@ -378,8 +619,6 @@ There is a lot of work to be done. Unimplemented traits are listed below:
 1. `Default`
 1. `Clone`
 1. `Copy`
-1. `PartialEq`
-1. `Eq`
 1. `PartialOrd`
 1. `Ord`
 1. `From`
@@ -410,7 +649,7 @@ use syn::{DeriveInput, Meta, NestedMeta};
 
 use support_traits::Trait;
 
-use trait_handlers::{TraitHandler, DebugHandler, PartialEqHandler, HashHandler};
+use trait_handlers::{TraitHandler, DebugHandler, PartialEqHandler, EqHandler, HashHandler};
 
 fn derive_input_handler(ast: DeriveInput) -> TokenStream {
     let mut tokens = TokenStream::new();
@@ -457,6 +696,10 @@ fn derive_input_handler(ast: DeriveInput) -> TokenStream {
 
     if let Ok(index) = traits.binary_search(&Trait::PartialEq) {
         PartialEqHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
+    }
+
+    if let Ok(index) = traits.binary_search(&Trait::Eq) {
+        EqHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
     }
 
     if let Ok(index) = traits.binary_search(&Trait::Hash) {

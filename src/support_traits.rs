@@ -2,6 +2,7 @@
 pub enum Trait {
     Debug,
     PartialEq,
+    Eq,
     Hash,
 }
 
@@ -11,6 +12,7 @@ impl Trait {
         match self {
             Trait::Debug => "Debug",
             Trait::PartialEq => "PartialEq",
+            Trait::Eq => "Eq",
             Trait::Hash => "Hash",
         }
     }
@@ -22,14 +24,15 @@ impl Trait {
         match s {
             "Debug" => Trait::Debug,
             "PartialEq" => Trait::PartialEq,
+            "Eq" => Trait::Eq,
             "Hash" => Trait::Hash,
             _ => panic!("Unsupported trait `{}`. Available traits are {:?}", s, Trait::support_traits())
         }
     }
 
     #[inline]
-    pub fn support_traits() -> [&'static str; 3] {
-        [Trait::Debug.as_str(), Trait::PartialEq.as_str(), Trait::Hash.as_str()]
+    pub fn support_traits() -> [&'static str; 4] {
+        [Trait::Debug.as_str(), Trait::PartialEq.as_str(), Trait::Eq.as_str(), Trait::Hash.as_str()]
     }
 }
 

@@ -32,14 +32,7 @@ impl TraitHandler for PartialEqStructHandler {
                 }
 
                 let compare_trait = field_attribute.compare_trait;
-
-                let compare_method = match compare_trait.as_ref() {
-                    Some(_) => match field_attribute.compare_method {
-                        Some(compare_method) => Some(compare_method),
-                        None => Some("eq".to_string())
-                    }
-                    None => field_attribute.compare_method
-                };
+                let compare_method = field_attribute.compare_method;
 
                 let field_name = if let Some(ident) = field.ident.as_ref() {
                     ident.to_string()

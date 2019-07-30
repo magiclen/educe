@@ -235,6 +235,12 @@ impl FieldAttributeBuilder {
             _ => panic::attribute_incorrect_format("Hash", &correct_usage_for_hash_attribute)
         }
 
+        if hash_trait.is_some() {
+            if hash_method.is_none() {
+                hash_method = Some("hash".to_string());
+            }
+        }
+
         FieldAttribute {
             ignore,
             hash_method,

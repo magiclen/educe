@@ -408,6 +408,12 @@ impl FieldAttributeBuilder {
             _ => panic::attribute_incorrect_format("Debug", &correct_usage_for_debug_attribute)
         }
 
+        if format_trait.is_some() {
+            if format_method.is_none() {
+                format_method = Some("fmt".to_string());
+            }
+        }
+
         FieldAttribute {
             name,
             ignore,

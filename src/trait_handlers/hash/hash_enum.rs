@@ -74,14 +74,7 @@ impl TraitHandler for HashEnumHandler {
                             }
 
                             let hash_trait = field_attribute.hash_trait;
-
-                            let hash_method = match hash_trait.as_ref() {
-                                Some(_) => match field_attribute.hash_method {
-                                    Some(hash_method) => Some(hash_method),
-                                    None => Some("hash".to_string())
-                                }
-                                None => field_attribute.hash_method
-                            };
+                            let hash_method = field_attribute.hash_method;
 
                             pattern_tokens.write_fmt(format_args!("{field_name},", field_name = field_name)).unwrap();
 
@@ -124,14 +117,7 @@ impl TraitHandler for HashEnumHandler {
                             }
 
                             let hash_trait = field_attribute.hash_trait;
-
-                            let hash_method = match hash_trait.as_ref() {
-                                Some(_) => match field_attribute.hash_method {
-                                    Some(hash_method) => Some(hash_method),
-                                    None => Some("hash".to_string())
-                                }
-                                None => field_attribute.hash_method
-                            };
+                            let hash_method = field_attribute.hash_method;
 
                             let field_name = format!("{}", index);
 

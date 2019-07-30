@@ -107,14 +107,7 @@ impl TraitHandler for DebugEnumHandler {
                                 let rename = field_attribute.name.into_option_string();
 
                                 let format_trait = field_attribute.format_trait;
-
-                                let format_method = match format_trait.as_ref() {
-                                    Some(_) => match field_attribute.format_method {
-                                        Some(format_method) => Some(format_method),
-                                        None => Some("fmt".to_string())
-                                    }
-                                    None => field_attribute.format_method
-                                };
+                                let format_method = field_attribute.format_method;
 
                                 let key = rename.unwrap_or(field_name.clone());
 
@@ -207,14 +200,7 @@ impl TraitHandler for DebugEnumHandler {
                                 }
 
                                 let format_trait = field_attribute.format_trait;
-
-                                let format_method = match format_trait.as_ref() {
-                                    Some(_) => match field_attribute.format_method {
-                                        Some(format_method) => Some(format_method),
-                                        None => Some("fmt".to_string())
-                                    }
-                                    None => field_attribute.format_method
-                                };
+                                let format_method = field_attribute.format_method;
 
                                 pattern_tokens.write_fmt(format_args!("{field_name},", field_name = field_name)).unwrap();
 
@@ -321,14 +307,7 @@ impl TraitHandler for DebugEnumHandler {
                                 let rename = field_attribute.name.into_option_string();
 
                                 let format_trait = field_attribute.format_trait;
-
-                                let format_method = match format_trait.as_ref() {
-                                    Some(_) => match field_attribute.format_method {
-                                        Some(format_method) => Some(format_method),
-                                        None => Some("fmt".to_string())
-                                    }
-                                    None => field_attribute.format_method
-                                };
+                                let format_method = field_attribute.format_method;
 
                                 let (key, field_name) = match rename {
                                     Some(rename) => (rename, format!("{}", index)),
@@ -422,14 +401,7 @@ impl TraitHandler for DebugEnumHandler {
                                 }
 
                                 let format_trait = field_attribute.format_trait;
-
-                                let format_method = match format_trait.as_ref() {
-                                    Some(_) => match field_attribute.format_method {
-                                        Some(format_method) => Some(format_method),
-                                        None => Some("fmt".to_string())
-                                    }
-                                    None => field_attribute.format_method
-                                };
+                                let format_method = field_attribute.format_method;
 
                                 let field_name = format!("{}", index);
 

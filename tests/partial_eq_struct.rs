@@ -297,7 +297,7 @@ fn compare_with_trait_1() {
         fn eq(&self, b: &u8) -> bool {
             self != b
         }
-    };
+    }
 
     #[derive(Educe)]
     #[educe(PartialEq)]
@@ -354,7 +354,7 @@ fn compare_with_trait_2() {
         fn eq(&self, b: &u8) -> bool {
             self != b
         }
-    };
+    }
 
     #[derive(Educe)]
     #[educe(PartialEq)]
@@ -411,7 +411,7 @@ fn compare_with_trait_3() {
         fn compare(&self, b: &u8) -> bool {
             self != b
         }
-    };
+    }
 
     #[derive(Educe)]
     #[educe(PartialEq)]
@@ -468,7 +468,7 @@ fn compare_with_trait_4() {
         fn compare(&self, b: &u8) -> bool {
             self != b
         }
-    };
+    }
 
     #[derive(Educe)]
     #[educe(PartialEq)]
