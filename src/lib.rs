@@ -1,7 +1,7 @@
 /*!
 # Educe
 
-This crate provides procedural macros to help you implement Rust-build-in traits quickly.
+This crate provides procedural macros to help you implement Rust-built-in traits quickly.
 
 ## Debug
 
@@ -649,7 +649,7 @@ use syn::{DeriveInput, Meta, NestedMeta};
 
 use support_traits::Trait;
 
-use trait_handlers::{TraitHandler, DebugHandler, PartialEqHandler, EqHandler, HashHandler};
+use trait_handlers::{TraitHandler, DebugHandler, PartialEqHandler, EqHandler, HashHandler, DefaultHandler};
 
 fn derive_input_handler(ast: DeriveInput) -> TokenStream {
     let mut tokens = TokenStream::new();
@@ -704,6 +704,10 @@ fn derive_input_handler(ast: DeriveInput) -> TokenStream {
 
     if let Ok(index) = traits.binary_search(&Trait::Hash) {
         HashHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
+    }
+
+    if let Ok(index) = traits.binary_search(&Trait::Default) {
+        DefaultHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
     }
 
     if tokens.is_empty() {

@@ -39,6 +39,11 @@ pub fn unknown_parameter(attribute_name: &str, parameter_name: &str) -> ! {
 }
 
 #[inline]
+pub fn set_value_expression() -> ! {
+    panic!("The default value and the expression parameter can not be set at the same time.")
+}
+
+#[inline]
 pub fn disable_named_field_name() -> ! {
     panic!("You can't disable the name of a named field.")
 }

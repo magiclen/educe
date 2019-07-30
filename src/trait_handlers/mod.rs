@@ -1,19 +1,21 @@
 mod debug;
-mod hash;
 mod partial_eq;
 mod eq;
+mod hash;
+mod default;
 
 use std::str::FromStr;
 
 use crate::Trait;
 use crate::proc_macro2::TokenStream;
-use crate::syn::{self, DeriveInput, Meta, LitStr, Path, WhereClause, WherePredicate, GenericParam, punctuated::Punctuated, token::Comma};
+use crate::syn::{self, DeriveInput, Meta, LitStr, Path, Expr, WhereClause, WherePredicate, GenericParam, punctuated::Punctuated, token::Comma};
 use crate::quote::ToTokens;
 
 pub use debug::DebugHandler;
-pub use hash::HashHandler;
 pub use partial_eq::PartialEqHandler;
 pub use eq::EqHandler;
+pub use hash::HashHandler;
+pub use default::DefaultHandler;
 
 pub trait TraitHandler {
     fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta);
@@ -37,6 +39,26 @@ pub fn create_path_from_lit_str(s: &LitStr) -> Option<Path> {
 #[inline]
 pub fn create_path_string_from_lit_str(s: &LitStr) -> Option<String> {
     create_path_from_lit_str(s).map(|path| path.into_token_stream().to_string().replace(" ", ""))
+}
+
+#[inline]
+pub fn create_expr_from_lit_str(s: &LitStr) -> Option<Expr> {
+    let s = s.value();
+
+    let s = s.trim();
+
+    if s.is_empty() {
+        None
+    } else {
+        let tokens = TokenStream::from_str(s).unwrap();
+
+        Some(syn::parse(tokens.into()).unwrap())
+    }
+}
+
+#[inline]
+pub fn create_expr_string_from_lit_str(s: &LitStr) -> Option<String> {
+    create_expr_from_lit_str(s).map(|expr| expr.into_token_stream().to_string().replace(" ", ""))
 }
 
 #[inline]

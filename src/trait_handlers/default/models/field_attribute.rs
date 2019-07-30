@@ -1,0 +1,185 @@
+use super::super::super::create_expr_string_from_lit_str;
+
+use crate::Trait;
+use crate::syn::{Meta, NestedMeta, Lit, Attribute};
+use crate::panic;
+
+#[derive(Clone)]
+pub struct FieldAttribute {
+    pub value: Option<Lit>,
+    pub expression: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct FieldAttributeBuilder {
+    pub enable_value: bool,
+    pub enable_expression: bool,
+}
+
+impl FieldAttributeBuilder {
+    pub fn from_default_meta(&self, meta: &Meta) -> FieldAttribute {
+        let mut value: Option<Lit> = None;
+        let mut expression: Option<String> = None;
+
+        let correct_usage_for_default_attribute = {
+            let mut usage = vec![];
+
+            if self.enable_value {
+                usage.push(stringify!(#[educe(Default = value)]));
+                usage.push(stringify!(#[educe(Default(value))]));
+            }
+
+            usage
+        };
+
+        let correct_usage_for_expression = {
+            let usage = vec![stringify!(#[educe(Default(expression = "expression"))]), stringify!(#[educe(Default(expression("expression")))])];
+
+            usage
+        };
+
+        match meta {
+            Meta::List(list) => {
+                for p in list.nested.iter() {
+                    match p {
+                        NestedMeta::Meta(meta) => {
+                            let meta_name = meta.name().to_string();
+
+                            match meta_name.as_str() {
+                                "expression" | "expr" => {
+                                    if !self.enable_expression {
+                                        panic::unknown_parameter("Default", meta_name.as_str());
+                                    }
+
+                                    match meta {
+                                        Meta::List(list) => {
+                                            for p in list.nested.iter() {
+                                                match p {
+                                                    NestedMeta::Literal(lit) => match lit {
+                                                        Lit::Str(s) => {
+                                                            if expression.is_some() {
+                                                                panic::reset_parameter(meta_name.as_str());
+                                                            }
+
+                                                            let s = create_expr_string_from_lit_str(s);
+
+                                                            if s.is_some() {
+                                                                expression = s;
+                                                            } else {
+                                                                panic::empty_parameter(meta_name.as_str())
+                                                            }
+                                                        }
+                                                        _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_expression)
+                                                    }
+                                                    _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_expression)
+                                                }
+                                            }
+                                        }
+                                        Meta::NameValue(named_value) => {
+                                            let lit = &named_value.lit;
+
+                                            match lit {
+                                                Lit::Str(s) => {
+                                                    if expression.is_some() {
+                                                        panic::reset_parameter(meta_name.as_str());
+                                                    }
+
+                                                    let s = create_expr_string_from_lit_str(s);
+
+                                                    if s.is_some() {
+                                                        expression = s;
+                                                    } else {
+                                                        panic::empty_parameter(meta_name.as_str())
+                                                    }
+                                                }
+                                                _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_expression)
+                                            }
+                                        }
+                                        _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_expression)
+                                    }
+                                }
+                                _ => panic::unknown_parameter("Default", meta_name.as_str())
+                            }
+                        }
+                        NestedMeta::Literal(lit) => {
+                            if !self.enable_value {
+                                panic::attribute_incorrect_format("Default", &correct_usage_for_default_attribute)
+                            }
+
+                            if value.is_some() {
+                                panic::reset_parameter("value");
+                            }
+
+                            value = Some(lit.clone());
+                        }
+                    }
+                }
+            }
+            Meta::NameValue(named_value) => {
+                if !self.enable_value {
+                    panic::attribute_incorrect_format("Default", &correct_usage_for_default_attribute)
+                }
+
+                let lit = &named_value.lit;
+
+                value = Some(lit.clone());
+            }
+            _ => panic::attribute_incorrect_format("Default", &correct_usage_for_default_attribute)
+        }
+
+        if value.is_some() && expression.is_some() {
+            panic::set_value_expression();
+        }
+
+        FieldAttribute {
+            value,
+            expression,
+        }
+    }
+
+    pub fn from_attributes(self, attributes: &[Attribute], traits: &[Trait]) -> FieldAttribute {
+        let mut result = None;
+
+        for attribute in attributes.iter() {
+            let meta = attribute.parse_meta().unwrap();
+
+            let meta_name = meta.name().to_string();
+
+            match meta_name.as_str() {
+                "educe" => match meta {
+                    Meta::List(list) => {
+                        for p in list.nested.iter() {
+                            match p {
+                                NestedMeta::Meta(meta) => {
+                                    let meta_name = meta.name().to_string();
+
+                                    let t = Trait::from_str(meta_name);
+
+                                    if let Err(_) = traits.binary_search(&t) {
+                                        panic::trait_not_used(t.as_str());
+                                    }
+
+                                    if t == Trait::Default {
+                                        if result.is_some() {
+                                            panic::reuse_a_trait(t.as_str());
+                                        }
+
+                                        result = Some(self.from_default_meta(&meta));
+                                    }
+                                }
+                                _ => panic::educe_format_incorrect()
+                            }
+                        }
+                    }
+                    _ => panic::educe_format_incorrect()
+                }
+                _ => ()
+            }
+        }
+
+        result.unwrap_or(FieldAttribute {
+            value: None,
+            expression: None,
+        })
+    }
+}

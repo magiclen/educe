@@ -15,17 +15,19 @@ pub struct DebugStructHandler;
 impl TraitHandler for DebugStructHandler {
     fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta) {
         let is_tuple = {
-            let mut is_tuple = true;
-
             if let Data::Struct(data) = &ast.data {
                 if let Some(field) = data.fields.iter().next() {
                     if let Some(_) = field.ident {
-                        is_tuple = false;
+                        false
+                    } else {
+                        true
                     }
+                } else {
+                    true
                 }
+            } else {
+                true
             }
-
-            is_tuple
         };
 
         let type_attribute = TypeAttributeBuilder {

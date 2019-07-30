@@ -7,7 +7,7 @@ repository = "https://github.com/magiclen/educe"
 homepage = "https://magiclen.org/educe"
 keywords = ["derive", "macro", "trait", "debug", "procedural"]
 categories = ["no-std", "rust-patterns"]
-description= "This crate provides procedural macros to help you implement Rust-build-in traits quickly."
+description= "This crate provides procedural macros to help you implement Rust-built-in traits quickly."
 readme = "README.md"
 license = "MIT"
 
@@ -20,5 +20,5 @@ proc-macro = true
 
 [dependencies]
 proc-macro2 = "0.4"
-syn = "0.15"
+syn = { version = "0.15", features = ["full"] }
 quote = "0.6"

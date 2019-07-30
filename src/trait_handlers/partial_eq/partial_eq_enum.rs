@@ -62,8 +62,8 @@ impl TraitHandler for PartialEqEnumHandler {
                             field_names.push(field_name);
                         }
 
-                        for (index, field_attribute) in field_attributes.into_iter().enumerate().rev() {
-                            let field_name = field_names.remove(index);
+                        for (index, field_attribute) in field_attributes.into_iter().enumerate() {
+                            let field_name = &field_names[index];
 
                             let compare_trait = field_attribute.compare_trait;
                             let compare_method = field_attribute.compare_method;
@@ -118,8 +118,8 @@ impl TraitHandler for PartialEqEnumHandler {
                             field_names.push(field_name);
                         }
 
-                        for (index, field_attribute) in field_attributes.into_iter().enumerate().rev() {
-                            let field_name = field_names.remove(index);
+                        for (index, field_attribute) in field_attributes.into_iter().enumerate() {
+                            let field_name = &field_names[index];
 
                             let compare_trait = field_attribute.compare_trait;
                             let compare_method = field_attribute.compare_method;
