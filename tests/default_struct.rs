@@ -375,3 +375,30 @@ fn bound_3() {
     assert_eq!(0, Struct::default().f1);
     assert_eq!(0, Tuple::default().0);
 }
+
+#[test]
+#[allow(irrefutable_let_patterns)]
+fn new() {
+    #[derive(Educe)]
+    #[educe(Default(new))]
+    struct Unit;
+
+    #[derive(Educe)]
+    #[educe(Default(new))]
+    struct Struct {
+        f1: u8
+    }
+
+    #[derive(Educe)]
+    #[educe(Default(new))]
+    struct Tuple(u8);
+
+    assert_eq!(true, if let Unit = Unit::new() {
+        true
+    } else {
+        false
+    });
+
+    assert_eq!(0, Struct::new().f1);
+    assert_eq!(0, Tuple::new().0);
+}
