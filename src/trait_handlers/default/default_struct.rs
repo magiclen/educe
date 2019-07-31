@@ -91,12 +91,12 @@ impl TraitHandler for DefaultStructHandler {
                                     }
                                 }
 
-                                struct_tokens.push_str(", ");
+                                struct_tokens.push(',');
                             }
 
                             struct_tokens.push(')');
                         } else {
-                            struct_tokens.push_str(" {");
+                            struct_tokens.push('{');
 
                             for field in data.fields.iter() {
                                 let field_attribute = FieldAttributeBuilder {
@@ -132,7 +132,7 @@ impl TraitHandler for DefaultStructHandler {
                                     }
                                 }
 
-                                struct_tokens.push_str(", ");
+                                struct_tokens.push(',');
                             }
 
                             struct_tokens.push('}');

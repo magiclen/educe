@@ -23,7 +23,7 @@ impl TraitHandler for HashEnumHandler {
 
         let mut hasher_tokens = TokenStream::new();
 
-        let mut match_tokens = String::from("match self { ");
+        let mut match_tokens = String::from("match self {");
 
         if let Data::Enum(data) = &ast.data {
             let has_non_unit = {
@@ -148,7 +148,7 @@ impl TraitHandler for HashEnumHandler {
             }
         }
 
-        match_tokens.push_str(" }");
+        match_tokens.push('}');
 
         hasher_tokens.extend(TokenStream::from_str(&match_tokens).unwrap());
 

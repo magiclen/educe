@@ -32,7 +32,7 @@ impl TraitHandler for DebugEnumHandler {
         let mut builder_tokens = TokenStream::new();
         let mut has_variants = false;
 
-        let mut match_tokens = String::from("match self { ");
+        let mut match_tokens = String::from("match self {");
 
         if let Data::Enum(data) = &ast.data {
             for variant in data.variants.iter() {
@@ -475,7 +475,7 @@ impl TraitHandler for DebugEnumHandler {
             }
         }
 
-        match_tokens.push_str(" }");
+        match_tokens.push('}');
 
         builder_tokens.extend(TokenStream::from_str(&match_tokens).unwrap());
 

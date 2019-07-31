@@ -105,7 +105,7 @@ impl TraitHandler for DefaultEnumHandler {
                     match &variant.fields {
                         Fields::Unit => (), // TODO Unit
                         Fields::Named(fields) => { // TODO Struct
-                            enum_tokens.push_str(" {");
+                            enum_tokens.push('{');
 
                             for field in fields.named.iter() {
                                 let field_attribute = FieldAttributeBuilder {
@@ -141,7 +141,7 @@ impl TraitHandler for DefaultEnumHandler {
                                     }
                                 }
 
-                                enum_tokens.push_str(", ");
+                                enum_tokens.push(',');
                             }
 
                             enum_tokens.push('}');
@@ -179,7 +179,7 @@ impl TraitHandler for DefaultEnumHandler {
                                     }
                                 }
 
-                                enum_tokens.push_str(", ");
+                                enum_tokens.push(',');
                             }
 
                             enum_tokens.push(')');
