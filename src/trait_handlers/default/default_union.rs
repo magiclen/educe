@@ -16,6 +16,7 @@ pub struct DefaultUnionHandler;
 impl TraitHandler for DefaultUnionHandler {
     fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta) {
         let type_attribute = TypeAttributeBuilder {
+            enable_flag: true,
             enable_new: true,
             enable_expression: true,
             enable_bound: true,
@@ -31,7 +32,7 @@ impl TraitHandler for DefaultUnionHandler {
                     for field in data.fields.named.iter() {
                         let _ = FieldAttributeBuilder {
                             enable_flag: false,
-                            enable_value: false,
+                            enable_literal: false,
                             enable_expression: false,
                         }.from_attributes(&field.attrs, traits);
                     }
@@ -41,17 +42,15 @@ impl TraitHandler for DefaultUnionHandler {
                 None => {
                     let ident = ast.ident.to_string();
 
-                    let mut struct_tokens = format!("{ident} {{ ", ident = ident);
-
                     let (field_name, field_attribute, typ) = {
                         let fields = &data.fields.named;
 
                         if fields.len() == 1 {
-                            let field = fields.iter().next().unwrap();
+                            let field = &fields[0];
 
                             let field_attribute = FieldAttributeBuilder {
                                 enable_flag: true,
-                                enable_value: true,
+                                enable_literal: true,
                                 enable_expression: true,
                             }.from_attributes(&field.attrs, traits);
 
@@ -68,11 +67,11 @@ impl TraitHandler for DefaultUnionHandler {
                                     Some(field) => {
                                         let field_attribute = FieldAttributeBuilder {
                                             enable_flag: true,
-                                            enable_value: true,
+                                            enable_literal: true,
                                             enable_expression: true,
                                         }.from_attributes(&field.attrs, traits);
 
-                                        if field_attribute.flag || field_attribute.value.is_some() || field_attribute.expression.is_some() {
+                                        if field_attribute.flag || field_attribute.literal.is_some() || field_attribute.expression.is_some() {
                                             let field_name = field.ident.as_ref().unwrap().to_string();
 
                                             loop {
@@ -82,11 +81,11 @@ impl TraitHandler for DefaultUnionHandler {
                                                     Some(field) => {
                                                         let field_attribute = FieldAttributeBuilder {
                                                             enable_flag: true,
-                                                            enable_value: true,
+                                                            enable_literal: true,
                                                             enable_expression: true,
                                                         }.from_attributes(&field.attrs, traits);
 
-                                                        if field_attribute.flag || field_attribute.value.is_some() || field_attribute.expression.is_some() {
+                                                        if field_attribute.flag || field_attribute.literal.is_some() || field_attribute.expression.is_some() {
                                                             panic::multiple_default_fields();
                                                         }
                                                     }
@@ -103,32 +102,32 @@ impl TraitHandler for DefaultUnionHandler {
                         }
                     };
 
-                    struct_tokens.write_fmt(format_args!("{field_name}: ", field_name = field_name)).unwrap();
+                    let mut union_tokens = format!("{ident} {{ {field_name}: ", ident = ident, field_name = field_name);
 
-                    match field_attribute.value {
+                    match field_attribute.literal {
                         Some(value) => {
                             match &value {
                                 Lit::Str(s) => {
-                                    struct_tokens.write_fmt(format_args!("core::convert::Into::into({s})", s = s.into_token_stream().to_string())).unwrap();
+                                    union_tokens.write_fmt(format_args!("core::convert::Into::into({s})", s = s.into_token_stream().to_string())).unwrap();
                                 }
                                 _ => {
-                                    struct_tokens.push_str(&value.into_token_stream().to_string());
+                                    union_tokens.push_str(&value.into_token_stream().to_string());
                                 }
                             }
                         }
                         None => match field_attribute.expression {
                             Some(expression) => {
-                                struct_tokens.push_str(&expression);
+                                union_tokens.push_str(&expression);
                             }
                             None => {
-                                struct_tokens.write_fmt(format_args!("<{typ} as core::default::Default>::default()", typ = typ)).unwrap();
+                                union_tokens.write_fmt(format_args!("<{typ} as core::default::Default>::default()", typ = typ)).unwrap();
                             }
                         }
                     }
 
-                    struct_tokens.push('}');
+                    union_tokens.push('}');
 
-                    builder_tokens.extend(TokenStream::from_str(&struct_tokens).unwrap());
+                    builder_tokens.extend(TokenStream::from_str(&union_tokens).unwrap());
                 }
             }
         }

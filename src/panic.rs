@@ -54,6 +54,16 @@ pub fn multiple_default_fields() -> ! {
 }
 
 #[inline]
+pub fn no_default_variant() -> ! {
+    panic!("There is no variant set as default.")
+}
+
+#[inline]
+pub fn multiple_default_variants() -> ! {
+    panic!("Multiple default variants are set.")
+}
+
+#[inline]
 pub fn disable_named_field_name() -> ! {
     panic!("You can't disable the name of a named field.")
 }

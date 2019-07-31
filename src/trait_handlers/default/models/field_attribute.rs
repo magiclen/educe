@@ -7,14 +7,14 @@ use crate::panic;
 #[derive(Clone)]
 pub struct FieldAttribute {
     pub flag: bool,
-    pub value: Option<Lit>,
+    pub literal: Option<Lit>,
     pub expression: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 pub struct FieldAttributeBuilder {
     pub enable_flag: bool,
-    pub enable_value: bool,
+    pub enable_literal: bool,
     pub enable_expression: bool,
 }
 
@@ -31,9 +31,9 @@ impl FieldAttributeBuilder {
                 usage.push(stringify!(#[educe(Default)]));
             }
 
-            if self.enable_value {
-                usage.push(stringify!(#[educe(Default = value)]));
-                usage.push(stringify!(#[educe(Default(value))]));
+            if self.enable_literal {
+                usage.push(stringify!(#[educe(Default = literal)]));
+                usage.push(stringify!(#[educe(Default(literal))]));
             }
 
             usage
@@ -109,7 +109,7 @@ impl FieldAttributeBuilder {
                             }
                         }
                         NestedMeta::Literal(lit) => {
-                            if !self.enable_value {
+                            if !self.enable_literal {
                                 panic::attribute_incorrect_format("Default", &correct_usage_for_default_attribute)
                             }
 
@@ -123,7 +123,7 @@ impl FieldAttributeBuilder {
                 }
             }
             Meta::NameValue(named_value) => {
-                if !self.enable_value {
+                if !self.enable_literal {
                     panic::attribute_incorrect_format("Default", &correct_usage_for_default_attribute)
                 }
 
@@ -146,7 +146,7 @@ impl FieldAttributeBuilder {
 
         FieldAttribute {
             flag,
-            value,
+            literal: value,
             expression,
         }
     }
@@ -193,7 +193,7 @@ impl FieldAttributeBuilder {
 
         result.unwrap_or(FieldAttribute {
             flag: false,
-            value: None,
+            literal: None,
             expression: None,
         })
     }

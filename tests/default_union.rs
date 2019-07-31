@@ -19,13 +19,24 @@ fn basic() {
     #[derive(Educe)]
     #[educe(Default)]
     union Union2 {
+        #[educe(Default)]
+        f1: u8,
+    }
+
+    assert_eq!(0, unsafe {
+        Union2::default().f1
+    });
+
+    #[derive(Educe)]
+    #[educe(Default)]
+    union Union3 {
         f1: u8,
         #[educe(Default)]
         f2: f64,
     }
 
     assert_eq!(0.0, unsafe {
-        Union2::default().f2
+        Union3::default().f2
     });
 }
 

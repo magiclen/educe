@@ -24,7 +24,7 @@ fn basic() {
     #[educe(Default)]
     struct Tuple(u8);
 
-    assert_eq!(true, if let Unit = Unit::default() {
+    assert!(if let Unit = Unit::default() {
         true
     } else {
         false
@@ -51,7 +51,7 @@ fn type_default_1() {
     #[educe(Default(expression = "Tuple(1)"))]
     struct Tuple(u8);
 
-    assert_eq!(true, if let Unit = Unit::default() {
+    assert!(if let Unit = Unit::default() {
         true
     } else {
         false
@@ -78,7 +78,7 @@ fn type_default_2() {
     #[educe(Default(expression("Tuple(1)")))]
     struct Tuple(u8);
 
-    assert_eq!(true, if let Unit = Unit::default() {
+    assert!(if let Unit = Unit::default() {
         true
     } else {
         false
@@ -393,7 +393,7 @@ fn new() {
     #[educe(Default(new))]
     struct Tuple(u8);
 
-    assert_eq!(true, if let Unit = Unit::new() {
+    assert!(if let Unit = Unit::new() {
         true
     } else {
         false

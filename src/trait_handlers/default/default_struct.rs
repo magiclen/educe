@@ -15,6 +15,7 @@ pub struct DefaultStructHandler;
 impl TraitHandler for DefaultStructHandler {
     fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta) {
         let type_attribute = TypeAttributeBuilder {
+            enable_flag: true,
             enable_new: true,
             enable_expression: true,
             enable_bound: true,
@@ -30,7 +31,7 @@ impl TraitHandler for DefaultStructHandler {
                     for field in data.fields.iter() {
                         let _ = FieldAttributeBuilder {
                             enable_flag: false,
-                            enable_value: false,
+                            enable_literal: false,
                             enable_expression: false,
                         }.from_attributes(&field.attrs, traits);
                     }
@@ -38,89 +39,102 @@ impl TraitHandler for DefaultStructHandler {
                     builder_tokens.extend(quote!(#expression));
                 }
                 None => {
-                    let mut field_attributes = Vec::new();
-                    let mut field_names = Vec::new();
-                    let mut types = Vec::new();
-
-                    let is_tuple = {
+                    let (is_unit, is_tuple) = {
                         if let Some(field) = data.fields.iter().next() {
                             if let Some(_) = field.ident {
-                                false
+                                (false, false)
                             } else {
-                                true
+                                (false, true)
                             }
                         } else {
-                            true
+                            (true, true)
                         }
                     };
 
-                    for (index, field) in data.fields.iter().enumerate() {
-                        let field_attribute = FieldAttributeBuilder {
-                            enable_flag: true,
-                            enable_value: true,
-                            enable_expression: true,
-                        }.from_attributes(&field.attrs, traits);
-
-                        let field_name = if let Some(ident) = field.ident.as_ref() {
-                            ident.to_string()
-                        } else {
-                            format!("{}", index)
-                        };
-
-                        field_attributes.push(field_attribute);
-                        field_names.push(field_name);
-                        types.push(field.ty.clone().into_token_stream().to_string());
-                    }
-
-                    if field_names.is_empty() {
+                    if is_unit {
                         let ident = &ast.ident;
 
                         builder_tokens.extend(quote!(#ident));
                     } else {
-                        let ident = ast.ident.to_string();
-
-                        let mut struct_tokens = if is_tuple {
-                            format!("{ident}(", ident = ident)
-                        } else {
-                            format!("{ident} {{ ", ident = ident)
-                        };
-
-                        for (index, field_attribute) in field_attributes.into_iter().enumerate() {
-                            let field_name = &field_names[index];
-
-                            if !is_tuple {
-                                struct_tokens.write_fmt(format_args!("{field_name}: ", field_name = field_name)).unwrap();
-                            }
-
-                            match field_attribute.value {
-                                Some(value) => {
-                                    match &value {
-                                        Lit::Str(s) => {
-                                            struct_tokens.write_fmt(format_args!("core::convert::Into::into({s})", s = s.into_token_stream().to_string())).unwrap();
-                                        }
-                                        _ => {
-                                            struct_tokens.push_str(&value.into_token_stream().to_string());
-                                        }
-                                    }
-                                }
-                                None => match field_attribute.expression {
-                                    Some(expression) => {
-                                        struct_tokens.push_str(&expression);
-                                    }
-                                    None => {
-                                        let typ = &types[index];
-
-                                        struct_tokens.write_fmt(format_args!("<{typ} as core::default::Default>::default()", typ = typ)).unwrap();
-                                    }
-                                }
-                            }
-
-                            struct_tokens.push_str(", ");
-                        }
+                        let mut struct_tokens = ast.ident.to_string();
 
                         if is_tuple {
+                            struct_tokens.push('(');
+
+                            for field in data.fields.iter() {
+                                let field_attribute = FieldAttributeBuilder {
+                                    enable_flag: false,
+                                    enable_literal: true,
+                                    enable_expression: true,
+                                }.from_attributes(&field.attrs, traits);
+
+                                match field_attribute.literal {
+                                    Some(value) => {
+                                        match &value {
+                                            Lit::Str(s) => {
+                                                struct_tokens.write_fmt(format_args!("core::convert::Into::into({s})", s = s.into_token_stream().to_string())).unwrap();
+                                            }
+                                            _ => {
+                                                struct_tokens.push_str(&value.into_token_stream().to_string());
+                                            }
+                                        }
+                                    }
+                                    None => match field_attribute.expression {
+                                        Some(expression) => {
+                                            struct_tokens.push_str(&expression);
+                                        }
+                                        None => {
+                                            let typ = field.ty.clone().into_token_stream().to_string();
+
+                                            struct_tokens.write_fmt(format_args!("<{typ} as core::default::Default>::default()", typ = typ)).unwrap();
+                                        }
+                                    }
+                                }
+
+                                struct_tokens.push_str(", ");
+                            }
+
                             struct_tokens.push(')');
                         } else {
+                            struct_tokens.push_str(" {");
+
+                            for field in data.fields.iter() {
+                                let field_attribute = FieldAttributeBuilder {
+                                    enable_flag: false,
+                                    enable_literal: true,
+                                    enable_expression: true,
+                                }.from_attributes(&field.attrs, traits);
+
+                                let field_name = field.ident.as_ref().unwrap().to_string();
+
+                                struct_tokens.write_fmt(format_args!("{field_name}: ", field_name = field_name)).unwrap();
+
+                                match field_attribute.literal {
+                                    Some(value) => {
+                                        match &value {
+                                            Lit::Str(s) => {
+                                                struct_tokens.write_fmt(format_args!("core::convert::Into::into({s})", s = s.into_token_stream().to_string())).unwrap();
+                                            }
+                                            _ => {
+                                                struct_tokens.push_str(&value.into_token_stream().to_string());
+                                            }
+                                        }
+                                    }
+                                    None => match field_attribute.expression {
+                                        Some(expression) => {
+                                            struct_tokens.push_str(&expression);
+                                        }
+                                        None => {
+                                            let typ = field.ty.clone().into_token_stream().to_string();
+
+                                            struct_tokens.write_fmt(format_args!("<{typ} as core::default::Default>::default()", typ = typ)).unwrap();
+                                        }
+                                    }
+                                }
+
+                                struct_tokens.push_str(", ");
+                            }
+
                             struct_tokens.push('}');
                         }
 

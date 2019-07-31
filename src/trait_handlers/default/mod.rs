@@ -1,6 +1,7 @@
 mod models;
 
 mod default_struct;
+mod default_enum;
 mod default_union;
 
 use super::TraitHandler;
@@ -10,6 +11,7 @@ use crate::proc_macro2::TokenStream;
 use crate::syn::{DeriveInput, Meta, Data};
 
 use default_struct::DefaultStructHandler;
+use default_enum::DefaultEnumHandler;
 use default_union::DefaultUnionHandler;
 
 pub struct DefaultHandler;
@@ -21,7 +23,7 @@ impl TraitHandler for DefaultHandler {
                 DefaultStructHandler::trait_meta_handler(ast, tokens, traits, meta);
             }
             Data::Enum(_) => {
-                unimplemented!();
+                DefaultEnumHandler::trait_meta_handler(ast, tokens, traits, meta);
             }
             Data::Union(_) => {
                 DefaultUnionHandler::trait_meta_handler(ast, tokens, traits, meta);

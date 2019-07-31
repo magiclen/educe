@@ -1,6 +1,7 @@
 use super::super::super::{create_where_predicates_from_lit_str, create_expr_from_lit_str, create_where_predicates_from_generic_parameters};
 
-use crate::syn::{Meta, NestedMeta, Lit, Expr, WherePredicate, GenericParam, punctuated::Punctuated, token::Comma};
+use crate::Trait;
+use crate::syn::{Meta, NestedMeta, Lit, Expr, WherePredicate, GenericParam, Attribute, punctuated::Punctuated, token::Comma};
 use crate::panic;
 
 #[derive(Clone)]
@@ -22,6 +23,7 @@ impl TypeAttributeBound {
 
 #[derive(Clone)]
 pub struct TypeAttribute {
+    pub flag: bool,
     pub new: bool,
     pub expression: Option<Expr>,
     pub bound: TypeAttributeBound,
@@ -29,6 +31,7 @@ pub struct TypeAttribute {
 
 #[derive(Debug, Clone)]
 pub struct TypeAttributeBuilder {
+    pub enable_flag: bool,
     pub enable_new: bool,
     pub enable_expression: bool,
     pub enable_bound: bool,
@@ -36,6 +39,7 @@ pub struct TypeAttributeBuilder {
 
 impl TypeAttributeBuilder {
     pub fn from_default_meta(&self, meta: &Meta) -> TypeAttribute {
+        let mut flag = false;
         let mut new = false;
         let mut expression: Option<Expr> = None;
         let mut bound = TypeAttributeBound::None;
@@ -219,13 +223,68 @@ impl TypeAttributeBuilder {
                 }
             }
             Meta::NameValue(_) => panic::attribute_incorrect_format("Default", &correct_usage_for_default_attribute),
-            Meta::Word(_) => ()
+            Meta::Word(_) => {
+                if !self.enable_flag {
+                    panic::attribute_incorrect_format("Default", &correct_usage_for_default_attribute);
+                }
+
+                flag = true;
+            }
         }
 
         TypeAttribute {
+            flag,
             new,
             expression,
             bound,
         }
+    }
+
+    pub fn from_attributes(self, attributes: &[Attribute], traits: &[Trait]) -> TypeAttribute {
+        let mut result = None;
+
+        for attribute in attributes.iter() {
+            let meta = attribute.parse_meta().unwrap();
+
+            let meta_name = meta.name().to_string();
+
+            match meta_name.as_str() {
+                "educe" => match meta {
+                    Meta::List(list) => {
+                        for p in list.nested.iter() {
+                            match p {
+                                NestedMeta::Meta(meta) => {
+                                    let meta_name = meta.name().to_string();
+
+                                    let t = Trait::from_str(meta_name);
+
+                                    if let Err(_) = traits.binary_search(&t) {
+                                        panic::trait_not_used(t.as_str());
+                                    }
+
+                                    if t == Trait::Default {
+                                        if result.is_some() {
+                                            panic::reuse_a_trait(t.as_str());
+                                        }
+
+                                        result = Some(self.from_default_meta(&meta));
+                                    }
+                                }
+                                _ => panic::educe_format_incorrect()
+                            }
+                        }
+                    }
+                    _ => panic::educe_format_incorrect()
+                }
+                _ => ()
+            }
+        }
+
+        result.unwrap_or(TypeAttribute {
+            flag: false,
+            new: false,
+            expression: None,
+            bound: TypeAttributeBound::None,
+        })
     }
 }

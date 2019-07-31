@@ -613,12 +613,190 @@ enum Enum<T, K> {
     ),
 }
 ```
+## Default
+
+Use `#[derive(Educe)]` and `#[educe(Default)]` to implement the `Default` trait for a struct, an enum, or a union. It supports to set the default value for your type directly, or set the default values for specific fields.
+
+#### Basic Usage
+
+For enums and unions, you need to assign a variant (of a enum) and a field (of a union) as default unless the number of variants of an enum or the number of fields of a union is exactly one.
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(Default)]
+struct Struct {
+    f1: u8
+}
+
+#[derive(Educe)]
+#[educe(Default)]
+enum Enum {
+    V1,
+    #[educe(Default)]
+    V2 {
+        f1: u8,
+    },
+    V3(u8),
+}
+
+#[derive(Educe)]
+#[educe(Default)]
+union Union {
+    f1: u8,
+    #[educe(Default)]
+    f2: f64,
+}
+```
+
+#### The Default Value for the Whole Type
+
+The `#[educe(Default(expression = "expression"))]` attribute can be used to set the default value for your type by an expression.
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(Default(expression = "Struct { f1: 1 }"))]
+struct Struct {
+    f1: u8
+}
+
+#[derive(Educe)]
+#[educe(Default(expression = "Enum::Struct { f1: 1 }"))]
+enum Enum {
+    Unit,
+    Struct {
+        f1: u8
+    },
+    Tuple(u8),
+}
+
+#[derive(Educe)]
+#[educe(Default(expression = "Union { f1: 1 }"))]
+union Union {
+    f1: u8,
+    f2: f64,
+}
+```
+
+#### The Default Values for Specific Fields
+
+The `#[educe(Default = literal)]` attribute or the `#[educe(Default(expression = "expression"))]` attribute can be used to set the default value for a specific field by a literal value or an expression.
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(Default)]
+struct Struct {
+    #[educe(Default = 1)]
+    f1: u8,
+    #[educe(Default = 11111111111111111111111111111)]
+    f2: i128,
+    #[educe(Default = 1.1)]
+    f3: f64,
+    #[educe(Default = true)]
+    f4: bool,
+    #[educe(Default = "Hi")]
+    f5: &'static str,
+    #[educe(Default = "Hello")]
+    f6: String,
+    #[educe(Default = 'M')]
+    f7: char,
+}
+
+#[derive(Educe)]
+#[educe(Default)]
+enum Enum {
+    Unit,
+    #[educe(Default)]
+    Tuple(
+        #[educe(Default(expression = "0 + 1"))]
+        u8,
+        #[educe(Default(expression = "-11111111111111111111111111111 * -1"))]
+        i128,
+        #[educe(Default(expression = "1.0 + 0.1"))]
+        f64,
+        #[educe(Default(expression = "!false"))]
+        bool,
+        #[educe(Default(expression = "\"Hi\""))]
+        &'static str,
+        #[educe(Default(expression = "String::from(\"Hello\")"))]
+        String,
+        #[educe(Default(expression = "'M'"))]
+        char,
+    ),
+}
+
+#[derive(Educe)]
+#[educe(Default)]
+union Union {
+    f1: u8,
+    f2: i128,
+    f3: f64,
+    f4: bool,
+    #[educe(Default = "Hi")]
+    f5: &'static str,
+    f6: char,
+}
+```
+
+#### Generic Parameters Bound to the `Default` Trait or Others
+
+The `#[educe(Default(bound))]` attribute can be used to add the `Default` trait bound to all generaic parameters for the `Default` implementation.
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(Default(bound))]
+enum Enum<T> {
+    Unit,
+    #[educe(Default)]
+    Struct {
+        f1: T
+    },
+    Tuple(T),
+}
+```
+
+Or you can set the where predicates by yourself.
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(Default(bound = "T: std::default::Default"))]
+enum Enum<T> {
+    Unit,
+    #[educe(Default)]
+    Struct {
+        f1: T
+    },
+    Tuple(T),
+}
+```
+
+#### The `new` Associated Function
+
+With the `#[educe(Default(new))]` attribute, your type will have an extra associated function called `new`. That can be used to invoke the `default` method of the `Default` trait.
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(Default(new))]
+struct Struct {
+    f1: u8
+}
+```
 
 ## TODO
 
 There is a lot of work to be done. Unimplemented traits are listed below:
 
-1. `Default`
 1. `Clone`
 1. `Copy`
 1. `PartialOrd`
