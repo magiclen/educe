@@ -21,13 +21,7 @@ impl FieldAttributeBuilder {
         let mut clone_trait = None;
 
         let correct_usage_for_clone_attribute = {
-            let mut usage = vec![];
-
-            usage
-        };
-
-        let correct_usage_for_ignore = {
-            let usage = vec![stringify!(#[educe(Clone(ignore))])];
+            let usage = vec![];
 
             usage
         };
@@ -40,8 +34,6 @@ impl FieldAttributeBuilder {
 
         match meta {
             Meta::List(list) => {
-                let mut ignore_is_set = false;
-
                 for p in list.nested.iter() {
                     match p {
                         NestedMeta::Meta(meta) => {

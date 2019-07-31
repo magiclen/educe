@@ -50,9 +50,7 @@ impl TraitHandler for CloneStructHandler {
 
                 let mut clone_from = String::new();
 
-                for (index, field_attribute) in field_attributes.into_iter().enumerate() {
-                    let field_name = &field_names[index];
-
+                for field_name in field_names {
                     clone_from.write_fmt(format_args!("core::clone::Clone::clone_from(&mut self.{field_name}, &_source.{field_name});", field_name = field_name)).unwrap();
                 }
 
@@ -70,49 +68,83 @@ impl TraitHandler for CloneStructHandler {
                     }
                 };
 
-                let mut clone = ast.ident.to_string();
-                let mut clone_from = String::new();
-
-                if is_tuple {
-                    clone.push('(');
-
-                    for (index, field_attribute) in field_attributes.into_iter().enumerate() {
-                        let field_name = &field_names[index];
-
-                        // TODO
-                        let clone_trait = field_attribute.clone_trait;
-                        let clone_method = field_attribute.clone_method;
-
-                        clone.write_fmt(format_args!("core::clone::Clone::clone(&self.{field_name}),", field_name = field_name)).unwrap();
-                        clone_from.write_fmt(format_args!("core::clone::Clone::clone_from(&mut self.{field_name}, &_source.{field_name});", field_name = field_name)).unwrap();
-                    }
-
-                    clone.push(')');
-                } else {
-                    clone.push('{');
-
-                    for (index, field_attribute) in field_attributes.into_iter().enumerate() {
-                        let field_name = &field_names[index];
-
-                        // TODO
-                        let clone_trait = field_attribute.clone_trait;
-                        let clone_method = field_attribute.clone_method;
-
-                        clone.write_fmt(format_args!("{field_name}: core::clone::Clone::clone(&self.{field_name}),", field_name = field_name)).unwrap();
-                        clone_from.write_fmt(format_args!("core::clone::Clone::clone_from(&mut self.{field_name}, &_source.{field_name});", field_name = field_name)).unwrap();
-                    }
-
-                    clone.push('}');
-                }
-
                 if is_unit {
                     let ident = &ast.ident;
 
                     clone_tokens.extend(quote!(#ident));
                 } else {
+                    let mut clone = ast.ident.to_string();
+                    let mut clone_from = String::new();
+
+                    if is_tuple {
+                        clone.push('(');
+
+                        for (index, field_attribute) in field_attributes.into_iter().enumerate() {
+                            let field_name = &field_names[index];
+
+                            let clone_trait = field_attribute.clone_trait;
+                            let clone_method = field_attribute.clone_method;
+
+                            match clone_trait {
+                                Some(clone_trait) => {
+                                    let clone_method = clone_method.unwrap();
+
+                                    clone.write_fmt(format_args!("{clone_trait}::{clone_method}(&self.{field_name}),", clone_trait = clone_trait, clone_method = clone_method, field_name = field_name)).unwrap();
+                                    clone_from.write_fmt(format_args!("self.{field_name} = {clone_trait}::{clone_method}(&_source.{field_name});", clone_trait = clone_trait, clone_method = clone_method, field_name = field_name)).unwrap();
+                                }
+                                None => {
+                                    match clone_method {
+                                        Some(clone_method) => {
+                                            clone.write_fmt(format_args!("{clone_method}(&self.{field_name}),", clone_method = clone_method, field_name = field_name)).unwrap();
+                                            clone_from.write_fmt(format_args!("self.{field_name} = {clone_method}(&_source.{field_name});", clone_method = clone_method, field_name = field_name)).unwrap();
+                                        }
+                                        None => {
+                                            clone.write_fmt(format_args!("core::clone::Clone::clone(&self.{field_name}),", field_name = field_name)).unwrap();
+                                            clone_from.write_fmt(format_args!("core::clone::Clone::clone_from(&mut self.{field_name}, &_source.{field_name});", field_name = field_name)).unwrap();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        clone.push(')');
+                    } else {
+                        clone.push('{');
+
+                        for (index, field_attribute) in field_attributes.into_iter().enumerate() {
+                            let field_name = &field_names[index];
+
+                            let clone_trait = field_attribute.clone_trait;
+                            let clone_method = field_attribute.clone_method;
+
+                            match clone_trait {
+                                Some(clone_trait) => {
+                                    let clone_method = clone_method.unwrap();
+
+                                    clone.write_fmt(format_args!("{field_name}: {clone_trait}::{clone_method}(&self.{field_name}),", clone_trait = clone_trait, clone_method = clone_method, field_name = field_name)).unwrap();
+                                    clone_from.write_fmt(format_args!("self.{field_name} = {clone_trait}::{clone_method}(&_source.{field_name});", clone_trait = clone_trait, clone_method = clone_method, field_name = field_name)).unwrap();
+                                }
+                                None => {
+                                    match clone_method {
+                                        Some(clone_method) => {
+                                            clone.write_fmt(format_args!("{field_name}: {clone_method}(&self.{field_name}),", clone_method = clone_method, field_name = field_name)).unwrap();
+                                            clone_from.write_fmt(format_args!("self.{field_name} = {clone_method}(&_source.{field_name});", clone_method = clone_method, field_name = field_name)).unwrap();
+                                        }
+                                        None => {
+                                            clone.write_fmt(format_args!("{field_name}: core::clone::Clone::clone(&self.{field_name}),", field_name = field_name)).unwrap();
+                                            clone_from.write_fmt(format_args!("core::clone::Clone::clone_from(&mut self.{field_name}, &_source.{field_name});", field_name = field_name)).unwrap();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        clone.push('}');
+                    }
+
                     clone_tokens.extend(TokenStream::from_str(&clone).unwrap());
+                    clone_from_tokens.extend(TokenStream::from_str(&clone_from).unwrap());
                 }
-                clone_from_tokens.extend(TokenStream::from_str(&clone_from).unwrap());
             }
         }
 
