@@ -44,6 +44,11 @@ pub fn set_value_expression() -> ! {
 }
 
 #[inline]
+pub fn set_expression_bound() -> ! {
+    panic!("You don't need to set the expression and the bound at the same time.")
+}
+
+#[inline]
 pub fn no_default_field() -> ! {
     panic!("There is no field set as default.")
 }

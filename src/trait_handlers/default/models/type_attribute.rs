@@ -232,6 +232,12 @@ impl TypeAttributeBuilder {
             }
         }
 
+        if expression.is_some() {
+            if let TypeAttributeBound::None = &bound {} else {
+                panic::set_expression_bound();
+            }
+        }
+
         TypeAttribute {
             flag,
             new,

@@ -1,6 +1,7 @@
 mod models;
 
 mod clone_struct;
+mod clone_union;
 
 use super::TraitHandler;
 
@@ -9,6 +10,7 @@ use crate::proc_macro2::TokenStream;
 use crate::syn::{DeriveInput, Meta, Data};
 
 use clone_struct::CloneStructHandler;
+use clone_union::CloneUnionHandler;
 
 pub struct CloneHandler;
 
@@ -22,7 +24,7 @@ impl TraitHandler for CloneHandler {
                 unimplemented!()
             }
             Data::Union(_) => {
-                unimplemented!()
+                CloneUnionHandler::trait_meta_handler(ast, tokens, traits, meta);
             }
         }
     }

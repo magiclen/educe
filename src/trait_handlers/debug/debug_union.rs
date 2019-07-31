@@ -1,10 +1,9 @@
 use super::super::TraitHandler;
-use super::models::{TypeAttributeBuilder, TypeAttributeName};
+use super::models::{TypeAttributeBuilder, TypeAttributeName, FieldAttributeBuilder, FieldAttributeName};
 
 use crate::Trait;
 use crate::proc_macro2::TokenStream;
-use crate::syn::{DeriveInput, Meta, NestedMeta, Data, Generics};
-use crate::panic;
+use crate::syn::{DeriveInput, Meta, Data, Generics};
 
 pub struct DebugUnionHandler;
 
@@ -26,38 +25,12 @@ impl TraitHandler for DebugUnionHandler {
 
         if let Data::Union(data) = &ast.data {
             for field in data.fields.named.iter() {
-                for attr in field.attrs.iter() {
-                    let attr_meta = attr.parse_meta().unwrap();
-
-                    let attr_meta_name = attr_meta.name().to_string();
-
-                    match attr_meta_name.as_str() {
-                        "educe" => match attr_meta {
-                            Meta::List(list) => {
-                                for p in list.nested {
-                                    match p {
-                                        NestedMeta::Meta(meta) => {
-                                            let meta_name = meta.name().to_string();
-
-                                            let t = Trait::from_str(meta_name);
-
-                                            if let Err(_) = traits.binary_search(&t) {
-                                                panic::trait_not_used(t.as_str());
-                                            }
-
-                                            if t == Trait::Debug {
-                                                panic::attribute_incorrect_format("Debug", &[]);
-                                            }
-                                        }
-                                        _ => panic::educe_format_incorrect()
-                                    }
-                                }
-                            }
-                            _ => panic::educe_format_incorrect()
-                        }
-                        _ => ()
-                    }
-                }
+                let _ = FieldAttributeBuilder {
+                    name: FieldAttributeName::Default,
+                    enable_name: false,
+                    enable_ignore: false,
+                    enable_format: false,
+                }.from_attributes(&field.attrs, traits);
             }
 
             if name.is_empty() {
