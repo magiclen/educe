@@ -5,6 +5,8 @@ pub enum Trait {
     Eq,
     Hash,
     Default,
+    Clone,
+    Copy,
 }
 
 impl Trait {
@@ -16,6 +18,8 @@ impl Trait {
             Trait::Eq => "Eq",
             Trait::Hash => "Hash",
             Trait::Default => "Default",
+            Trait::Clone => "Clone",
+            Trait::Copy => "Copy",
         }
     }
 
@@ -29,13 +33,15 @@ impl Trait {
             "Eq" => Trait::Eq,
             "Hash" => Trait::Hash,
             "Default" => Trait::Default,
+            "Clone" => Trait::Clone,
+            "Copy" => Trait::Copy,
             _ => panic!("Unsupported trait `{}`. Available traits are {:?}", s, Trait::support_traits())
         }
     }
 
     #[inline]
-    pub fn support_traits() -> [&'static str; 5] {
-        [Trait::Debug.as_str(), Trait::PartialEq.as_str(), Trait::Eq.as_str(), Trait::Hash.as_str(), Trait::Default.as_str()]
+    pub fn support_traits() -> [&'static str; 7] {
+        [Trait::Debug.as_str(), Trait::PartialEq.as_str(), Trait::Eq.as_str(), Trait::Hash.as_str(), Trait::Default.as_str(), Trait::Clone.as_str(), Trait::Copy.as_str()]
     }
 }
 

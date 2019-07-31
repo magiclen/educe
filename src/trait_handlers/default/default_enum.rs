@@ -103,8 +103,8 @@ impl TraitHandler for DefaultEnumHandler {
                     let mut enum_tokens = format!("{enum_name}::{variant_name}", enum_name = enum_name, variant_name = variant_name);
 
                     match &variant.fields {
-                        Fields::Unit => (),
-                        Fields::Named(fields) => {
+                        Fields::Unit => (), // TODO Unit
+                        Fields::Named(fields) => { // TODO Struct
                             enum_tokens.push_str(" {");
 
                             for field in fields.named.iter() {
@@ -146,7 +146,7 @@ impl TraitHandler for DefaultEnumHandler {
 
                             enum_tokens.push('}');
                         }
-                        Fields::Unnamed(fields) => {
+                        Fields::Unnamed(fields) => { // TODO Tuple
                             enum_tokens.push('(');
 
                             for field in fields.unnamed.iter() {

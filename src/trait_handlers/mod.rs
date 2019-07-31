@@ -3,6 +3,8 @@ mod partial_eq;
 mod eq;
 mod hash;
 mod default;
+mod clone;
+mod copy;
 
 use std::str::FromStr;
 
@@ -16,6 +18,8 @@ pub use partial_eq::PartialEqHandler;
 pub use eq::EqHandler;
 pub use hash::HashHandler;
 pub use default::DefaultHandler;
+pub use clone::CloneHandler;
+pub use copy::CopyHandler;
 
 pub trait TraitHandler {
     fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta);
