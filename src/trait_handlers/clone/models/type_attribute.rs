@@ -19,6 +19,14 @@ impl TypeAttributeBound {
             TypeAttributeBound::Custom(where_predicates) => where_predicates
         }
     }
+
+    pub fn into_punctuated_where_predicates_by_generic_parameters_with_copy(self, params: &Punctuated<GenericParam, Comma>) -> Punctuated<WherePredicate, Comma> {
+        match self {
+            TypeAttributeBound::None => Punctuated::new(),
+            TypeAttributeBound::Auto => create_where_predicates_from_generic_parameters(params, &syn::parse(quote!(core::marker::Copy).into()).unwrap()),
+            TypeAttributeBound::Custom(where_predicates) => where_predicates
+        }
+    }
 }
 
 #[derive(Clone)]

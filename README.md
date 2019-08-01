@@ -613,6 +613,7 @@ enum Enum<T, K> {
     ),
 }
 ```
+
 ## Default
 
 Use `#[derive(Educe)]` and `#[educe(Default)]` to implement the `Default` trait for a struct, an enum, or a union. It supports to set the default value for your type directly, or set the default values for specific fields.
@@ -793,12 +794,240 @@ struct Struct {
 }
 ```
 
+## Clone
+
+Use `#[derive(Educe)]` and `#[educe(Clone)]` to implement the `Clone` trait for a struct, an enum, or a union. It supports to set a trait and/or a method to replace the `Clone` trait used by default.
+
+#### Basic Usage
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(Clone)]
+struct Struct {
+    f1: u8
+}
+
+#[derive(Educe)]
+#[educe(Clone)]
+enum Enum {
+    V1,
+    V2 {
+        f1: u8,
+    },
+    V3(u8),
+}
+```
+
+#### Use Another Method or Trait to Do Cloning
+
+The `clone` attribute has two parameters: `trait` and `method`. They can be used to replace the `Clone` trait on fields. If you only set the `trait` parameter, the `method` will be set to `clone` automatically by default.
+
+```rust
+#[macro_use] extern crate educe;
+
+fn clone(v: &u8) -> u8 {
+    v + 100
+}
+
+trait A {
+    fn clone(&self) -> Self;
+}
+
+impl A for i32 {
+    fn clone(&self) -> i32 {
+        self + 100
+    }
+}
+
+impl A for u64 {
+    fn clone(&self) -> u64 {
+        self + 100
+    }
+}
+
+#[derive(Educe)]
+#[educe(Clone)]
+enum Enum<T: A> {
+    V1,
+    V2 {
+        #[educe(Clone(clone(method = "clone")))]
+        f1: u8,
+    },
+    V3(
+        #[educe(Clone(clone(trait = "A")))]
+        T
+    ),
+}
+```
+
+#### Generic Parameters Bound to the `Clone` Trait or Others
+
+The `#[educe(Clone(bound))]` attribute can be used to add the `Clone` trait bound or the `Copy` trait bound (if the `#[educe(Copy)]` attribute exists) to all generaic parameters for the `Clone` implementation.
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(Clone(bound))]
+enum Enum<T, K> {
+    V1,
+    V2 {
+        f1: K,
+    },
+    V3(
+        T
+    ),
+}
+```
+
+Or you can set the where predicates by yourself.
+
+```rust
+#[macro_use] extern crate educe;
+
+fn clone(v: &u8) -> u8 {
+    v + 100
+}
+
+trait A {
+    fn clone(&self) -> Self;
+}
+
+impl A for i32 {
+    fn clone(&self) -> i32 {
+        self + 100
+    }
+}
+
+impl A for u64 {
+    fn clone(&self) -> u64 {
+        self + 100
+    }
+}
+
+#[derive(Educe)]
+#[educe(Clone(bound = "T: std::clone::Clone, K: A"))]
+enum Enum<T, K> {
+    V1,
+    V2 {
+        #[educe(Clone(clone(trait = "A")))]
+        f1: K,
+    },
+    V3(
+        T
+    ),
+}
+```
+
+#### Union
+
+The `#[educe(Clone)]` attribute can be used for a union which also needs to implement the `Copy` trait. The fields of a union cannot be cloned with other methods or traits.
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(Copy, Clone)]
+union Union {
+    f1: u8,
+}
+```
+
+## Copy
+
+Use `#[derive(Educe)]` and `#[educe(Copy)]` to implement the `Copy` trait for a struct, an enum, or a union.
+
+#### Basic Usage
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(Copy, Clone)]
+struct Struct {
+    f1: u8
+}
+
+#[derive(Educe)]
+#[educe(Copy, Clone)]
+enum Enum {
+    V1,
+    V2 {
+        f1: u8,
+    },
+    V3(u8),
+}
+```
+
+#### Generic Parameters Bound to the `Copy` Trait or Others
+
+The `#[educe(Copy(bound))]` attribute can be used to add the `Copy` trait bound to all generaic parameters for the `Copy` implementation.
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(Copy(bound), Clone(bound))]
+enum Enum<T, K> {
+    V1,
+    V2 {
+        f1: K,
+    },
+    V3(
+        T
+    ),
+}
+```
+
+Or you can set the where predicates by yourself.
+
+```rust
+#[macro_use] extern crate educe;
+
+fn clone(v: &u8) -> u8 {
+    v + 100
+}
+
+trait A {
+    fn clone(&self) -> Self;
+}
+
+impl A for i32 {
+    fn clone(&self) -> i32 {
+        self + 100
+    }
+}
+
+impl A for u64 {
+    fn clone(&self) -> u64 {
+        self + 100
+    }
+}
+
+#[derive(Educe)]
+#[educe(Copy(bound = "T: Copy, K: A + Copy"), Clone(bound = "T: Copy, K: A + Copy"))]
+enum Enum<T, K> {
+    V1,
+    V2 {
+        #[educe(Clone(clone(trait = "A")))]
+        f1: K,
+    },
+    V3(
+        T
+    ),
+}
+```
+
+#### Copy and Clone
+
+If you implement both of the `Copy` trait and the `Clone` trait by Educe, the bound for the `Clone` trait needs to include the `Copy` trait due to `Copy, Clone` optimization.
+
 ## TODO
 
 There is a lot of work to be done. Unimplemented traits are listed below:
 
-1. `Clone`
-1. `Copy`
 1. `PartialOrd`
 1. `Ord`
 1. `From`

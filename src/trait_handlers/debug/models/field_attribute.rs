@@ -187,7 +187,7 @@ impl FieldAttributeBuilder {
                                         _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_ignore)
                                     }
                                 }
-                                "format" => {
+                                "format" | "impl" => {
                                     if !self.enable_format {
                                         panic::unknown_parameter("Debug", meta_name.as_str());
                                     }

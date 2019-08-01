@@ -80,7 +80,7 @@ impl TraitHandler for PartialEqStructHandler {
 
         let compare_impl = quote! {
             impl #impl_generics core::cmp::PartialEq for #ident #ty_generics #where_clause {
-                #[allow(unused_mut)]
+                #[inline]
                 fn eq(&self, other: &Self) -> bool {
                     #comparer_tokens
 

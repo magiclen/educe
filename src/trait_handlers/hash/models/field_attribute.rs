@@ -75,7 +75,7 @@ impl FieldAttributeBuilder {
                                         _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_ignore)
                                     }
                                 }
-                                "hash" => {
+                                "hash" | "impl" => {
                                     if !self.enable_hash {
                                         panic::unknown_parameter("Hash", meta_name.as_str());
                                     }

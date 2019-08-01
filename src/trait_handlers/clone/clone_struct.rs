@@ -6,7 +6,7 @@ use super::models::{TypeAttributeBuilder, FieldAttributeBuilder};
 
 use crate::Trait;
 use crate::proc_macro2::TokenStream;
-use crate::syn::{DeriveInput, Meta, Data, Generics};
+use crate::syn::{DeriveInput, Meta, Data, Generics, punctuated::Punctuated};
 
 pub struct CloneStructHandler;
 
@@ -16,7 +16,7 @@ impl TraitHandler for CloneStructHandler {
             enable_bound: true,
         }.from_clone_meta(meta);
 
-        let bound = type_attribute.bound.into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
+        let mut bound = Punctuated::new();
 
         let mut clone_tokens = TokenStream::new();
         let mut clone_from_tokens = TokenStream::new();
@@ -46,6 +46,8 @@ impl TraitHandler for CloneStructHandler {
             }
 
             if !has_custom_clone_method && traits.contains(&Trait::Copy) {
+                bound = type_attribute.bound.into_punctuated_where_predicates_by_generic_parameters_with_copy(&ast.generics.params);
+
                 clone_tokens.extend(quote!(*self));
 
                 let mut clone_from = String::new();
@@ -56,6 +58,8 @@ impl TraitHandler for CloneStructHandler {
 
                 clone_from_tokens.extend(TokenStream::from_str(&clone_from).unwrap());
             } else {
+                bound = type_attribute.bound.into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
+
                 let (is_unit, is_tuple) = {
                     if let Some(field) = data.fields.iter().next() {
                         if let Some(_) = field.ident {
@@ -162,10 +166,12 @@ impl TraitHandler for CloneStructHandler {
 
         let compare_impl = quote! {
             impl #impl_generics core::clone::Clone for #ident #ty_generics #where_clause {
+                #[inline]
                 fn clone(&self) -> Self {
                     #clone_tokens
                 }
 
+                #[inline]
                 fn clone_from(&mut self, _source: &Self) {
                     #clone_from_tokens
                 }

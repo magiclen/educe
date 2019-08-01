@@ -27,6 +27,7 @@ impl TraitHandler for CloneUnionHandler {
 
         let compare_impl = quote! {
             impl #impl_generics core::clone::Clone for #ident #ty_generics #where_clause {
+                #[inline]
                 fn clone(&self) -> Self {
                     *self
                 }

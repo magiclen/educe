@@ -80,6 +80,7 @@ impl TraitHandler for HashStructHandler {
 
         let hash_impl = quote! {
             impl #impl_generics core::hash::Hash for #ident #ty_generics #where_clause {
+                #[inline]
                 fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
                     #hasher_tokens
                 }

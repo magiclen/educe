@@ -75,7 +75,7 @@ impl FieldAttributeBuilder {
                                         _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_ignore)
                                     }
                                 }
-                                "compare" => {
+                                "compare" | "impl" => {
                                     if !self.enable_compare {
                                         panic::unknown_parameter("PartialEq", meta_name.as_str());
                                     }

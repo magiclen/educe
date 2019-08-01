@@ -158,6 +158,7 @@ impl TraitHandler for DefaultStructHandler {
 
         let default_impl = quote! {
             impl #impl_generics core::default::Default for #ident #ty_generics #where_clause {
+                #[inline]
                 fn default() -> Self {
                     #builder_tokens
                 }

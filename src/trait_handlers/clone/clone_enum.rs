@@ -6,7 +6,7 @@ use super::models::{TypeAttributeBuilder, FieldAttributeBuilder, FieldAttribute}
 
 use crate::Trait;
 use crate::proc_macro2::TokenStream;
-use crate::syn::{DeriveInput, Meta, Data, Generics, Fields};
+use crate::syn::{DeriveInput, Meta, Data, Generics, Fields, punctuated::Punctuated};
 
 pub struct CloneEnumHandler;
 
@@ -16,7 +16,7 @@ impl TraitHandler for CloneEnumHandler {
             enable_bound: true,
         }.from_clone_meta(meta);
 
-        let bound = type_attribute.bound.into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
+        let mut bound = Punctuated::new();
 
         let mut clone_tokens = TokenStream::new();
         let mut clone_from_tokens = TokenStream::new();
@@ -80,6 +80,8 @@ impl TraitHandler for CloneEnumHandler {
             let enum_name = ast.ident.to_string();
 
             if !has_custom_clone_method && traits.contains(&Trait::Copy) {
+                bound = type_attribute.bound.into_punctuated_where_predicates_by_generic_parameters_with_copy(&ast.generics.params);
+
                 clone_tokens.extend(quote!(*self));
 
                 let mut match_tokens = String::from("match self {");
@@ -148,6 +150,8 @@ impl TraitHandler for CloneEnumHandler {
 
                 clone_from_tokens.extend(TokenStream::from_str(&match_tokens).unwrap());
             } else {
+                bound = type_attribute.bound.into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
+
                 let mut clone_match_tokens = String::from("match self {");
                 let mut clone_from_match_tokens = String::from("match self {");
 
@@ -276,10 +280,12 @@ impl TraitHandler for CloneEnumHandler {
 
         let compare_impl = quote! {
             impl #impl_generics core::clone::Clone for #ident #ty_generics #where_clause {
+                #[inline]
                 fn clone(&self) -> Self {
                     #clone_tokens
                 }
 
+                #[inline]
                 fn clone_from(&mut self, _source: &Self) {
                     let mut done = false;
 

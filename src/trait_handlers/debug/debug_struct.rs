@@ -265,6 +265,7 @@ impl TraitHandler for DebugStructHandler {
 
         let debug_impl = quote! {
             impl #impl_generics core::fmt::Debug for #ident #ty_generics #where_clause {
+                #[inline]
                 fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
                     #builder_tokens
                     builder.finish()

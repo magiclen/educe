@@ -40,7 +40,7 @@ impl FieldAttributeBuilder {
                             let meta_name = meta.name().to_string();
 
                             match meta_name.as_str() {
-                                "clone" => {
+                                "clone" | "impl" => {
                                     if !self.enable_clone {
                                         panic::unknown_parameter("Clone", meta_name.as_str());
                                     }
