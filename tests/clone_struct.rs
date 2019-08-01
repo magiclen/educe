@@ -37,7 +37,7 @@ fn basic() {
 }
 
 #[test]
-fn format_without_trait_1() {
+fn clone_without_trait_1() {
     fn clone(v: &u8) -> u8 {
         v + 100
     }
@@ -66,7 +66,7 @@ fn format_without_trait_1() {
 }
 
 #[test]
-fn format_without_trait_2() {
+fn clone_without_trait_2() {
     fn clone(v: &u8) -> u8 {
         v + 100
     }
@@ -95,7 +95,7 @@ fn format_without_trait_2() {
 }
 
 #[test]
-fn format_without_trait_3() {
+fn clone_without_trait_3() {
     fn clone(v: &u8) -> u8 {
         v + 100
     }
@@ -124,7 +124,7 @@ fn format_without_trait_3() {
 }
 
 #[test]
-fn format_without_trait_4() {
+fn clone_without_trait_4() {
     fn clone(v: &u8) -> u8 {
         v + 100
     }
@@ -153,7 +153,7 @@ fn format_without_trait_4() {
 }
 
 #[test]
-fn format_with_trait_1() {
+fn clone_with_trait_1() {
     trait A {
         fn clone(&self) -> Self;
     }
@@ -188,7 +188,7 @@ fn format_with_trait_1() {
 }
 
 #[test]
-fn format_with_trait_2() {
+fn clone_with_trait_2() {
     trait A {
         fn clone(&self) -> Self;
     }
@@ -223,7 +223,7 @@ fn format_with_trait_2() {
 }
 
 #[test]
-fn format_with_trait_3() {
+fn clone_with_trait_3() {
     trait A {
         fn cloner(&self) -> Self;
     }
@@ -258,7 +258,7 @@ fn format_with_trait_3() {
 }
 
 #[test]
-fn format_with_trait_4() {
+fn clone_with_trait_4() {
     trait A {
         fn cloner(&self) -> Self;
     }
