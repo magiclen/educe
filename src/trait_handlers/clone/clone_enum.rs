@@ -103,12 +103,12 @@ impl TraitHandler for CloneEnumHandler {
 
                         if is_tuple {
                             for field_name in field_names {
-                                pattern_tokens.write_fmt(format_args!("ref mut {field_name},", field_name = field_name)).unwrap();
+                                pattern_tokens.write_fmt(format_args!("{field_name},", field_name = field_name)).unwrap();
                                 pattern_2_tokens.write_fmt(format_args!("___{field_name},", field_name = field_name)).unwrap();
                             }
                         } else {
                             for field_name in field_names {
-                                pattern_tokens.write_fmt(format_args!("ref mut {field_name},", field_name = field_name)).unwrap();
+                                pattern_tokens.write_fmt(format_args!("{field_name},", field_name = field_name)).unwrap();
                                 pattern_2_tokens.write_fmt(format_args!("{field_name}: ___{field_name},", field_name = field_name)).unwrap();
                             }
                         }
@@ -178,7 +178,7 @@ impl TraitHandler for CloneEnumHandler {
 
                             for field_name in field_names {
                                 pattern_tokens.write_fmt(format_args!("{field_name},", field_name = field_name)).unwrap();
-                                pattern_2_tokens.write_fmt(format_args!("ref mut {field_name},", field_name = field_name)).unwrap();
+                                pattern_2_tokens.write_fmt(format_args!("{field_name},", field_name = field_name)).unwrap();
                                 pattern_3_tokens.write_fmt(format_args!("___{field_name},", field_name = field_name)).unwrap();
                             }
 
@@ -220,7 +220,7 @@ impl TraitHandler for CloneEnumHandler {
 
                             for field_name in field_names {
                                 pattern_tokens.write_fmt(format_args!("{field_name},", field_name = field_name)).unwrap();
-                                pattern_2_tokens.write_fmt(format_args!("ref mut {field_name},", field_name = field_name)).unwrap();
+                                pattern_2_tokens.write_fmt(format_args!("{field_name},", field_name = field_name)).unwrap();
                                 pattern_3_tokens.write_fmt(format_args!("{field_name}: ___{field_name},", field_name = field_name)).unwrap();
                             }
 

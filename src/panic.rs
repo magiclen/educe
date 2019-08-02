@@ -70,17 +70,17 @@ pub fn multiple_default_variants() -> ! {
 
 #[inline]
 pub fn no_deref_field() -> ! {
-    panic!("There is no field which is assigned for deref.")
+    panic!("There is no field which is assigned for `Deref`.")
 }
 
 #[inline]
 pub fn no_deref_field_of_variant(variant_name: &str) -> ! {
-    panic!("There is no field for the `{variant_name}` variant which is assigned for deref.", variant_name = variant_name)
+    panic!("There is no field for the `{variant_name}` variant which is assigned for `Deref`.", variant_name = variant_name)
 }
 
 #[inline]
 pub fn multiple_deref_fields() -> ! {
-    panic!("Multiple fields are set for deref.")
+    panic!("Multiple fields are set for `Deref`.")
 }
 
 #[inline]
@@ -91,6 +91,31 @@ pub fn multiple_deref_fields_of_variant(variant_name: &str) -> ! {
 #[inline]
 pub fn deref_cannot_support_unit_variant() -> ! {
     panic!("The `Deref` trait cannot be implemented for an enum which has unit variants.")
+}
+
+#[inline]
+pub fn no_deref_mut_field() -> ! {
+    panic!("There is no field which is assigned for `DerefMut`.")
+}
+
+#[inline]
+pub fn no_deref_mut_field_of_variant(variant_name: &str) -> ! {
+    panic!("There is no field for the `{variant_name}` variant which is assigned for `DerefMut`.", variant_name = variant_name)
+}
+
+#[inline]
+pub fn multiple_deref_mut_fields() -> ! {
+    panic!("Multiple fields are set for `DerefMut`.")
+}
+
+#[inline]
+pub fn multiple_deref_mut_fields_of_variant(variant_name: &str) -> ! {
+    panic!("Multiple fields of the `{variant_name}` variant are set for `DerefMut`.", variant_name = variant_name)
+}
+
+#[inline]
+pub fn deref_mut_cannot_support_unit_variant() -> ! {
+    panic!("The `DerefMut` trait cannot be implemented for an enum which has unit variants.")
 }
 
 #[inline]

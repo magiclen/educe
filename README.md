@@ -1024,6 +1024,87 @@ enum Enum<T, K> {
 
 If you implement both of the `Copy` trait and the `Clone` trait by Educe, the bound for the `Clone` trait needs to include the `Copy` trait due to `Copy, Clone` optimization.
 
+## Deref
+
+Use `#[derive(Educe)]` and `#[educe(Deref)]` to implement the `Deref` trait for a struct or an enum.
+
+#### Basic Usage
+
+You need to assign a field as a default inmutable dereferencing field unless the number of fields is exactly one.
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(Deref)]
+struct Struct {
+    f1: u8,
+    #[educe(Deref)]
+    f2: u8,
+}
+
+#[derive(Educe)]
+#[educe(Deref)]
+enum Enum {
+    Struct {
+        f1: u8
+    },
+    Struct2 {
+        f1: u8,
+        #[educe(Deref)]
+        f2: u8,
+    },
+    Tuple(u8),
+    Tuple2(
+        u8,
+        #[educe(Deref)]
+        u8
+    ),
+}
+```
+
+## DerefMut
+
+Use `#[derive(Educe)]` and `#[educe(DerefMut)]` to implement the `DerefMut` trait for a struct or an enum.
+
+#### Basic Usage
+
+You need to assign a field as a default mutable dereferencing field unless the number of fields is exactly one.
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(Deref, DerefMut)]
+struct Struct {
+    f1: u8,
+    #[educe(Deref, DerefMut)]
+    f2: u8,
+}
+
+#[derive(Educe)]
+#[educe(Deref, DerefMut)]
+enum Enum {
+    Struct {
+        f1: u8
+    },
+    Struct2 {
+        f1: u8,
+        #[educe(Deref, DerefMut)]
+        f2: u8,
+    },
+    Tuple(u8),
+    Tuple2(
+        #[educe(DerefMut)]
+        u8,
+        #[educe(Deref)]
+        u8
+    ),
+}
+```
+
+The mutable dereferencing fields don't need to be the same as the inmutable dereferencing fields. But their type must be the same.
+
 ## TODO
 
 There is a lot of work to be done. Unimplemented traits are listed below:
@@ -1034,8 +1115,7 @@ There is a lot of work to be done. Unimplemented traits are listed below:
 1. `Into`
 1. `FromStr`
 1. `TryFrom`
-1. `Deref`
-1. `DerefMut`
+1. `TryInto`
 
 ## Crates.io
 
