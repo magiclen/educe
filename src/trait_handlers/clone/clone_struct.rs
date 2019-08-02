@@ -13,6 +13,7 @@ pub struct CloneStructHandler;
 impl TraitHandler for CloneStructHandler {
     fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta) {
         let type_attribute = TypeAttributeBuilder {
+            enable_flag: true,
             enable_bound: true,
         }.from_clone_meta(meta);
 

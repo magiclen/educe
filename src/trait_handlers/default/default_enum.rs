@@ -47,7 +47,16 @@ impl TraitHandler for DefaultEnumHandler {
                         let variants = &data.variants;
 
                         if variants.len() == 1 {
-                            &variants[0]
+                            let variant = &variants[0];
+
+                            let _ = TypeAttributeBuilder {
+                                enable_flag: true,
+                                enable_new: false,
+                                enable_expression: false,
+                                enable_bound: false,
+                            }.from_attributes(&variant.attrs, traits);
+
+                            variant
                         } else {
                             let mut variants_iter = variants.iter();
 

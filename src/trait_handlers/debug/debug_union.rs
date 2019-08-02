@@ -10,6 +10,7 @@ pub struct DebugUnionHandler;
 impl TraitHandler for DebugUnionHandler {
     fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta) {
         let type_attribute = TypeAttributeBuilder {
+            enable_flag: true,
             name: TypeAttributeName::Default,
             enable_name: true,
             named_field: false,

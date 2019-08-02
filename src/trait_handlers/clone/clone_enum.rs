@@ -13,6 +13,7 @@ pub struct CloneEnumHandler;
 impl TraitHandler for CloneEnumHandler {
     fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta) {
         let type_attribute = TypeAttributeBuilder {
+            enable_flag: true,
             enable_bound: true,
         }.from_clone_meta(meta);
 
@@ -28,6 +29,7 @@ impl TraitHandler for CloneEnumHandler {
 
             for variant in data.variants.iter() {
                 let _ = TypeAttributeBuilder {
+                    enable_flag: false,
                     enable_bound: false,
                 }.from_attributes(&variant.attrs, traits);
 

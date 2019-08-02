@@ -5,6 +5,7 @@ mod hash;
 mod default;
 mod clone;
 mod copy;
+mod deref;
 
 use std::str::FromStr;
 
@@ -20,6 +21,7 @@ pub use hash::HashHandler;
 pub use default::DefaultHandler;
 pub use clone::CloneHandler;
 pub use copy::CopyHandler;
+pub use deref::DerefHandler;
 
 pub trait TraitHandler {
     fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta);

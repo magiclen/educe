@@ -16,6 +16,7 @@ pub struct DebugEnumHandler;
 impl TraitHandler for DebugEnumHandler {
     fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta) {
         let type_attribute = TypeAttributeBuilder {
+            enable_flag: true,
             name: TypeAttributeName::Disable,
             enable_name: true,
             named_field: false,
@@ -37,6 +38,7 @@ impl TraitHandler for DebugEnumHandler {
         if let Data::Enum(data) = &ast.data {
             for variant in data.variants.iter() {
                 let type_attribute = TypeAttributeBuilder {
+                    enable_flag: false,
                     name: TypeAttributeName::Default,
                     enable_name: true,
                     named_field: if let Fields::Named(_) = &variant.fields {

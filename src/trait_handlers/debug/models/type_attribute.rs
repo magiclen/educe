@@ -40,6 +40,7 @@ impl TypeAttributeBound {
 
 #[derive(Clone)]
 pub struct TypeAttribute {
+    pub flag: bool,
     pub name: TypeAttributeName,
     pub named_field: bool,
     pub bound: TypeAttributeBound,
@@ -47,6 +48,7 @@ pub struct TypeAttribute {
 
 #[derive(Debug, Clone)]
 pub struct TypeAttributeBuilder {
+    pub enable_flag: bool,
     pub name: TypeAttributeName,
     pub enable_name: bool,
     pub named_field: bool,
@@ -56,14 +58,17 @@ pub struct TypeAttributeBuilder {
 
 impl TypeAttributeBuilder {
     pub fn from_debug_meta(&self, meta: &Meta) -> TypeAttribute {
+        let mut flag = false;
         let mut name = self.name.clone();
-
         let mut named_field = self.named_field.clone();
-
         let mut bound = TypeAttributeBound::None;
 
         let correct_usage_for_debug_attribute = {
-            let mut usage = vec![stringify!(#[educe(Debug)])];
+            let mut usage = vec![];
+
+            if self.enable_flag {
+                usage.push(stringify!(#[educe(Default)]));
+            }
 
             if self.enable_name {
                 usage.push(stringify!(#[educe(Debug = "new_name")]));
@@ -357,10 +362,17 @@ impl TypeAttributeBuilder {
                     _ => panic::attribute_incorrect_format("Debug", &correct_usage_for_debug_attribute)
                 }
             }
-            Meta::Word(_) => ()
+            Meta::Word(_) => {
+                if !self.enable_flag {
+                    panic::attribute_incorrect_format("Debug", &correct_usage_for_debug_attribute);
+                }
+
+                flag = true;
+            }
         }
 
         TypeAttribute {
+            flag,
             name,
             named_field,
             bound,
@@ -408,6 +420,7 @@ impl TypeAttributeBuilder {
         }
 
         result.unwrap_or(TypeAttribute {
+            flag: false,
             name: self.name,
             named_field: self.named_field,
             bound: TypeAttributeBound::None,

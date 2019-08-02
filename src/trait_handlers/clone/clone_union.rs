@@ -10,6 +10,7 @@ pub struct CloneUnionHandler;
 impl TraitHandler for CloneUnionHandler {
     fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta) {
         let _ = TypeAttributeBuilder {
+            enable_flag: true,
             enable_bound: false,
         }.from_clone_meta(meta);
 

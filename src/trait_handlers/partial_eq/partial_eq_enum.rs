@@ -14,6 +14,7 @@ pub struct PartialEqEnumHandler;
 impl TraitHandler for PartialEqEnumHandler {
     fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta) {
         let type_attribute = TypeAttributeBuilder {
+            enable_flag: true,
             enable_bound: true,
         }.from_partial_eq_meta(meta);
 
@@ -27,6 +28,11 @@ impl TraitHandler for PartialEqEnumHandler {
 
         if let Data::Enum(data) = &ast.data {
             for variant in data.variants.iter() {
+                let _ = TypeAttributeBuilder {
+                    enable_flag: false,
+                    enable_bound: false,
+                }.from_attributes(&variant.attrs, traits);
+
                 let variant_ident = variant.ident.to_string();
 
                 match &variant.fields {

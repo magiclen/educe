@@ -69,6 +69,31 @@ pub fn multiple_default_variants() -> ! {
 }
 
 #[inline]
+pub fn no_deref_field() -> ! {
+    panic!("There is no field which is assigned for deref.")
+}
+
+#[inline]
+pub fn no_deref_field_of_variant(variant_name: &str) -> ! {
+    panic!("There is no field for the `{variant_name}` variant which is assigned for deref.", variant_name = variant_name)
+}
+
+#[inline]
+pub fn multiple_deref_fields() -> ! {
+    panic!("Multiple fields are set for deref.")
+}
+
+#[inline]
+pub fn multiple_deref_fields_of_variant(variant_name: &str) -> ! {
+    panic!("Multiple fields of the `{variant_name}` variant are set for deref.", variant_name = variant_name)
+}
+
+#[inline]
+pub fn deref_cannot_support_unit_variant() -> ! {
+    panic!("The `Deref` trait cannot be implemented for an enum which has unit variants.")
+}
+
+#[inline]
 pub fn disable_named_field_name() -> ! {
     panic!("You can't disable the name of a named field.")
 }
@@ -106,7 +131,7 @@ fn concat_string_slice_array(array: &[&str]) -> String {
     if len == 0 {
         String::new()
     } else {
-        let mut string = String::from("It needs to be formed into ");
+        let mut string = String::from(" It needs to be formed into ");
 
         let mut iter = array.iter();
 

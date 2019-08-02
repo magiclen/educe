@@ -1,6 +1,7 @@
 use super::super::super::{create_where_predicates_from_lit_str, create_where_predicates_from_generic_parameters};
 
-use crate::syn::{Meta, NestedMeta, Lit, WherePredicate, GenericParam, punctuated::Punctuated, token::Comma};
+use crate::Trait;
+use crate::syn::{Meta, NestedMeta, Lit, Attribute, WherePredicate, GenericParam, punctuated::Punctuated, token::Comma};
 use crate::panic;
 
 #[derive(Clone)]
@@ -22,20 +23,27 @@ impl TypeAttributeBound {
 
 #[derive(Clone)]
 pub struct TypeAttribute {
+    pub flag: bool,
     pub bound: TypeAttributeBound,
 }
 
 #[derive(Debug, Clone)]
 pub struct TypeAttributeBuilder {
+    pub enable_flag: bool,
     pub enable_bound: bool,
 }
 
 impl TypeAttributeBuilder {
     pub fn from_partial_eq_meta(&self, meta: &Meta) -> TypeAttribute {
+        let mut flag = false;
         let mut bound = TypeAttributeBound::None;
 
         let correct_usage_for_partial_eq_attribute = {
-            let usage = vec![stringify!(#[educe(PartialEq)])];
+            let mut usage = vec![];
+
+            if self.enable_flag {
+                usage.push(stringify!(#[educe(PartialEq)]));
+            }
 
             usage
         };
@@ -126,11 +134,64 @@ impl TypeAttributeBuilder {
                 }
             }
             Meta::NameValue(_) => panic::attribute_incorrect_format("PartialEq", &correct_usage_for_partial_eq_attribute),
-            Meta::Word(_) => ()
+            Meta::Word(_) => {
+                if !self.enable_flag {
+                    panic::attribute_incorrect_format("PartialEq", &correct_usage_for_partial_eq_attribute);
+                }
+
+                flag = true;
+            }
         }
 
         TypeAttribute {
+            flag,
             bound,
         }
+    }
+
+    pub fn from_attributes(self, attributes: &[Attribute], traits: &[Trait]) -> TypeAttribute {
+        let mut result = None;
+
+        for attribute in attributes.iter() {
+            let meta = attribute.parse_meta().unwrap();
+
+            let meta_name = meta.name().to_string();
+
+            match meta_name.as_str() {
+                "educe" => match meta {
+                    Meta::List(list) => {
+                        for p in list.nested.iter() {
+                            match p {
+                                NestedMeta::Meta(meta) => {
+                                    let meta_name = meta.name().to_string();
+
+                                    let t = Trait::from_str(meta_name);
+
+                                    if let Err(_) = traits.binary_search(&t) {
+                                        panic::trait_not_used(t.as_str());
+                                    }
+
+                                    if t == Trait::PartialEq {
+                                        if result.is_some() {
+                                            panic::reuse_a_trait(t.as_str());
+                                        }
+
+                                        result = Some(self.from_partial_eq_meta(&meta));
+                                    }
+                                }
+                                _ => panic::educe_format_incorrect()
+                            }
+                        }
+                    }
+                    _ => panic::educe_format_incorrect()
+                }
+                _ => ()
+            }
+        }
+
+        result.unwrap_or(TypeAttribute {
+            flag: false,
+            bound: TypeAttributeBound::None,
+        })
     }
 }

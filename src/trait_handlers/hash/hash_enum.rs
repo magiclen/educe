@@ -14,6 +14,7 @@ pub struct HashEnumHandler;
 impl TraitHandler for HashEnumHandler {
     fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta) {
         let type_attribute = TypeAttributeBuilder {
+            enable_flag: true,
             enable_bound: true,
         }.from_hash_meta(meta);
 
@@ -30,6 +31,11 @@ impl TraitHandler for HashEnumHandler {
                 let mut non_unit = false;
 
                 for variant in data.variants.iter() {
+                    let _ = TypeAttributeBuilder {
+                        enable_flag: false,
+                        enable_bound: false,
+                    }.from_attributes(&variant.attrs, traits);
+
                     match &variant.fields {
                         Fields::Named(_) | Fields::Unnamed(_) => {
                             non_unit = true;
@@ -97,7 +103,7 @@ impl TraitHandler for HashEnumHandler {
                             }
                         }
 
-                        match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident}{{ {pattern_tokens} }} => {{ {block_tokens} }}", enum_name = enum_name, variant_ident = variant_ident, pattern_tokens = pattern_tokens, block_tokens = block_tokens)).unwrap();
+                        match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident} {{ {pattern_tokens} }} => {{ {block_tokens} }}", enum_name = enum_name, variant_ident = variant_ident, pattern_tokens = pattern_tokens, block_tokens = block_tokens)).unwrap();
                     }
                     Fields::Unnamed(fields) => { // TODO Tuple
                         let mut pattern_tokens = String::new();

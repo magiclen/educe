@@ -31,6 +31,7 @@ impl TraitHandler for DebugStructHandler {
         };
 
         let type_attribute = TypeAttributeBuilder {
+            enable_flag: true,
             name: TypeAttributeName::Default,
             enable_name: true,
             named_field: !is_tuple,

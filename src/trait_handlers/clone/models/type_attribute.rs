@@ -31,20 +31,27 @@ impl TypeAttributeBound {
 
 #[derive(Clone)]
 pub struct TypeAttribute {
+    pub flag: bool,
     pub bound: TypeAttributeBound,
 }
 
 #[derive(Debug, Clone)]
 pub struct TypeAttributeBuilder {
+    pub enable_flag: bool,
     pub enable_bound: bool,
 }
 
 impl TypeAttributeBuilder {
     pub fn from_clone_meta(&self, meta: &Meta) -> TypeAttribute {
+        let mut flag = false;
         let mut bound = TypeAttributeBound::None;
 
         let correct_usage_for_clone_attribute = {
-            let usage = vec![stringify!(#[educe(Clone)])];
+            let mut usage = vec![];
+
+            if self.enable_flag {
+                usage.push(stringify!(#[educe(Clone)]));
+            }
 
             usage
         };
@@ -135,10 +142,17 @@ impl TypeAttributeBuilder {
                 }
             }
             Meta::NameValue(_) => panic::attribute_incorrect_format("Clone", &correct_usage_for_clone_attribute),
-            Meta::Word(_) => ()
+            Meta::Word(_) => {
+                if !self.enable_flag {
+                    panic::attribute_incorrect_format("Clone", &correct_usage_for_clone_attribute);
+                }
+
+                flag = true;
+            }
         }
 
         TypeAttribute {
+            flag,
             bound,
         }
     }
@@ -184,7 +198,8 @@ impl TypeAttributeBuilder {
         }
 
         result.unwrap_or(TypeAttribute {
-            bound: TypeAttributeBound::None
+            flag: false,
+            bound: TypeAttributeBound::None,
         })
     }
 }

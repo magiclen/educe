@@ -45,7 +45,11 @@ impl TypeAttributeBuilder {
         let mut bound = TypeAttributeBound::None;
 
         let correct_usage_for_default_attribute = {
-            let mut usage = vec![stringify!(#[educe(Default)])];
+            let mut usage = vec![];
+
+            if self.enable_flag {
+                usage.push(stringify!(#[educe(Default)]));
+            }
 
             if self.enable_new {
                 usage.push(stringify!(#[educe(Default(new))]));
