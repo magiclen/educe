@@ -1,3 +1,5 @@
+#![cfg(all(feature = "Copy", feature = "Clone"))]
+
 #![no_std]
 
 #[macro_use]

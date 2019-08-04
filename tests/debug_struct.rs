@@ -1,3 +1,5 @@
+#![cfg(feature = "Debug")]
+
 #![no_std]
 
 #[macro_use]

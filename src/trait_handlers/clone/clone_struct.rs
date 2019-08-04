@@ -46,7 +46,7 @@ impl TraitHandler for CloneStructHandler {
                 field_names.push(field_name);
             }
 
-            if !has_custom_clone_method && traits.contains(&Trait::Copy) {
+            if cfg!(feature = "Copy") && !has_custom_clone_method && traits.contains(&Trait::Copy) {
                 bound = type_attribute.bound.into_punctuated_where_predicates_by_generic_parameters_with_copy(&ast.generics.params);
 
                 clone_tokens.extend(quote!(*self));

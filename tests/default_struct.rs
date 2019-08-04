@@ -1,3 +1,5 @@
+#![cfg(feature = "Default")]
+
 #![no_std]
 
 extern crate alloc;

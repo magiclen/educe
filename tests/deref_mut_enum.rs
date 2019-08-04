@@ -1,3 +1,5 @@
+#![cfg(all(feature = "Deref", feature = "DerefMut"))]
+
 #![no_std]
 
 #[macro_use]

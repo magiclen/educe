@@ -2,8 +2,7 @@ use std::str::FromStr;
 use std::fmt::Write;
 
 use super::super::TraitHandler;
-use super::models::TypeAttributeBuilder;
-use super::models::FieldAttributeBuilder;
+use super::models::{TypeAttributeBuilder, FieldAttributeBuilder};
 
 use crate::Trait;
 use crate::proc_macro2::TokenStream;
@@ -37,7 +36,7 @@ impl TraitHandler for PartialEqEnumHandler {
 
                 match &variant.fields {
                     Fields::Unit => { // TODO Unit
-                        match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident} => {{ if let {enum_name}::{variant_ident} = other {{ return true; }} else {{ return false; }} }}", enum_name = enum_name, variant_ident = variant_ident)).unwrap();
+                        match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident} => {{ if let {enum_name}::{variant_ident} = other {{ }} else {{ return false; }} }}", enum_name = enum_name, variant_ident = variant_ident)).unwrap();
                     }
                     Fields::Named(fields) => {  // TODO Struct
                         let mut pattern_tokens = String::new();

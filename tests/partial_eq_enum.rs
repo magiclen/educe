@@ -1,3 +1,5 @@
+#![cfg(feature = "PartialEq")]
+
 #![no_std]
 
 #[macro_use]

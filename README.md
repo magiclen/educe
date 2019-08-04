@@ -5,6 +5,19 @@ Educe
 
 This crate provides procedural macros to help you implement Rust-built-in traits quickly.
 
+## Features
+
+By default, every trait this crate supports will be enabled. You can disable all of them by disabling the default features and enable only the traits that you want to use by adding them to `features` explictly.
+
+For example,
+
+```toml
+[dependencies.educe]
+version = "*"
+features = ["Debug", "Default", "Hash", "Clone", "Copy"]
+default-features = false
+```
+
 ## Debug
 
 Use `#[derive(Educe)]` and `#[educe(Debug)]` to implement the `Debug` trait for a struct, an enum, or a union. It supports to change the name of your types, variants and fields. You can also ignore some fields, or set a trait and/or a method to replace the `Debug` trait used by default. Also, you can even format a struct to a tuple, and vice versa.
@@ -284,13 +297,13 @@ enum Enum {
 
 #### Use Another Method or Trait to Do Comparing
 
-The `compare` attribute has two parameters: `trait` and `method`. They can be used to replace the `PartialEq` trait on fields. If you only set the `trait` parameter, the `method` will be set to `hacomparesh` automatically by default.
+The `compare` attribute has two parameters: `trait` and `method`. They can be used to replace the `PartialEq` trait on fields. If you only set the `trait` parameter, the `method` will be set to `eq` automatically by default.
 
 ```rust
 #[macro_use] extern crate educe;
 
 fn eq(a: &u8, b: &u8) -> bool {
-        a + 1 == *b
+    a + 1 == *b
 }
 
 trait A {
@@ -348,10 +361,6 @@ Or you can set the where predicates by yourself.
 
 ```rust
 #[macro_use] extern crate educe;
-
-fn eq(a: &u8, b: &u8) -> bool {
-        a + 1 == *b
-}
 
 trait A {
     fn eq(&self, b: &Self) -> bool;
@@ -434,10 +443,6 @@ Or you can set the where predicates by yourself. (NOTE: The `Eq` trait depends o
 ```rust
 #[macro_use] extern crate educe;
 
-fn eq(a: &u8, b: &u8) -> bool {
-        a + 1 == *b
-}
-
 trait A {
     fn eq(&self, b: &Self) -> bool;
 }
@@ -465,6 +470,394 @@ enum Enum<T, K> {
     V3(
         T
     ),
+}
+```
+
+## PartialOrd
+
+Use `#[derive(Educe)]` and `#[educe(PartialOrd)]` to implement the `PartialOrd` trait for a struct or an enum. It supports to ignore some fields, or set a trait and/or a method to replace the `PartialOrd` trait used by default. The rank of variants and fields can also be modified.
+
+#### Basic Usage
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(PartialEq, PartialOrd)]
+struct Struct {
+    f1: u8
+}
+
+#[derive(Educe)]
+#[educe(PartialEq, PartialOrd)]
+enum Enum {
+    V1,
+    V2 {
+        f1: u8,
+    },
+    V3(u8),
+}
+```
+
+#### Ignore Fields
+
+The `ignore` attribute can ignore specific fields.
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(PartialEq, PartialOrd)]
+struct Struct {
+    #[educe(PartialOrd(ignore))]
+    f1: u8
+}
+
+#[derive(Educe)]
+#[educe(PartialEq, PartialOrd)]
+enum Enum {
+    V1,
+    V2 {
+        #[educe(PartialOrd(ignore))]
+        f1: u8,
+    },
+    V3(
+        #[educe(PartialOrd(ignore))]
+        u8
+    ),
+}
+```
+
+#### Use Another Method or Trait to Do Comparing
+
+The `compare` attribute has two parameters: `trait` and `method`. They can be used to replace the `PartialOrd` trait on fields. If you only set the `trait` parameter, the `method` will be set to `partial_cmp` automatically by default.
+
+```rust
+#[macro_use] extern crate educe;
+
+use std::cmp::Ordering;
+
+fn partial_cmp(a: &u8, b: &u8) -> Option<Ordering> {
+    if a > b {
+        Some(Ordering::Less)
+    } else if a < b {
+        Some(Ordering::Greater)
+    } else {
+        Some(Ordering::Equal)
+    }
+}
+
+trait A {
+    fn partial_cmp(&self, b: &Self) -> Option<Ordering>;
+}
+
+impl A for i32 {
+    fn partial_cmp(&self, b: &i32) -> Option<Ordering> {
+        if self > b {
+            Some(Ordering::Less)
+        } else if self < b {
+            Some(Ordering::Greater)
+        } else {
+            Some(Ordering::Equal)
+        }
+    }
+}
+
+#[derive(Educe)]
+#[educe(PartialEq, PartialOrd)]
+enum Enum<T: std::cmp::PartialEq + A> {
+    V1,
+    V2 {
+        #[educe(PartialOrd(compare(method = "partial_cmp")))]
+        f1: u8,
+    },
+    V3(
+        #[educe(PartialOrd(compare(trait = "A")))]
+        T
+    ),
+}
+```
+
+#### Generic Parameters Bound to the `PartialOrd` Trait or Others
+
+The `#[educe(PartialOrd(bound))]` attribute can be used to add the `PartialOrd` trait bound to all generaic parameters for the `PartialOrd` implementation.
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(PartialEq(bound), PartialOrd(bound))]
+enum Enum<T, K> {
+    V1,
+    V2 {
+        f1: K,
+    },
+    V3(
+        T
+    ),
+}
+```
+
+Or you can set the where predicates by yourself. (NOTE: The `PartialOrd` trait depends on the `PartialEq` (`PartialEq<Self>`) trait.)
+
+```rust
+#[macro_use] extern crate educe;
+
+use std::cmp::Ordering;
+
+trait A {
+    fn partial_cmp(&self, b: &Self) -> Option<Ordering>;
+}
+
+impl A for i32 {
+    fn partial_cmp(&self, b: &i32) -> Option<Ordering> {
+        if self > b {
+            Some(Ordering::Less)
+        } else if self < b {
+            Some(Ordering::Greater)
+        } else {
+            Some(Ordering::Equal)
+        }
+    }
+}
+
+#[derive(Educe)]
+#[educe(PartialEq(bound), PartialOrd(bound = "T: std::cmp::PartialOrd, K: std::cmp::PartialOrd + A"))]
+enum Enum<T, K> {
+    V1,
+    V2 {
+        #[educe(PartialOrd(compare(trait = "A")))]
+        f1: K,
+    },
+    V3(
+        T
+    ),
+}
+```
+
+#### Ranking
+
+Each field can add a `#[educe(PartialOrd(rank = rank_value))]` attribute where `rank_value` is a positive integer value to determine their comparing precedence (lower `rank_value` leads to higher priority). The default `rank_value` for a field dependends on its ordinal (the lower the front) and is always lower than any custom `rank_value`.
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(PartialEq, PartialOrd)]
+struct Struct {
+    #[educe(PartialOrd(rank = 1))]
+    f1: u8,
+    #[educe(PartialOrd(rank = 0))]
+    f2: u8,
+}
+```
+
+Each variant can add a `#[educe(PartialOrd(value = comparison_value))]` attribute where `comparison_value` is a positive integer value to override the value or the ordinal of a variant for comparison.
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(PartialEq, PartialOrd)]
+enum Enum {
+    #[educe(PartialOrd(value = 2))]
+    Two,
+    #[educe(PartialOrd(value = 1))]
+    One,
+}
+```
+
+## Ord
+
+Use `#[derive(Educe)]` and `#[educe(Ord)]` to implement the `Ord` trait for a struct or an enum. It supports to ignore some fields, or set a trait and/or a method to replace the `Ord` trait used by default. The rank of variants and fields can also be modified.
+
+#### Basic Usage
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(PartialEq, Eq, PartialOrd, Ord)]
+struct Struct {
+    f1: u8
+}
+
+#[derive(Educe)]
+#[educe(PartialEq, Eq, PartialOrd, Ord)]
+enum Enum {
+    V1,
+    V2 {
+        f1: u8,
+    },
+    V3(u8),
+}
+```
+
+#### Ignore Fields
+
+The `ignore` attribute can ignore specific fields.
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(PartialEq, Eq, PartialOrd, Ord)]
+struct Struct {
+    #[educe(Ord(ignore))]
+    f1: u8
+}
+
+#[derive(Educe)]
+#[educe(PartialEq, Eq, PartialOrd, Ord)]
+enum Enum {
+    V1,
+    V2 {
+        #[educe(Ord(ignore))]
+        f1: u8,
+    },
+    V3(
+        #[educe(Ord(ignore))]
+        u8
+    ),
+}
+```
+
+#### Use Another Method or Trait to Do Comparing
+
+The `compare` attribute has two parameters: `trait` and `method`. They can be used to replace the `Ord` trait on fields. If you only set the `trait` parameter, the `method` will be set to `cmp` automatically by default.
+
+```rust
+#[macro_use] extern crate educe;
+
+use std::cmp::Ordering;
+
+fn cmp(a: &u8, b: &u8) -> Ordering {
+    if a > b {
+        Ordering::Less
+    } else if a < b {
+        Ordering::Greater
+    } else {
+        Ordering::Equal
+    }
+}
+
+trait A {
+    fn cmp(&self, b: &Self) -> Ordering;
+}
+
+impl A for i32 {
+    fn cmp(&self, b: &i32) -> Ordering {
+        if self > b {
+            Ordering::Less
+        } else if self < b {
+            Ordering::Greater
+        } else {
+            Ordering::Equal
+        }
+    }
+}
+
+#[derive(Educe)]
+#[educe(PartialEq, Eq, PartialOrd, Ord)]
+enum Enum<T: std::cmp::PartialOrd + A> {
+    V1,
+    V2 {
+        #[educe(Ord(compare(method = "cmp")))]
+        f1: u8,
+    },
+    V3(
+        #[educe(Ord(compare(trait = "A")))]
+        T
+    ),
+}
+```
+
+#### Generic Parameters Bound to the `Ord` Trait or Others
+
+The `#[educe(Ord(bound))]` attribute can be used to add the `Ord` trait bound to all generaic parameters for the `Ord` implementation.
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(PartialEq(bound), Eq(bound), PartialOrd(bound), Ord(bound))]
+enum Enum<T, K> {
+    V1,
+    V2 {
+        f1: K,
+    },
+    V3(
+        T
+    ),
+}
+```
+
+Or you can set the where predicates by yourself. (NOTE: The `Ord` trait depends on the `PartialOrd` (`PartialOrd<Self>`) trait and the `Eq` trait.)
+
+```rust
+#[macro_use] extern crate educe;
+
+use std::cmp::Ordering;
+
+trait A {
+    fn cmp(&self, b: &Self) -> Ordering;
+}
+
+impl A for i32 {
+    fn cmp(&self, b: &i32) -> Ordering {
+        if self > b {
+            Ordering::Less
+        } else if self < b {
+            Ordering::Greater
+        } else {
+            Ordering::Equal
+        }
+    }
+}
+
+#[derive(Educe)]
+#[educe(PartialEq(bound), Eq(bound), PartialOrd(bound), Ord(bound = "T: std::cmp::Ord, K: std::cmp::Ord + A"))]
+enum Enum<T, K> {
+    V1,
+    V2 {
+        #[educe(Ord(compare(trait = "A")))]
+        f1: K,
+    },
+    V3(
+        T
+    ),
+}
+```
+
+#### Ranking
+
+Each field can add a `#[educe(Ord(rank = rank_value))]` attribute where `rank_value` is a positive integer value to determine their comparing precedence (lower `rank_value` leads to higher priority). The default `rank_value` for a field dependends on its ordinal (the lower the front) and is always lower than any custom `rank_value`.
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(PartialEq, Eq, PartialOrd, Ord)]
+struct Struct {
+    #[educe(Ord(rank = 1))]
+    f1: u8,
+    #[educe(Ord(rank = 0))]
+    f2: u8,
+}
+```
+
+Each variant can add a `#[educe(Ord(value = comparison_value))]` attribute where `comparison_value` is a positive integer value to override the value or the ordinal of a variant for comparison.
+
+```rust
+#[macro_use] extern crate educe;
+
+#[derive(Educe)]
+#[educe(PartialEq, Eq, PartialOrd, Ord)]
+enum Enum {
+    #[educe(Ord(value = 2))]
+    Two,
+    #[educe(Ord(value = 1))]
+    One,
 }
 ```
 
@@ -1109,8 +1502,6 @@ The mutable dereferencing fields don't need to be the same as the inmutable dere
 
 There is a lot of work to be done. Unimplemented traits are listed below:
 
-1. `PartialOrd`
-1. `Ord`
 1. `From`
 1. `Into`
 1. `FromStr`

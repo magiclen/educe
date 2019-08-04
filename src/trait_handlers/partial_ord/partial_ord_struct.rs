@@ -1,4 +1,5 @@
 use std::str::FromStr;
+use std::collections::BTreeMap;
 
 use super::super::TraitHandler;
 use super::models::{TypeAttributeBuilder, FieldAttributeBuilder};
@@ -6,33 +7,44 @@ use super::models::{TypeAttributeBuilder, FieldAttributeBuilder};
 use crate::Trait;
 use crate::proc_macro2::TokenStream;
 use crate::syn::{DeriveInput, Meta, Data, Generics};
+use crate::panic;
 
-pub struct PartialEqStructHandler;
+pub struct PartialOrdStructHandler;
 
-impl TraitHandler for PartialEqStructHandler {
+impl TraitHandler for PartialOrdStructHandler {
     fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta) {
         let type_attribute = TypeAttributeBuilder {
             enable_flag: true,
             enable_bound: true,
-        }.from_partial_eq_meta(meta);
+            value: 0,
+            enable_value: false,
+        }.from_partial_ord_meta(meta);
 
         let bound = type_attribute.bound.into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
 
         let mut comparer_tokens = TokenStream::new();
 
         if let Data::Struct(data) = &ast.data {
+            let mut field_attributes = BTreeMap::new();
+            let mut field_names = BTreeMap::new();
+
             for (index, field) in data.fields.iter().enumerate() {
                 let field_attribute = FieldAttributeBuilder {
                     enable_ignore: true,
                     enable_compare: true,
+                    rank: isize::min_value() + index as isize,
+                    enable_rank: true,
                 }.from_attributes(&field.attrs, traits);
 
                 if field_attribute.ignore {
                     continue;
                 }
 
-                let compare_trait = field_attribute.compare_trait;
-                let compare_method = field_attribute.compare_method;
+                let rank = field_attribute.rank;
+
+                if field_attributes.contains_key(&rank) {
+                    panic::reuse_a_rank(rank);
+                }
 
                 let field_name = if let Some(ident) = field.ident.as_ref() {
                     ident.to_string()
@@ -40,23 +52,33 @@ impl TraitHandler for PartialEqStructHandler {
                     format!("{}", index)
                 };
 
+                field_attributes.insert(rank, field_attribute);
+                field_names.insert(rank, field_name);
+            }
+
+            for (index, field_attribute) in field_attributes {
+                let field_name = field_names.get(&index).unwrap();
+
+                let compare_trait = field_attribute.compare_trait;
+                let compare_method = field_attribute.compare_method;
+
                 match compare_trait {
                     Some(compare_trait) => {
                         let compare_method = compare_method.unwrap();
 
-                        let statement = format!("if !{compare_trait}::{compare_method}(&self.{field_name}, &other.{field_name}) {{ return false }}", compare_trait = compare_trait, compare_method = compare_method, field_name = field_name);
+                        let statement = format!("match {compare_trait}::{compare_method}(&self.{field_name}, &other.{field_name}) {{ Some(core::cmp::Ordering::Equal) => (), Some(core::cmp::Ordering::Greater) => {{ return Some(core::cmp::Ordering::Greater); }}, Some(core::cmp::Ordering::Less) => {{ return Some(core::cmp::Ordering::Less); }}, None => {{ return None; }} }}", compare_trait = compare_trait, compare_method = compare_method, field_name = field_name);
 
                         comparer_tokens.extend(TokenStream::from_str(&statement).unwrap());
                     }
                     None => {
                         match compare_method {
                             Some(compare_method) => {
-                                let statement = format!("if !{compare_method}(&self.{field_name}, &other.{field_name}) {{ return false; }}", compare_method = compare_method, field_name = field_name);
+                                let statement = format!("match {compare_method}(&self.{field_name}, &other.{field_name}) {{ Some(core::cmp::Ordering::Equal) => (), Some(core::cmp::Ordering::Greater) => {{ return Some(core::cmp::Ordering::Greater); }}, Some(core::cmp::Ordering::Less) => {{ return Some(core::cmp::Ordering::Less); }}, None => {{ return None; }} }}", compare_method = compare_method, field_name = field_name);
 
                                 comparer_tokens.extend(TokenStream::from_str(&statement).unwrap());
                             }
                             None => {
-                                let statement = format!("if core::cmp::PartialEq::ne(&self.{field_name}, &other.{field_name}) {{ return false; }}", field_name = field_name);
+                                let statement = format!("match core::cmp::PartialOrd::partial_cmp(&self.{field_name}, &other.{field_name}) {{ Some(core::cmp::Ordering::Equal) => (), Some(core::cmp::Ordering::Greater) => {{ return Some(core::cmp::Ordering::Greater); }}, Some(core::cmp::Ordering::Less) => {{ return Some(core::cmp::Ordering::Less); }}, None => {{ return None; }} }}", field_name = field_name);
 
                                 comparer_tokens.extend(TokenStream::from_str(&statement).unwrap());
                             }
@@ -79,12 +101,12 @@ impl TraitHandler for PartialEqStructHandler {
         let (impl_generics, ty_generics, where_clause) = generics_cloned.split_for_impl();
 
         let compare_impl = quote! {
-            impl #impl_generics core::cmp::PartialEq for #ident #ty_generics #where_clause {
+            impl #impl_generics core::cmp::PartialOrd for #ident #ty_generics #where_clause {
                 #[inline]
-                fn eq(&self, other: &Self) -> bool {
+                fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
                     #comparer_tokens
 
-                    true
+                    Some(core::cmp::Ordering::Equal)
                 }
             }
         };

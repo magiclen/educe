@@ -1,3 +1,5 @@
+#![cfg_attr(not(feature = "default"), allow(dead_code))]
+
 #[inline]
 pub fn reuse_a_trait(trait_name: &str) -> ! {
     panic!("The trait `{}` is repeatedly used.", trait_name)
@@ -141,6 +143,21 @@ pub fn unit_enum_need_name() -> ! {
 #[inline]
 pub fn unit_variant_need_name() -> ! {
     panic!("A unit variant which doesn't use an enum name needs to have a name.")
+}
+
+#[inline]
+pub fn ignore_ranked_field() -> ! {
+    panic!("You can't ignore a ranked field.")
+}
+
+#[inline]
+pub fn reuse_a_rank(rank: isize) -> ! {
+    panic!("The rank `{}` is repeatedly used.", rank)
+}
+
+#[inline]
+pub fn reuse_a_value(value: isize) -> ! {
+    panic!("The value `{}` is repeatedly used.", value)
 }
 
 // TODO patterns

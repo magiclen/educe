@@ -1,3 +1,5 @@
+#![cfg(feature = "Hash")]
+
 #[macro_use]
 extern crate educe;
 

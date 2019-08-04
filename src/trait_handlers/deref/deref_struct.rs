@@ -1,8 +1,7 @@
 use std::str::FromStr;
 
 use super::super::TraitHandler;
-use super::models::TypeAttributeBuilder;
-use super::models::FieldAttributeBuilder;
+use super::models::{TypeAttributeBuilder, FieldAttributeBuilder};
 
 use crate::Trait;
 use crate::proc_macro2::TokenStream;
