@@ -1,8 +1,8 @@
 use super::super::super::create_path_string_from_lit_str;
 
-use crate::Trait;
-use crate::syn::{Meta, NestedMeta, Lit, Attribute};
 use crate::panic;
+use crate::syn::{Attribute, Lit, Meta, NestedMeta};
+use crate::Trait;
 
 #[derive(Debug, Clone)]
 pub struct FieldAttribute {
@@ -14,7 +14,7 @@ pub struct FieldAttribute {
 #[derive(Debug, Clone)]
 pub struct FieldAttributeBuilder {
     pub enable_ignore: bool,
-    pub enable_compare: bool,
+    pub enable_impl: bool,
 }
 
 impl FieldAttributeBuilder {
@@ -41,8 +41,15 @@ impl FieldAttributeBuilder {
             usage
         };
 
-        let correct_usage_for_compare = {
-            let usage = vec![stringify!(#[educe(PartialEq(compare(method = "path_to_method")))]), stringify!(#[educe(PartialEq(compare(trait = "path_to_trait")))]), stringify!(#[educe(PartialEq(compare(trait = "path_to_trait", method = "path_to_method_in_trait")))]), stringify!(#[educe(PartialEq(compare(method("path_to_method"))))]), stringify!(#[educe(PartialEq(compare(trait("path_to_trait"))))]), stringify!(#[educe(PartialEq(compare(trait("path_to_trait"), method("path_to_method_in_trait"))))]), stringify!(#[educe(PartialEq(compare = "path_to_method"))]), stringify!(#[educe(PartialEq(compare("path_to_method")))])];
+        let correct_usage_for_impl = {
+            let usage = vec![
+                stringify!(#[educe(PartialEq(method = "path_to_method"))]),
+                stringify!(#[educe(PartialEq(trait = "path_to_trait"))]),
+                stringify!(#[educe(PartialEq(trait = "path_to_trait", method = "path_to_method_in_trait"))]),
+                stringify!(#[educe(PartialEq(method("path_to_method")))]),
+                stringify!(#[educe(PartialEq(trait("path_to_trait")))]),
+                stringify!(#[educe(PartialEq(trait("path_to_trait"), method("path_to_method_in_trait")))]),
+            ];
 
             usage
         };
@@ -72,11 +79,14 @@ impl FieldAttributeBuilder {
 
                                             ignore = true;
                                         }
-                                        _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_ignore)
+                                        _ => panic::parameter_incorrect_format(
+                                            meta_name.as_str(),
+                                            &correct_usage_for_ignore,
+                                        ),
                                     }
                                 }
-                                "compare" | "impl" => {
-                                    if !self.enable_compare {
+                                "method" => {
+                                    if !self.enable_impl {
                                         panic::unknown_parameter("PartialEq", meta_name.as_str());
                                     }
 
@@ -84,121 +94,34 @@ impl FieldAttributeBuilder {
                                         Meta::List(list) => {
                                             for p in list.nested.iter() {
                                                 match p {
-                                                    NestedMeta::Meta(meta) => {
-                                                        let meta_name = meta.name().to_string();
-
-                                                        match meta_name.as_str() {
-                                                            "method" => match meta {
-                                                                Meta::List(list) => {
-                                                                    for p in list.nested.iter() {
-                                                                        match p {
-                                                                            NestedMeta::Literal(lit) => match lit {
-                                                                                Lit::Str(s) => {
-                                                                                    if compare_method.is_some() {
-                                                                                        panic::reset_parameter("compare_method");
-                                                                                    }
-
-                                                                                    let s = create_path_string_from_lit_str(s);
-
-                                                                                    if let Some(s) = s {
-                                                                                        compare_method = Some(s);
-                                                                                    } else {
-                                                                                        panic::empty_parameter("compare_method");
-                                                                                    }
-                                                                                }
-                                                                                _ => panic::parameter_incorrect_format("compare_method", &correct_usage_for_compare)
-                                                                            }
-                                                                            _ => panic::parameter_incorrect_format("compare_method", &correct_usage_for_compare)
-                                                                        }
-                                                                    }
-                                                                }
-                                                                Meta::NameValue(named_value) => {
-                                                                    let lit = &named_value.lit;
-
-                                                                    match lit {
-                                                                        Lit::Str(s) => {
-                                                                            if compare_method.is_some() {
-                                                                                panic::reset_parameter("compare_method");
-                                                                            }
-
-                                                                            let s = create_path_string_from_lit_str(s);
-
-                                                                            if let Some(s) = s {
-                                                                                compare_method = Some(s);
-                                                                            } else {
-                                                                                panic::empty_parameter("compare_method");
-                                                                            }
-                                                                        }
-                                                                        _ => panic::parameter_incorrect_format("compare_method", &correct_usage_for_compare)
-                                                                    }
-                                                                }
-                                                                _ => panic::parameter_incorrect_format("compare_method", &correct_usage_for_compare)
-                                                            }
-                                                            "trait" => match meta {
-                                                                Meta::List(list) => {
-                                                                    for p in list.nested.iter() {
-                                                                        match p {
-                                                                            NestedMeta::Literal(lit) => match lit {
-                                                                                Lit::Str(s) => {
-                                                                                    if compare_trait.is_some() {
-                                                                                        panic::reset_parameter("compare_trait");
-                                                                                    }
-
-                                                                                    let s = create_path_string_from_lit_str(s);
-
-                                                                                    if let Some(s) = s {
-                                                                                        compare_trait = Some(s);
-                                                                                    } else {
-                                                                                        panic::empty_parameter("compare_trait");
-                                                                                    }
-                                                                                }
-                                                                                _ => panic::parameter_incorrect_format("compare_trait", &correct_usage_for_compare)
-                                                                            }
-                                                                            _ => panic::parameter_incorrect_format("compare_trait", &correct_usage_for_compare)
-                                                                        }
-                                                                    }
-                                                                }
-                                                                Meta::NameValue(named_value) => {
-                                                                    let lit = &named_value.lit;
-
-                                                                    match lit {
-                                                                        Lit::Str(s) => {
-                                                                            if compare_trait.is_some() {
-                                                                                panic::reset_parameter("compare_trait");
-                                                                            }
-
-                                                                            let s = create_path_string_from_lit_str(s);
-
-                                                                            if let Some(s) = s {
-                                                                                compare_trait = Some(s);
-                                                                            } else {
-                                                                                panic::empty_parameter("compare_trait");
-                                                                            }
-                                                                        }
-                                                                        _ => panic::parameter_incorrect_format("compare_trait", &correct_usage_for_compare)
-                                                                    }
-                                                                }
-                                                                _ => panic::parameter_incorrect_format("compare_trait", &correct_usage_for_compare)
-                                                            }
-                                                            _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_compare)
-                                                        }
-                                                    }
                                                     NestedMeta::Literal(lit) => match lit {
                                                         Lit::Str(s) => {
                                                             if compare_method.is_some() {
-                                                                panic::reset_parameter("compare_method");
+                                                                panic::reset_parameter(
+                                                                    meta_name.as_str(),
+                                                                );
                                                             }
 
-                                                            let s = create_path_string_from_lit_str(s);
+                                                            let s =
+                                                                create_path_string_from_lit_str(s);
 
                                                             if let Some(s) = s {
                                                                 compare_method = Some(s);
                                                             } else {
-                                                                panic::empty_parameter("compare_method");
+                                                                panic::empty_parameter(
+                                                                    meta_name.as_str(),
+                                                                );
                                                             }
                                                         }
-                                                        _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_compare)
-                                                    }
+                                                        _ => panic::parameter_incorrect_format(
+                                                            meta_name.as_str(),
+                                                            &correct_usage_for_impl,
+                                                        ),
+                                                    },
+                                                    _ => panic::parameter_incorrect_format(
+                                                        meta_name.as_str(),
+                                                        &correct_usage_for_impl,
+                                                    ),
                                                 }
                                             }
                                         }
@@ -208,7 +131,7 @@ impl FieldAttributeBuilder {
                                             match lit {
                                                 Lit::Str(s) => {
                                                     if compare_method.is_some() {
-                                                        panic::reset_parameter("compare_method");
+                                                        panic::reset_parameter(meta_name.as_str());
                                                     }
 
                                                     let s = create_path_string_from_lit_str(s);
@@ -216,23 +139,104 @@ impl FieldAttributeBuilder {
                                                     if let Some(s) = s {
                                                         compare_method = Some(s);
                                                     } else {
-                                                        panic::empty_parameter("compare_method");
+                                                        panic::empty_parameter(meta_name.as_str());
                                                     }
                                                 }
-                                                _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_compare)
+                                                _ => panic::parameter_incorrect_format(
+                                                    meta_name.as_str(),
+                                                    &correct_usage_for_impl,
+                                                ),
                                             }
                                         }
-                                        _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_compare)
+                                        _ => panic::parameter_incorrect_format(
+                                            meta_name.as_str(),
+                                            &correct_usage_for_impl,
+                                        ),
                                     }
                                 }
-                                _ => panic::unknown_parameter("PartialEq", meta_name.as_str())
+                                "trait" => {
+                                    if !self.enable_impl {
+                                        panic::unknown_parameter("PartialEq", meta_name.as_str());
+                                    }
+
+                                    match meta {
+                                        Meta::List(list) => {
+                                            for p in list.nested.iter() {
+                                                match p {
+                                                    NestedMeta::Literal(lit) => match lit {
+                                                        Lit::Str(s) => {
+                                                            if compare_trait.is_some() {
+                                                                panic::reset_parameter(
+                                                                    meta_name.as_str(),
+                                                                );
+                                                            }
+
+                                                            let s =
+                                                                create_path_string_from_lit_str(s);
+
+                                                            if let Some(s) = s {
+                                                                compare_trait = Some(s);
+                                                            } else {
+                                                                panic::empty_parameter(
+                                                                    meta_name.as_str(),
+                                                                );
+                                                            }
+                                                        }
+                                                        _ => panic::parameter_incorrect_format(
+                                                            meta_name.as_str(),
+                                                            &correct_usage_for_impl,
+                                                        ),
+                                                    },
+                                                    _ => panic::parameter_incorrect_format(
+                                                        meta_name.as_str(),
+                                                        &correct_usage_for_impl,
+                                                    ),
+                                                }
+                                            }
+                                        }
+                                        Meta::NameValue(named_value) => {
+                                            let lit = &named_value.lit;
+
+                                            match lit {
+                                                Lit::Str(s) => {
+                                                    if compare_trait.is_some() {
+                                                        panic::reset_parameter(meta_name.as_str());
+                                                    }
+
+                                                    let s = create_path_string_from_lit_str(s);
+
+                                                    if let Some(s) = s {
+                                                        compare_trait = Some(s);
+                                                    } else {
+                                                        panic::empty_parameter(meta_name.as_str());
+                                                    }
+                                                }
+                                                _ => panic::parameter_incorrect_format(
+                                                    meta_name.as_str(),
+                                                    &correct_usage_for_impl,
+                                                ),
+                                            }
+                                        }
+                                        _ => panic::parameter_incorrect_format(
+                                            meta_name.as_str(),
+                                            &correct_usage_for_impl,
+                                        ),
+                                    }
+                                }
+                                _ => panic::unknown_parameter("PartialEq", meta_name.as_str()),
                             }
                         }
-                        _ => panic::attribute_incorrect_format("PartialEq", &correct_usage_for_partial_eq_attribute)
+                        _ => panic::attribute_incorrect_format(
+                            "PartialEq",
+                            &correct_usage_for_partial_eq_attribute,
+                        ),
                     }
                 }
             }
-            _ => panic::attribute_incorrect_format("PartialEq", &correct_usage_for_partial_eq_attribute)
+            _ => panic::attribute_incorrect_format(
+                "PartialEq",
+                &correct_usage_for_partial_eq_attribute,
+            ),
         }
 
         if compare_trait.is_some() {
@@ -278,13 +282,13 @@ impl FieldAttributeBuilder {
                                         result = Some(self.from_partial_eq_meta(&meta));
                                     }
                                 }
-                                _ => panic::educe_format_incorrect()
+                                _ => panic::educe_format_incorrect(),
                             }
                         }
                     }
-                    _ => panic::educe_format_incorrect()
-                }
-                _ => ()
+                    _ => panic::educe_format_incorrect(),
+                },
+                _ => (),
             }
         }
 

@@ -1,5 +1,4 @@
 #![cfg(feature = "Default")]
-
 #![no_std]
 
 #[macro_use]
@@ -14,9 +13,7 @@ fn basic() {
         f1: u8,
     }
 
-    assert_eq!(0, unsafe {
-        Union::default().f1
-    });
+    assert_eq!(0, unsafe { Union::default().f1 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -25,9 +22,7 @@ fn basic() {
         f1: u8,
     }
 
-    assert_eq!(0, unsafe {
-        Union2::default().f1
-    });
+    assert_eq!(0, unsafe { Union2::default().f1 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -37,9 +32,7 @@ fn basic() {
         f2: f64,
     }
 
-    assert_eq!(0.0, unsafe {
-        Union3::default().f2
-    });
+    assert_eq!(0.0, unsafe { Union3::default().f2 });
 }
 
 #[test]
@@ -52,9 +45,7 @@ fn type_default_1() {
         f2: f64,
     }
 
-    assert_eq!(1, unsafe {
-        Union::default().f1
-    });
+    assert_eq!(1, unsafe { Union::default().f1 });
 }
 
 #[test]
@@ -67,9 +58,7 @@ fn type_default_2() {
         f2: f64,
     }
 
-    assert_eq!(1, unsafe {
-        Union::default().f1
-    });
+    assert_eq!(1, unsafe { Union::default().f1 });
 }
 
 #[test]
@@ -87,9 +76,7 @@ fn field_default_1() {
         f6: char,
     }
 
-    assert_eq!(1, unsafe {
-        Union::default().f1
-    });
+    assert_eq!(1, unsafe { Union::default().f1 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -119,9 +106,7 @@ fn field_default_1() {
         f6: char,
     }
 
-    assert_eq!(1.1, unsafe {
-        Union3::default().f3
-    });
+    assert_eq!(1.1, unsafe { Union3::default().f3 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -135,9 +120,7 @@ fn field_default_1() {
         f6: char,
     }
 
-    assert_eq!(true, unsafe {
-        Union4::default().f4
-    });
+    assert_eq!(true, unsafe { Union4::default().f4 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -151,9 +134,7 @@ fn field_default_1() {
         f6: char,
     }
 
-    assert_eq!("Hi", unsafe {
-        Union5::default().f5
-    });
+    assert_eq!("Hi", unsafe { Union5::default().f5 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -167,9 +148,7 @@ fn field_default_1() {
         f6: char,
     }
 
-    assert_eq!('M', unsafe {
-        Union6::default().f6
-    });
+    assert_eq!('M', unsafe { Union6::default().f6 });
 }
 
 #[test]
@@ -187,9 +166,7 @@ fn field_default_2() {
         f6: char,
     }
 
-    assert_eq!(1, unsafe {
-        Union::default().f1
-    });
+    assert_eq!(1, unsafe { Union::default().f1 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -219,9 +196,7 @@ fn field_default_2() {
         f6: char,
     }
 
-    assert_eq!(1.1, unsafe {
-        Union3::default().f3
-    });
+    assert_eq!(1.1, unsafe { Union3::default().f3 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -235,9 +210,7 @@ fn field_default_2() {
         f6: char,
     }
 
-    assert_eq!(true, unsafe {
-        Union4::default().f4
-    });
+    assert_eq!(true, unsafe { Union4::default().f4 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -251,9 +224,7 @@ fn field_default_2() {
         f6: char,
     }
 
-    assert_eq!("Hi", unsafe {
-        Union5::default().f5
-    });
+    assert_eq!("Hi", unsafe { Union5::default().f5 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -267,9 +238,7 @@ fn field_default_2() {
         f6: char,
     }
 
-    assert_eq!('M', unsafe {
-        Union6::default().f6
-    });
+    assert_eq!('M', unsafe { Union6::default().f6 });
 }
 
 #[test]
@@ -287,9 +256,7 @@ fn field_default_3() {
         f6: char,
     }
 
-    assert_eq!(1, unsafe {
-        Union::default().f1
-    });
+    assert_eq!(1, unsafe { Union::default().f1 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -319,9 +286,7 @@ fn field_default_3() {
         f6: char,
     }
 
-    assert_eq!(1.1, unsafe {
-        Union3::default().f3
-    });
+    assert_eq!(1.1, unsafe { Union3::default().f3 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -335,9 +300,7 @@ fn field_default_3() {
         f6: char,
     }
 
-    assert_eq!(true, unsafe {
-        Union4::default().f4
-    });
+    assert_eq!(true, unsafe { Union4::default().f4 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -351,9 +314,7 @@ fn field_default_3() {
         f6: char,
     }
 
-    assert_eq!("Hi", unsafe {
-        Union5::default().f5
-    });
+    assert_eq!("Hi", unsafe { Union5::default().f5 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -367,9 +328,7 @@ fn field_default_3() {
         f6: char,
     }
 
-    assert_eq!('M', unsafe {
-        Union6::default().f6
-    });
+    assert_eq!('M', unsafe { Union6::default().f6 });
 }
 
 #[test]
@@ -387,9 +346,7 @@ fn field_default_4() {
         f6: char,
     }
 
-    assert_eq!(1, unsafe {
-        Union::default().f1
-    });
+    assert_eq!(1, unsafe { Union::default().f1 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -419,9 +376,7 @@ fn field_default_4() {
         f6: char,
     }
 
-    assert_eq!(1.1, unsafe {
-        Union3::default().f3
-    });
+    assert_eq!(1.1, unsafe { Union3::default().f3 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -435,9 +390,7 @@ fn field_default_4() {
         f6: char,
     }
 
-    assert_eq!(true, unsafe {
-        Union4::default().f4
-    });
+    assert_eq!(true, unsafe { Union4::default().f4 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -451,9 +404,7 @@ fn field_default_4() {
         f6: char,
     }
 
-    assert_eq!("Hi", unsafe {
-        Union5::default().f5
-    });
+    assert_eq!("Hi", unsafe { Union5::default().f5 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -467,9 +418,7 @@ fn field_default_4() {
         f6: char,
     }
 
-    assert_eq!('M', unsafe {
-        Union6::default().f6
-    });
+    assert_eq!('M', unsafe { Union6::default().f6 });
 }
 
 #[test]
@@ -481,9 +430,7 @@ fn bound_1() {
         f1: T,
     }
 
-    assert_eq!(0, unsafe {
-        Union::default().f1
-    });
+    assert_eq!(0, unsafe { Union::default().f1 });
 
     #[derive(Educe)]
     #[educe(Default(bound))]
@@ -493,9 +440,7 @@ fn bound_1() {
         f2: K,
     }
 
-    assert_eq!(0.0, unsafe {
-        Union2::<u8, f64>::default().f2
-    });
+    assert_eq!(0.0, unsafe { Union2::<u8, f64>::default().f2 });
 }
 
 #[test]
@@ -507,9 +452,7 @@ fn bound_2() {
         f1: T,
     }
 
-    assert_eq!(0, unsafe {
-        Union::default().f1
-    });
+    assert_eq!(0, unsafe { Union::default().f1 });
 
     #[derive(Educe)]
     #[educe(Default(bound = "K: core::default::Default"))]
@@ -519,9 +462,7 @@ fn bound_2() {
         f2: K,
     }
 
-    assert_eq!(0.0, unsafe {
-        Union2::<u8, f64>::default().f2
-    });
+    assert_eq!(0.0, unsafe { Union2::<u8, f64>::default().f2 });
 }
 
 #[test]
@@ -533,9 +474,7 @@ fn bound_3() {
         f1: T,
     }
 
-    assert_eq!(0, unsafe {
-        Union::default().f1
-    });
+    assert_eq!(0, unsafe { Union::default().f1 });
 
     #[derive(Educe)]
     #[educe(Default(bound("K: core::default::Default")))]
@@ -545,9 +484,7 @@ fn bound_3() {
         f2: K,
     }
 
-    assert_eq!(0.0, unsafe {
-        Union2::<u8, f64>::default().f2
-    });
+    assert_eq!(0.0, unsafe { Union2::<u8, f64>::default().f2 });
 }
 
 #[test]
@@ -559,9 +496,7 @@ fn new() {
         f1: u8,
     }
 
-    assert_eq!(0, unsafe {
-        Union::new().f1
-    });
+    assert_eq!(0, unsafe { Union::new().f1 });
 
     #[derive(Educe)]
     #[educe(Default(new))]
@@ -571,7 +506,5 @@ fn new() {
         f2: f64,
     }
 
-    assert_eq!(0.0, unsafe {
-        Union2::new().f2
-    });
+    assert_eq!(0.0, unsafe { Union2::new().f2 });
 }

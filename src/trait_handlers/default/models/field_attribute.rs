@@ -1,8 +1,8 @@
 use super::super::super::create_expr_string_from_lit_str;
 
-use crate::Trait;
-use crate::syn::{Meta, NestedMeta, Lit, Attribute};
 use crate::panic;
+use crate::syn::{Attribute, Lit, Meta, NestedMeta};
+use crate::Trait;
 
 #[derive(Clone)]
 pub struct FieldAttribute {
@@ -40,7 +40,10 @@ impl FieldAttributeBuilder {
         };
 
         let correct_usage_for_expression = {
-            let usage = vec![stringify!(#[educe(Default(expression = "expression"))]), stringify!(#[educe(Default(expression("expression")))])];
+            let usage = vec![
+                stringify!(#[educe(Default(expression = "expression"))]),
+                stringify!(#[educe(Default(expression("expression")))]),
+            ];
 
             usage
         };
@@ -65,20 +68,31 @@ impl FieldAttributeBuilder {
                                                     NestedMeta::Literal(lit) => match lit {
                                                         Lit::Str(s) => {
                                                             if expression.is_some() {
-                                                                panic::reset_parameter(meta_name.as_str());
+                                                                panic::reset_parameter(
+                                                                    meta_name.as_str(),
+                                                                );
                                                             }
 
-                                                            let s = create_expr_string_from_lit_str(s);
+                                                            let s =
+                                                                create_expr_string_from_lit_str(s);
 
                                                             if s.is_some() {
                                                                 expression = s;
                                                             } else {
-                                                                panic::empty_parameter(meta_name.as_str())
+                                                                panic::empty_parameter(
+                                                                    meta_name.as_str(),
+                                                                )
                                                             }
                                                         }
-                                                        _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_expression)
-                                                    }
-                                                    _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_expression)
+                                                        _ => panic::parameter_incorrect_format(
+                                                            meta_name.as_str(),
+                                                            &correct_usage_for_expression,
+                                                        ),
+                                                    },
+                                                    _ => panic::parameter_incorrect_format(
+                                                        meta_name.as_str(),
+                                                        &correct_usage_for_expression,
+                                                    ),
                                                 }
                                             }
                                         }
@@ -99,18 +113,27 @@ impl FieldAttributeBuilder {
                                                         panic::empty_parameter(meta_name.as_str())
                                                     }
                                                 }
-                                                _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_expression)
+                                                _ => panic::parameter_incorrect_format(
+                                                    meta_name.as_str(),
+                                                    &correct_usage_for_expression,
+                                                ),
                                             }
                                         }
-                                        _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_expression)
+                                        _ => panic::parameter_incorrect_format(
+                                            meta_name.as_str(),
+                                            &correct_usage_for_expression,
+                                        ),
                                     }
                                 }
-                                _ => panic::unknown_parameter("Default", meta_name.as_str())
+                                _ => panic::unknown_parameter("Default", meta_name.as_str()),
                             }
                         }
                         NestedMeta::Literal(lit) => {
                             if !self.enable_literal {
-                                panic::attribute_incorrect_format("Default", &correct_usage_for_default_attribute)
+                                panic::attribute_incorrect_format(
+                                    "Default",
+                                    &correct_usage_for_default_attribute,
+                                )
                             }
 
                             if value.is_some() {
@@ -124,7 +147,10 @@ impl FieldAttributeBuilder {
             }
             Meta::NameValue(named_value) => {
                 if !self.enable_literal {
-                    panic::attribute_incorrect_format("Default", &correct_usage_for_default_attribute)
+                    panic::attribute_incorrect_format(
+                        "Default",
+                        &correct_usage_for_default_attribute,
+                    )
                 }
 
                 let lit = &named_value.lit;
@@ -133,7 +159,10 @@ impl FieldAttributeBuilder {
             }
             Meta::Word(_) => {
                 if !self.enable_flag {
-                    panic::attribute_incorrect_format("Default", &correct_usage_for_default_attribute);
+                    panic::attribute_incorrect_format(
+                        "Default",
+                        &correct_usage_for_default_attribute,
+                    );
                 }
 
                 flag = true;
@@ -181,13 +210,13 @@ impl FieldAttributeBuilder {
                                         result = Some(self.from_default_meta(&meta));
                                     }
                                 }
-                                _ => panic::educe_format_incorrect()
+                                _ => panic::educe_format_incorrect(),
                             }
                         }
                     }
-                    _ => panic::educe_format_incorrect()
-                }
-                _ => ()
+                    _ => panic::educe_format_incorrect(),
+                },
+                _ => (),
             }
         }
 

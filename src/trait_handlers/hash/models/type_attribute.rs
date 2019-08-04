@@ -1,8 +1,13 @@
-use super::super::super::{create_where_predicates_from_lit_str, create_where_predicates_from_generic_parameters};
+use super::super::super::{
+    create_where_predicates_from_generic_parameters, create_where_predicates_from_lit_str,
+};
 
-use crate::Trait;
-use crate::syn::{Meta, NestedMeta, Lit, Attribute, WherePredicate, GenericParam, punctuated::Punctuated, token::Comma};
 use crate::panic;
+use crate::syn::{
+    punctuated::Punctuated, token::Comma, Attribute, GenericParam, Lit, Meta, NestedMeta,
+    WherePredicate,
+};
+use crate::Trait;
 
 #[derive(Clone)]
 pub enum TypeAttributeBound {
@@ -12,11 +17,17 @@ pub enum TypeAttributeBound {
 }
 
 impl TypeAttributeBound {
-    pub fn into_punctuated_where_predicates_by_generic_parameters(self, params: &Punctuated<GenericParam, Comma>) -> Punctuated<WherePredicate, Comma> {
+    pub fn into_punctuated_where_predicates_by_generic_parameters(
+        self,
+        params: &Punctuated<GenericParam, Comma>,
+    ) -> Punctuated<WherePredicate, Comma> {
         match self {
             TypeAttributeBound::None => Punctuated::new(),
-            TypeAttributeBound::Auto => create_where_predicates_from_generic_parameters(params, &syn::parse(quote!(core::hash::Hash).into()).unwrap()),
-            TypeAttributeBound::Custom(where_predicates) => where_predicates
+            TypeAttributeBound::Auto => create_where_predicates_from_generic_parameters(
+                params,
+                &syn::parse(quote!(core::hash::Hash).into()).unwrap(),
+            ),
+            TypeAttributeBound::Custom(where_predicates) => where_predicates,
         }
     }
 }
@@ -49,7 +60,11 @@ impl TypeAttributeBuilder {
         };
 
         let correct_usage_for_bound = {
-            let usage = vec![stringify!(#[educe(Hash(bound))]), stringify!(#[educe(Hash(bound = "where_predicates"))]), stringify!(#[educe(Hash(bound("where_predicates")))])];
+            let usage = vec![
+                stringify!(#[educe(Hash(bound))]),
+                stringify!(#[educe(Hash(bound = "where_predicates"))]),
+                stringify!(#[educe(Hash(bound("where_predicates")))]),
+            ];
 
             usage
         };
@@ -76,7 +91,9 @@ impl TypeAttributeBuilder {
                                                     NestedMeta::Literal(lit) => match lit {
                                                         Lit::Str(s) => {
                                                             if bound_is_set {
-                                                                panic::reset_parameter(meta_name.as_str());
+                                                                panic::reset_parameter(
+                                                                    meta_name.as_str(),
+                                                                );
                                                             }
 
                                                             bound_is_set = true;
@@ -84,13 +101,25 @@ impl TypeAttributeBuilder {
                                                             let where_predicates = create_where_predicates_from_lit_str(s);
 
                                                             bound = match where_predicates {
-                                                                Some(where_predicates) => TypeAttributeBound::Custom(where_predicates),
-                                                                None => panic::empty_parameter(meta_name.as_str())
+                                                                Some(where_predicates) => {
+                                                                    TypeAttributeBound::Custom(
+                                                                        where_predicates,
+                                                                    )
+                                                                }
+                                                                None => panic::empty_parameter(
+                                                                    meta_name.as_str(),
+                                                                ),
                                                             };
                                                         }
-                                                        _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_bound)
-                                                    }
-                                                    _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_bound)
+                                                        _ => panic::parameter_incorrect_format(
+                                                            meta_name.as_str(),
+                                                            &correct_usage_for_bound,
+                                                        ),
+                                                    },
+                                                    _ => panic::parameter_incorrect_format(
+                                                        meta_name.as_str(),
+                                                        &correct_usage_for_bound,
+                                                    ),
                                                 }
                                             }
                                         }
@@ -105,14 +134,24 @@ impl TypeAttributeBuilder {
 
                                                     bound_is_set = true;
 
-                                                    let where_predicates = create_where_predicates_from_lit_str(s);
+                                                    let where_predicates =
+                                                        create_where_predicates_from_lit_str(s);
 
                                                     bound = match where_predicates {
-                                                        Some(where_predicates) => TypeAttributeBound::Custom(where_predicates),
-                                                        None => panic::empty_parameter(meta_name.as_str())
+                                                        Some(where_predicates) => {
+                                                            TypeAttributeBound::Custom(
+                                                                where_predicates,
+                                                            )
+                                                        }
+                                                        None => panic::empty_parameter(
+                                                            meta_name.as_str(),
+                                                        ),
                                                     };
                                                 }
-                                                _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_bound)
+                                                _ => panic::parameter_incorrect_format(
+                                                    meta_name.as_str(),
+                                                    &correct_usage_for_bound,
+                                                ),
                                             }
                                         }
                                         Meta::Word(_) => {
@@ -126,14 +165,19 @@ impl TypeAttributeBuilder {
                                         }
                                     }
                                 }
-                                _ => panic::unknown_parameter("Hash", meta_name.as_str())
+                                _ => panic::unknown_parameter("Hash", meta_name.as_str()),
                             }
                         }
-                        _ => panic::attribute_incorrect_format("Hash", &correct_usage_for_hash_attribute)
+                        _ => panic::attribute_incorrect_format(
+                            "Hash",
+                            &correct_usage_for_hash_attribute,
+                        ),
                     }
                 }
             }
-            Meta::NameValue(_) => panic::attribute_incorrect_format("Hash", &correct_usage_for_hash_attribute),
+            Meta::NameValue(_) => {
+                panic::attribute_incorrect_format("Hash", &correct_usage_for_hash_attribute)
+            }
             Meta::Word(_) => {
                 if !self.enable_flag {
                     panic::attribute_incorrect_format("Hash", &correct_usage_for_hash_attribute);
@@ -143,10 +187,7 @@ impl TypeAttributeBuilder {
             }
         }
 
-        TypeAttribute {
-            flag,
-            bound,
-        }
+        TypeAttribute { flag, bound }
     }
 
     pub fn from_attributes(self, attributes: &[Attribute], traits: &[Trait]) -> TypeAttribute {
@@ -179,13 +220,13 @@ impl TypeAttributeBuilder {
                                         result = Some(self.from_hash_meta(&meta));
                                     }
                                 }
-                                _ => panic::educe_format_incorrect()
+                                _ => panic::educe_format_incorrect(),
                             }
                         }
                     }
-                    _ => panic::educe_format_incorrect()
-                }
-                _ => ()
+                    _ => panic::educe_format_incorrect(),
+                },
+                _ => (),
             }
         }
 

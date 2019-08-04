@@ -2,21 +2,26 @@ mod models;
 
 use super::TraitHandler;
 
-use crate::Trait;
 use crate::proc_macro2::TokenStream;
-use crate::syn::{DeriveInput, Meta, Generics};
+use crate::syn::{DeriveInput, Generics, Meta};
+use crate::Trait;
 
 use models::TypeAttributeBuilder;
 
 pub struct EqHandler;
 
 impl TraitHandler for EqHandler {
-    fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, _traits: &[Trait], meta: &Meta) {
-        let type_attribute = TypeAttributeBuilder {
-            enable_bound: true,
-        }.from_eq_meta(meta);
+    fn trait_meta_handler(
+        ast: &DeriveInput,
+        tokens: &mut TokenStream,
+        _traits: &[Trait],
+        meta: &Meta,
+    ) {
+        let type_attribute = TypeAttributeBuilder { enable_bound: true }.from_eq_meta(meta);
 
-        let bound = type_attribute.bound.into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
+        let bound = type_attribute
+            .bound
+            .into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
 
         let ident = &ast.ident;
 

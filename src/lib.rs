@@ -132,7 +132,7 @@ enum Enum {
 
 #### Use Another Method or Trait to Do the Format Thing
 
-The `format` attribute has two parameters: `trait` and `method`. They can be used to replace the `Debug` trait on fields. If you only set the `trait` parameter, the `method` will be set to `fmt` automatically by default.
+The `trait` and `method` attributes can be used to replace the `Debug` trait for fields. If you only set the `trait` parameter, the `method` will be set to `fmt` automatically by default.
 
 ```rust
 #[macro_use] extern crate educe;
@@ -157,13 +157,13 @@ impl A for u64 {};
 enum Enum<T: A> {
     V1,
     V2 {
-        #[educe(Debug(format(method = "fmt")))]
+        #[educe(Debug(method = "fmt"))]
         f1: u8,
     },
     V3(
-        #[educe(Debug(format(trait = "std::fmt::UpperHex")))]
+        #[educe(Debug(trait = "std::fmt::UpperHex"))]
         u8,
-        #[educe(Debug(format(trait = "A")))]
+        #[educe(Debug(trait = "A"))]
         T
     ),
 }
@@ -214,7 +214,7 @@ impl A for u64 {};
 enum Enum<T, K> {
     V1,
     V2 {
-        #[educe(Debug(format(trait = "A")))]
+        #[educe(Debug(trait = "A"))]
         f1: K,
     },
     V3(
@@ -295,7 +295,7 @@ enum Enum {
 
 #### Use Another Method or Trait to Do Comparing
 
-The `compare` attribute has two parameters: `trait` and `method`. They can be used to replace the `PartialEq` trait on fields. If you only set the `trait` parameter, the `method` will be set to `eq` automatically by default.
+The `trait` and `method` attributes can be used to replace the `PartialEq` trait for fields. If you only set the `trait` parameter, the `method` will be set to `eq` automatically by default.
 
 ```rust
 #[macro_use] extern crate educe;
@@ -325,11 +325,11 @@ impl A for u64 {
 enum Enum<T: A> {
     V1,
     V2 {
-        #[educe(PartialEq(compare(method = "eq")))]
+        #[educe(PartialEq(method = "eq"))]
         f1: u8,
     },
     V3(
-        #[educe(PartialEq(compare(trait = "A")))]
+        #[educe(PartialEq(trait = "A"))]
         T
     ),
 }
@@ -381,7 +381,7 @@ impl A for u64 {
 enum Enum<T, K> {
     V1,
     V2 {
-        #[educe(PartialEq(compare(trait = "A")))]
+        #[educe(PartialEq(trait = "A"))]
         f1: K,
     },
     V3(
@@ -462,7 +462,7 @@ impl A for u64 {
 enum Enum<T, K> {
     V1,
     V2 {
-        #[educe(PartialEq(compare(trait = "A")))]
+        #[educe(PartialEq(trait = "A"))]
         f1: K,
     },
     V3(
@@ -528,7 +528,7 @@ enum Enum {
 
 #### Use Another Method or Trait to Do Comparing
 
-The `compare` attribute has two parameters: `trait` and `method`. They can be used to replace the `PartialOrd` trait on fields. If you only set the `trait` parameter, the `method` will be set to `partial_cmp` automatically by default.
+The `trait` and `method` attributes can be used to replace the `PartialOrd` trait for fields. If you only set the `trait` parameter, the `method` will be set to `partial_cmp` automatically by default.
 
 ```rust
 #[macro_use] extern crate educe;
@@ -566,11 +566,11 @@ impl A for i32 {
 enum Enum<T: std::cmp::PartialEq + A> {
     V1,
     V2 {
-        #[educe(PartialOrd(compare(method = "partial_cmp")))]
+        #[educe(PartialOrd(method = "partial_cmp"))]
         f1: u8,
     },
     V3(
-        #[educe(PartialOrd(compare(trait = "A")))]
+        #[educe(PartialOrd(trait = "A"))]
         T
     ),
 }
@@ -624,7 +624,7 @@ impl A for i32 {
 enum Enum<T, K> {
     V1,
     V2 {
-        #[educe(PartialOrd(compare(trait = "A")))]
+        #[educe(PartialOrd(trait = "A"))]
         f1: K,
     },
     V3(
@@ -635,7 +635,7 @@ enum Enum<T, K> {
 
 #### Ranking
 
-Each field can add a `#[educe(PartialOrd(rank = rank_value))]` attribute where `rank_value` is a positive integer value to determine their comparing precedence (lower `rank_value` leads to higher priority). The default `rank_value` for a field dependends on its ordinal (the lower the front) and is always lower than any custom `rank_value`.
+Each field can add a `#[educe(PartialOrd(rank = priority_value))]` attribute where `priority_value` is a positive integer value to determine their comparing precedence (lower `priority_value` leads to higher priority). The default `priority_value` for a field dependends on its ordinal (the lower the front) and is always lower than any custom `priority_value`.
 
 ```rust
 #[macro_use] extern crate educe;
@@ -650,7 +650,7 @@ struct Struct {
 }
 ```
 
-Each variant can add a `#[educe(PartialOrd(value = comparison_value))]` attribute where `comparison_value` is a positive integer value to override the value or the ordinal of a variant for comparison.
+Each variant can add a `#[educe(PartialOrd(rank = comparison_value))]` attribute where `comparison_value` is a positive integer value to override the value or the ordinal of a variant for comparison.
 
 ```rust
 #[macro_use] extern crate educe;
@@ -658,9 +658,9 @@ Each variant can add a `#[educe(PartialOrd(value = comparison_value))]` attribut
 #[derive(Educe)]
 #[educe(PartialEq, PartialOrd)]
 enum Enum {
-    #[educe(PartialOrd(value = 2))]
+    #[educe(PartialOrd(rank = 2))]
     Two,
-    #[educe(PartialOrd(value = 1))]
+    #[educe(PartialOrd(rank = 1))]
     One,
 }
 ```
@@ -722,7 +722,7 @@ enum Enum {
 
 #### Use Another Method or Trait to Do Comparing
 
-The `compare` attribute has two parameters: `trait` and `method`. They can be used to replace the `Ord` trait on fields. If you only set the `trait` parameter, the `method` will be set to `cmp` automatically by default.
+The `trait` and `method` attributes can be used to replace the `Ord` trait for fields. If you only set the `trait` parameter, the `method` will be set to `cmp` automatically by default.
 
 ```rust
 #[macro_use] extern crate educe;
@@ -760,11 +760,11 @@ impl A for i32 {
 enum Enum<T: std::cmp::PartialOrd + A> {
     V1,
     V2 {
-        #[educe(Ord(compare(method = "cmp")))]
+        #[educe(Ord(method = "cmp"))]
         f1: u8,
     },
     V3(
-        #[educe(Ord(compare(trait = "A")))]
+        #[educe(Ord(trait = "A"))]
         T
     ),
 }
@@ -818,7 +818,7 @@ impl A for i32 {
 enum Enum<T, K> {
     V1,
     V2 {
-        #[educe(Ord(compare(trait = "A")))]
+        #[educe(Ord(trait = "A"))]
         f1: K,
     },
     V3(
@@ -829,7 +829,7 @@ enum Enum<T, K> {
 
 #### Ranking
 
-Each field can add a `#[educe(Ord(rank = rank_value))]` attribute where `rank_value` is a positive integer value to determine their comparing precedence (lower `rank_value` leads to higher priority). The default `rank_value` for a field dependends on its ordinal (the lower the front) and is always lower than any custom `rank_value`.
+Each field can add a `#[educe(Ord(rank = priority_value))]` attribute where `priority_value` is a positive integer value to determine their comparing precedence (lower `priority_value` leads to higher priority). The default `priority_value` for a field dependends on its ordinal (the lower the front) and is always lower than any custom `priority_value`.
 
 ```rust
 #[macro_use] extern crate educe;
@@ -844,7 +844,7 @@ struct Struct {
 }
 ```
 
-Each variant can add a `#[educe(Ord(value = comparison_value))]` attribute where `comparison_value` is a positive integer value to override the value or the ordinal of a variant for comparison.
+Each variant can add a `#[educe(Ord(rank = comparison_value))]` attribute where `comparison_value` is a positive integer value to override the value or the ordinal of a variant for comparison.
 
 ```rust
 #[macro_use] extern crate educe;
@@ -852,9 +852,9 @@ Each variant can add a `#[educe(Ord(value = comparison_value))]` attribute where
 #[derive(Educe)]
 #[educe(PartialEq, Eq, PartialOrd, Ord)]
 enum Enum {
-    #[educe(Ord(value = 2))]
+    #[educe(Ord(rank = 2))]
     Two,
-    #[educe(Ord(value = 1))]
+    #[educe(Ord(rank = 1))]
     One,
 }
 ```
@@ -916,7 +916,7 @@ enum Enum {
 
 #### Use Another Method or Trait to Do Hashing
 
-The `hash` attribute has two parameters: `trait` and `method`. They can be used to replace the `Hash` trait on fields. If you only set the `trait` parameter, the `method` will be set to `hash` automatically by default.
+The `trait` and `method` attributes can be used to replace the `Hash` trait for fields. If you only set the `trait` parameter, the `method` will be set to `hash` automatically by default.
 
 ```rust
 #[macro_use] extern crate educe;
@@ -941,11 +941,11 @@ impl A for u64 {};
 enum Enum<T: A> {
     V1,
     V2 {
-        #[educe(Hash(hash(method = "hash")))]
+        #[educe(Hash(method = "hash"))]
         f1: u8,
     },
     V3(
-        #[educe(Hash(hash(trait = "A")))]
+        #[educe(Hash(trait = "A"))]
         T
     ),
 }
@@ -996,7 +996,7 @@ impl A for u64 {};
 enum Enum<T, K> {
     V1,
     V2 {
-        #[educe(Hash(hash(trait = "A")))]
+        #[educe(Hash(trait = "A"))]
         f1: K,
     },
     V3(
@@ -1213,7 +1213,7 @@ enum Enum {
 
 #### Use Another Method or Trait to Do Cloning
 
-The `clone` attribute has two parameters: `trait` and `method`. They can be used to replace the `Clone` trait on fields. If you only set the `trait` parameter, the `method` will be set to `clone` automatically by default.
+The `trait` and `method` attributes can be used to replace the `Clone` trait for fields. If you only set the `trait` parameter, the `method` will be set to `clone` automatically by default.
 
 ```rust
 #[macro_use] extern crate educe;
@@ -1243,11 +1243,11 @@ impl A for u64 {
 enum Enum<T: A> {
     V1,
     V2 {
-        #[educe(Clone(clone(method = "clone")))]
+        #[educe(Clone(method = "clone"))]
         f1: u8,
     },
     V3(
-        #[educe(Clone(clone(trait = "A")))]
+        #[educe(Clone(trait = "A"))]
         T
     ),
 }
@@ -1303,7 +1303,7 @@ impl A for u64 {
 enum Enum<T, K> {
     V1,
     V2 {
-        #[educe(Clone(clone(trait = "A")))]
+        #[educe(Clone(trait = "A"))]
         f1: K,
     },
     V3(
@@ -1402,7 +1402,7 @@ impl A for u64 {
 enum Enum<T, K> {
     V1,
     V2 {
-        #[educe(Clone(clone(trait = "A")))]
+        #[educe(Copy(trait = "A"))]
         f1: K,
     },
     V3(
@@ -1518,9 +1518,9 @@ extern crate syn;
 #[macro_use]
 extern crate quote;
 
+mod panic;
 mod support_traits;
 mod trait_handlers;
-mod panic;
 
 use proc_macro2::TokenStream;
 use syn::{DeriveInput, Meta, NestedMeta};
@@ -1529,8 +1529,20 @@ use support_traits::Trait;
 
 use trait_handlers::TraitHandler;
 
-#[cfg(not(any(feature = "Debug", feature = "PartialEq", feature = "Eq", feature = "PartialOrd", feature = "Ord", feature = "Hash", feature = "Default", feature = "Clone", feature = "Copy", feature = "Deref", feature = "DerefMut")))]
-compile_error!("one of the trait features must be enabled");
+#[cfg(not(any(
+    feature = "Debug",
+    feature = "PartialEq",
+    feature = "Eq",
+    feature = "PartialOrd",
+    feature = "Ord",
+    feature = "Hash",
+    feature = "Default",
+    feature = "Clone",
+    feature = "Copy",
+    feature = "Deref",
+    feature = "DerefMut"
+)))]
+compile_error!("at least one of the trait features must be enabled");
 
 #[cfg(feature = "Debug")]
 use trait_handlers::DebugHandler;
@@ -1592,94 +1604,100 @@ fn derive_input_handler(ast: DeriveInput) -> TokenStream {
                                 traits.push(t);
                                 metas.push(meta);
                             }
-                            NestedMeta::Literal(_) => panic::attribute_incorrect_format("educe", &[stringify!(#[educe(Trait1, Trait2, ..., TraitN)])])
+                            NestedMeta::Literal(_) => panic::attribute_incorrect_format(
+                                "educe",
+                                &[stringify!(#[educe(Trait1, Trait2, ..., TraitN)])],
+                            ),
                         }
                     }
                 }
-                _ => panic::attribute_incorrect_format("educe", &[stringify!(#[educe(Trait1, Trait2, ..., TraitN)])])
-            }
-            _ => ()
+                _ => panic::attribute_incorrect_format(
+                    "educe",
+                    &[stringify!(#[educe(Trait1, Trait2, ..., TraitN)])],
+                ),
+            },
+            _ => (),
         }
     }
 
     traits.sort();
 
     #[cfg(feature = "Debug")]
-        {
-            if let Ok(index) = traits.binary_search(&Trait::Debug) {
-                DebugHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
-            }
+    {
+        if let Ok(index) = traits.binary_search(&Trait::Debug) {
+            DebugHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
         }
+    }
 
     #[cfg(feature = "PartialEq")]
-        {
-            if let Ok(index) = traits.binary_search(&Trait::PartialEq) {
-                PartialEqHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
-            }
+    {
+        if let Ok(index) = traits.binary_search(&Trait::PartialEq) {
+            PartialEqHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
         }
+    }
 
     #[cfg(feature = "Eq")]
-        {
-            if let Ok(index) = traits.binary_search(&Trait::Eq) {
-                EqHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
-            }
+    {
+        if let Ok(index) = traits.binary_search(&Trait::Eq) {
+            EqHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
         }
+    }
 
     #[cfg(feature = "PartialOrd")]
-        {
-            if let Ok(index) = traits.binary_search(&Trait::PartialOrd) {
-                PartialOrdHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
-            }
+    {
+        if let Ok(index) = traits.binary_search(&Trait::PartialOrd) {
+            PartialOrdHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
         }
+    }
 
     #[cfg(feature = "Ord")]
-        {
-            if let Ok(index) = traits.binary_search(&Trait::Ord) {
-                OrdHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
-            }
+    {
+        if let Ok(index) = traits.binary_search(&Trait::Ord) {
+            OrdHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
         }
+    }
 
     #[cfg(feature = "Hash")]
-        {
-            if let Ok(index) = traits.binary_search(&Trait::Hash) {
-                HashHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
-            }
+    {
+        if let Ok(index) = traits.binary_search(&Trait::Hash) {
+            HashHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
         }
+    }
 
     #[cfg(feature = "Default")]
-        {
-            if let Ok(index) = traits.binary_search(&Trait::Default) {
-                DefaultHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
-            }
+    {
+        if let Ok(index) = traits.binary_search(&Trait::Default) {
+            DefaultHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
         }
+    }
 
     #[cfg(feature = "Clone")]
-        {
-            if let Ok(index) = traits.binary_search(&Trait::Clone) {
-                CloneHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
-            }
+    {
+        if let Ok(index) = traits.binary_search(&Trait::Clone) {
+            CloneHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
         }
+    }
 
     #[cfg(feature = "Copy")]
-        {
-            if let Ok(index) = traits.binary_search(&Trait::Copy) {
-                CopyHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
-            }
+    {
+        if let Ok(index) = traits.binary_search(&Trait::Copy) {
+            CopyHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
         }
+    }
 
     #[cfg(feature = "Deref")]
-        {
-            if let Ok(index) = traits.binary_search(&Trait::Deref) {
-                DerefHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
-            }
+    {
+        if let Ok(index) = traits.binary_search(&Trait::Deref) {
+            DerefHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
         }
+    }
 
     #[cfg(feature = "DerefMut")]
-        {
-            if let Ok(index) = traits.binary_search(&Trait::DerefMut) {
-                DerefMutHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
-            }
+    {
+        if let Ok(index) = traits.binary_search(&Trait::DerefMut) {
+            DerefMutHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
         }
+    }
 
     if tokens.is_empty() {
         panic::derive_attribute_not_set_up_yet("Educe");

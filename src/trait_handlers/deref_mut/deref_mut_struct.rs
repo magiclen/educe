@@ -1,20 +1,23 @@
 use std::str::FromStr;
 
 use super::super::TraitHandler;
-use super::models::{TypeAttributeBuilder, FieldAttributeBuilder};
+use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
 
-use crate::Trait;
-use crate::proc_macro2::TokenStream;
-use crate::syn::{DeriveInput, Meta, Data};
 use crate::panic;
+use crate::proc_macro2::TokenStream;
+use crate::syn::{Data, DeriveInput, Meta};
+use crate::Trait;
 
 pub struct DerefMutStructHandler;
 
 impl TraitHandler for DerefMutStructHandler {
-    fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta) {
-        let _ = TypeAttributeBuilder {
-            enable_flag: true,
-        }.from_deref_mut_meta(meta);
+    fn trait_meta_handler(
+        ast: &DeriveInput,
+        tokens: &mut TokenStream,
+        traits: &[Trait],
+        meta: &Meta,
+    ) {
+        let _ = TypeAttributeBuilder { enable_flag: true }.from_deref_mut_meta(meta);
 
         let mut deref_mut_tokens = TokenStream::new();
 
@@ -22,9 +25,8 @@ impl TraitHandler for DerefMutStructHandler {
             let mut counter = 0;
 
             for (index, field) in data.fields.iter().enumerate() {
-                let field_attribute = FieldAttributeBuilder {
-                    enable_flag: true,
-                }.from_attributes(&field.attrs, traits);
+                let field_attribute = FieldAttributeBuilder { enable_flag: true }
+                    .from_attributes(&field.attrs, traits);
 
                 if field_attribute.flag {
                     if !deref_mut_tokens.is_empty() {
@@ -37,7 +39,13 @@ impl TraitHandler for DerefMutStructHandler {
                         format!("{}", index)
                     };
 
-                    deref_mut_tokens.extend(TokenStream::from_str(&format!("&mut self.{field_name}", field_name = field_name)).unwrap());
+                    deref_mut_tokens.extend(
+                        TokenStream::from_str(&format!(
+                            "&mut self.{field_name}",
+                            field_name = field_name
+                        ))
+                        .unwrap(),
+                    );
                 }
 
                 counter += 1;
@@ -53,8 +61,14 @@ impl TraitHandler for DerefMutStructHandler {
                         String::from("0")
                     };
 
-                    deref_mut_tokens.extend(TokenStream::from_str(&format!("&mut self.{field_name}", field_name = field_name)).unwrap());
-                }else{
+                    deref_mut_tokens.extend(
+                        TokenStream::from_str(&format!(
+                            "&mut self.{field_name}",
+                            field_name = field_name
+                        ))
+                        .unwrap(),
+                    );
+                } else {
                     panic::no_deref_mut_field();
                 }
             }

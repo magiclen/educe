@@ -1,14 +1,21 @@
 use super::super::TraitHandler;
-use super::models::{TypeAttributeBuilder, TypeAttributeName, FieldAttributeBuilder, FieldAttributeName};
+use super::models::{
+    FieldAttributeBuilder, FieldAttributeName, TypeAttributeBuilder, TypeAttributeName,
+};
 
-use crate::Trait;
 use crate::proc_macro2::TokenStream;
-use crate::syn::{DeriveInput, Meta, Data, Generics};
+use crate::syn::{Data, DeriveInput, Generics, Meta};
+use crate::Trait;
 
 pub struct DebugUnionHandler;
 
 impl TraitHandler for DebugUnionHandler {
-    fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta) {
+    fn trait_meta_handler(
+        ast: &DeriveInput,
+        tokens: &mut TokenStream,
+        traits: &[Trait],
+        meta: &Meta,
+    ) {
         let type_attribute = TypeAttributeBuilder {
             enable_flag: true,
             name: TypeAttributeName::Default,
@@ -16,11 +23,14 @@ impl TraitHandler for DebugUnionHandler {
             named_field: false,
             enable_named_field: false,
             enable_bound: true,
-        }.from_debug_meta(meta);
+        }
+        .from_debug_meta(meta);
 
         let name = type_attribute.name.into_string_by_ident(&ast.ident);
 
-        let bound = type_attribute.bound.into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
+        let bound = type_attribute
+            .bound
+            .into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
 
         let mut builder_tokens = TokenStream::new();
 
@@ -30,8 +40,9 @@ impl TraitHandler for DebugUnionHandler {
                     name: FieldAttributeName::Default,
                     enable_name: false,
                     enable_ignore: false,
-                    enable_format: false,
-                }.from_attributes(&field.attrs, traits);
+                    enable_impl: false,
+                }
+                .from_attributes(&field.attrs, traits);
             }
 
             if name.is_empty() {

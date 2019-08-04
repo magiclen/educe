@@ -1,5 +1,4 @@
 #![cfg(feature = "Default")]
-
 #![no_std]
 
 extern crate alloc;
@@ -19,7 +18,7 @@ fn basic() {
     #[derive(Educe)]
     #[educe(Default)]
     struct Struct {
-        f1: u8
+        f1: u8,
     }
 
     #[derive(Educe)]
@@ -46,7 +45,7 @@ fn type_default_1() {
     #[derive(Educe)]
     #[educe(Default(expression = "Struct { f1: 1 }"))]
     struct Struct {
-        f1: u8
+        f1: u8,
     }
 
     #[derive(Educe)]
@@ -73,7 +72,7 @@ fn type_default_2() {
     #[derive(Educe)]
     #[educe(Default(expression("Struct { f1: 1 }")))]
     struct Struct {
-        f1: u8
+        f1: u8,
     }
 
     #[derive(Educe)]
@@ -114,20 +113,13 @@ fn field_default_1() {
     #[derive(Educe)]
     #[educe(Default)]
     struct Tuple(
-        #[educe(Default = 1)]
-        u8,
-        #[educe(Default = 11111111111111111111111111111)]
-        i128,
-        #[educe(Default = 1.1)]
-        f64,
-        #[educe(Default = true)]
-        bool,
-        #[educe(Default = "Hi")]
-        &'static str,
-        #[educe(Default = "Hello")]
-        String,
-        #[educe(Default = 'M')]
-        char,
+        #[educe(Default = 1)] u8,
+        #[educe(Default = 11111111111111111111111111111)] i128,
+        #[educe(Default = 1.1)] f64,
+        #[educe(Default = true)] bool,
+        #[educe(Default = "Hi")] &'static str,
+        #[educe(Default = "Hello")] String,
+        #[educe(Default = 'M')] char,
     );
 
     let s = Struct::default();
@@ -174,20 +166,13 @@ fn field_default_2() {
     #[derive(Educe)]
     #[educe(Default)]
     struct Tuple(
-        #[educe(Default(1))]
-        u8,
-        #[educe(Default(11111111111111111111111111111))]
-        i128,
-        #[educe(Default(1.1))]
-        f64,
-        #[educe(Default(true))]
-        bool,
-        #[educe(Default("Hi"))]
-        &'static str,
-        #[educe(Default("Hello"))]
-        String,
-        #[educe(Default('M'))]
-        char,
+        #[educe(Default(1))] u8,
+        #[educe(Default(11111111111111111111111111111))] i128,
+        #[educe(Default(1.1))] f64,
+        #[educe(Default(true))] bool,
+        #[educe(Default("Hi"))] &'static str,
+        #[educe(Default("Hello"))] String,
+        #[educe(Default('M'))] char,
     );
 
     let s = Struct::default();
@@ -234,20 +219,13 @@ fn field_default_3() {
     #[derive(Educe)]
     #[educe(Default)]
     struct Tuple(
-        #[educe(Default(expression = "0 + 1"))]
-        u8,
-        #[educe(Default(expression = "-11111111111111111111111111111 * -1"))]
-        i128,
-        #[educe(Default(expression = "1.0 + 0.1"))]
-        f64,
-        #[educe(Default(expression = "!false"))]
-        bool,
-        #[educe(Default(expression = "\"Hi\""))]
-        &'static str,
-        #[educe(Default(expression = "String::from(\"Hello\")"))]
-        String,
-        #[educe(Default(expression = "'M'"))]
-        char,
+        #[educe(Default(expression = "0 + 1"))] u8,
+        #[educe(Default(expression = "-11111111111111111111111111111 * -1"))] i128,
+        #[educe(Default(expression = "1.0 + 0.1"))] f64,
+        #[educe(Default(expression = "!false"))] bool,
+        #[educe(Default(expression = "\"Hi\""))] &'static str,
+        #[educe(Default(expression = "String::from(\"Hello\")"))] String,
+        #[educe(Default(expression = "'M'"))] char,
     );
 
     let s = Struct::default();
@@ -294,20 +272,13 @@ fn field_default_4() {
     #[derive(Educe)]
     #[educe(Default)]
     struct Tuple(
-        #[educe(Default(expression("0 + 1")))]
-        u8,
-        #[educe(Default(expression("-11111111111111111111111111111 * -1")))]
-        i128,
-        #[educe(Default(expression("1.0 + 0.1")))]
-        f64,
-        #[educe(Default(expression("!false")))]
-        bool,
-        #[educe(Default(expression("\"Hi\"")))]
-        &'static str,
-        #[educe(Default(expression("String::from(\"Hello\")")))]
-        String,
-        #[educe(Default(expression("'M'")))]
-        char,
+        #[educe(Default(expression("0 + 1")))] u8,
+        #[educe(Default(expression("-11111111111111111111111111111 * -1")))] i128,
+        #[educe(Default(expression("1.0 + 0.1")))] f64,
+        #[educe(Default(expression("!false")))] bool,
+        #[educe(Default(expression("\"Hi\"")))] &'static str,
+        #[educe(Default(expression("String::from(\"Hello\")")))] String,
+        #[educe(Default(expression("'M'")))] char,
     );
 
     let s = Struct::default();
@@ -335,7 +306,7 @@ fn bound_1() {
     #[derive(Educe)]
     #[educe(Default(bound))]
     struct Struct<T> {
-        f1: T
+        f1: T,
     }
 
     #[derive(Educe)]
@@ -351,7 +322,7 @@ fn bound_2() {
     #[derive(Educe)]
     #[educe(Default(bound = "T: core::default::Default"))]
     struct Struct<T> {
-        f1: T
+        f1: T,
     }
 
     #[derive(Educe)]
@@ -367,7 +338,7 @@ fn bound_3() {
     #[derive(Educe)]
     #[educe(Default(bound("T: core::default::Default")))]
     struct Struct<T> {
-        f1: T
+        f1: T,
     }
 
     #[derive(Educe)]
@@ -388,18 +359,14 @@ fn new() {
     #[derive(Educe)]
     #[educe(Default(new))]
     struct Struct {
-        f1: u8
+        f1: u8,
     }
 
     #[derive(Educe)]
     #[educe(Default(new))]
     struct Tuple(u8);
 
-    assert!(if let Unit = Unit::new() {
-        true
-    } else {
-        false
-    });
+    assert!(if let Unit = Unit::new() { true } else { false });
 
     assert_eq!(0, Struct::new().f1);
     assert_eq!(0, Tuple::new().0);

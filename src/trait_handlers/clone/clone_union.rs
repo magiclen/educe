@@ -1,24 +1,29 @@
 use super::super::TraitHandler;
-use super::models::{TypeAttributeBuilder, FieldAttributeBuilder};
+use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
 
-use crate::Trait;
 use crate::proc_macro2::TokenStream;
-use crate::syn::{DeriveInput, Meta, Data};
+use crate::syn::{Data, DeriveInput, Meta};
+use crate::Trait;
 
 pub struct CloneUnionHandler;
 
 impl TraitHandler for CloneUnionHandler {
-    fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta) {
+    fn trait_meta_handler(
+        ast: &DeriveInput,
+        tokens: &mut TokenStream,
+        traits: &[Trait],
+        meta: &Meta,
+    ) {
         let _ = TypeAttributeBuilder {
             enable_flag: true,
             enable_bound: false,
-        }.from_clone_meta(meta);
+        }
+        .from_clone_meta(meta);
 
         if let Data::Union(data) = &ast.data {
             for field in data.fields.named.iter() {
-                let _ = FieldAttributeBuilder {
-                    enable_clone: false
-                }.from_attributes(&field.attrs, traits);
+                let _ = FieldAttributeBuilder { enable_impl: false }
+                    .from_attributes(&field.attrs, traits);
             }
         }
 

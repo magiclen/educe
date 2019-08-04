@@ -1,29 +1,37 @@
-use std::str::FromStr;
-use std::fmt::Write;
 use std::collections::BTreeMap;
+use std::fmt::Write;
+use std::str::FromStr;
 
 use super::super::TraitHandler;
-use super::models::{TypeAttributeBuilder, FieldAttributeBuilder};
+use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
 
-use crate::Trait;
-use crate::proc_macro2::TokenStream;
-use crate::syn::{DeriveInput, Meta, Data, Generics, Fields};
 use crate::panic;
+use crate::proc_macro2::TokenStream;
+use crate::syn::{Data, DeriveInput, Fields, Generics, Meta};
+use crate::Trait;
 
 pub struct PartialOrdEnumHandler;
 
 impl TraitHandler for PartialOrdEnumHandler {
-    fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta) {
+    fn trait_meta_handler(
+        ast: &DeriveInput,
+        tokens: &mut TokenStream,
+        traits: &[Trait],
+        meta: &Meta,
+    ) {
         let type_attribute = TypeAttributeBuilder {
             enable_flag: true,
             enable_bound: true,
-            value: 0,
-            enable_value: false,
-        }.from_partial_ord_meta(meta);
+            rank: 0,
+            enable_rank: false,
+        }
+        .from_partial_ord_meta(meta);
 
         let enum_name = ast.ident.to_string();
 
-        let bound = type_attribute.bound.into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
+        let bound = type_attribute
+            .bound
+            .into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
 
         let mut comparer_tokens = TokenStream::new();
 
@@ -36,18 +44,21 @@ impl TraitHandler for PartialOrdEnumHandler {
             let mut variant_idents = Vec::new();
             let mut variants = Vec::new();
 
-            let mut variant_to_integer = String::from("let variant_to_integer = |other: &Self| match other {");
-            let mut unit_to_integer = String::from("let unit_to_integer = |other: &Self| match other {");
+            let mut variant_to_integer =
+                String::from("let variant_to_integer = |other: &Self| match other {");
+            let mut unit_to_integer =
+                String::from("let unit_to_integer = |other: &Self| match other {");
 
             for (index, variant) in data.variants.iter().enumerate() {
                 let variant_attribute = TypeAttributeBuilder {
                     enable_flag: false,
                     enable_bound: false,
-                    value: isize::min_value() + index as isize,
-                    enable_value: true,
-                }.from_attributes(&variant.attrs, traits);
+                    rank: isize::min_value() + index as isize,
+                    enable_rank: true,
+                }
+                .from_attributes(&variant.attrs, traits);
 
-                let value = variant_attribute.value;
+                let value = variant_attribute.rank;
 
                 if variant_values.contains(&value) {
                     panic::reuse_a_value(value);
@@ -60,16 +71,33 @@ impl TraitHandler for PartialOrdEnumHandler {
                 let variant_ident = variant.ident.to_string();
 
                 match &variant.fields {
-                    Fields::Unit => { // TODO Unit
+                    Fields::Unit => {
+                        // TODO Unit
                         unit_to_integer.write_fmt(format_args!("{enum_name}::{variant_ident} => {enum_name}::{variant_ident} as isize,", enum_name = enum_name, variant_ident = variant_ident)).unwrap();
-                        variant_to_integer.write_fmt(format_args!("{enum_name}::{variant_ident} => {value},", enum_name = enum_name, variant_ident = variant_ident, value = value)).unwrap();
+                        variant_to_integer
+                            .write_fmt(format_args!(
+                                "{enum_name}::{variant_ident} => {value},",
+                                enum_name = enum_name,
+                                variant_ident = variant_ident,
+                                value = value
+                            ))
+                            .unwrap();
                     }
-                    Fields::Named(_) => {  // TODO Struct
+                    Fields::Named(_) => {
+                        // TODO Struct
                         has_non_unit_or_custom_value = true;
 
-                        variant_to_integer.write_fmt(format_args!("{enum_name}::{variant_ident} {{ .. }} => {value},", enum_name = enum_name, variant_ident = variant_ident, value = value)).unwrap();
+                        variant_to_integer
+                            .write_fmt(format_args!(
+                                "{enum_name}::{variant_ident} {{ .. }} => {value},",
+                                enum_name = enum_name,
+                                variant_ident = variant_ident,
+                                value = value
+                            ))
+                            .unwrap();
                     }
-                    Fields::Unnamed(fields) => {  // TODO Tuple
+                    Fields::Unnamed(fields) => {
+                        // TODO Tuple
                         has_non_unit_or_custom_value = true;
 
                         let mut pattern_tokens = String::new();
@@ -78,7 +106,15 @@ impl TraitHandler for PartialOrdEnumHandler {
                             pattern_tokens.push_str("_,");
                         }
 
-                        variant_to_integer.write_fmt(format_args!("{enum_name}::{variant_ident}( {pattern_tokens} ) => {value},", enum_name = enum_name, variant_ident = variant_ident, pattern_tokens = pattern_tokens, value = value)).unwrap();
+                        variant_to_integer
+                            .write_fmt(format_args!(
+                                "{enum_name}::{variant_ident}( {pattern_tokens} ) => {value},",
+                                enum_name = enum_name,
+                                variant_ident = variant_ident,
+                                pattern_tokens = pattern_tokens,
+                                value = value
+                            ))
+                            .unwrap();
                     }
                 }
 
@@ -97,10 +133,12 @@ impl TraitHandler for PartialOrdEnumHandler {
                     let variant_ident = &variant_idents[index];
 
                     match &variant.fields {
-                        Fields::Unit => { // TODO Unit
+                        Fields::Unit => {
+                            // TODO Unit
                             match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident} => {{ let other_value = variant_to_integer(other); return core::cmp::PartialOrd::partial_cmp(&{variant_value}, &other_value); }}", enum_name = enum_name, variant_ident = variant_ident, variant_value = variant_value)).unwrap();
                         }
-                        Fields::Named(fields) => {  // TODO Struct
+                        Fields::Named(fields) => {
+                            // TODO Struct
                             let mut pattern_tokens = String::new();
                             let mut pattern_2_tokens = String::new();
                             let mut block_tokens = String::new();
@@ -111,16 +149,27 @@ impl TraitHandler for PartialOrdEnumHandler {
                             for (index, field) in fields.named.iter().enumerate() {
                                 let field_attribute = FieldAttributeBuilder {
                                     enable_ignore: true,
-                                    enable_compare: true,
+                                    enable_impl: true,
                                     rank: isize::min_value() + index as isize,
                                     enable_rank: true,
-                                }.from_attributes(&field.attrs, traits);
+                                }
+                                .from_attributes(&field.attrs, traits);
 
                                 let field_name = field.ident.as_ref().unwrap().to_string();
 
                                 if field_attribute.ignore {
-                                    pattern_tokens.write_fmt(format_args!("{field_name}: _,", field_name = field_name)).unwrap();
-                                    pattern_2_tokens.write_fmt(format_args!("{field_name}: _,", field_name = field_name)).unwrap();
+                                    pattern_tokens
+                                        .write_fmt(format_args!(
+                                            "{field_name}: _,",
+                                            field_name = field_name
+                                        ))
+                                        .unwrap();
+                                    pattern_2_tokens
+                                        .write_fmt(format_args!(
+                                            "{field_name}: _,",
+                                            field_name = field_name
+                                        ))
+                                        .unwrap();
                                     continue;
                                 }
 
@@ -130,8 +179,18 @@ impl TraitHandler for PartialOrdEnumHandler {
                                     panic::reuse_a_rank(rank);
                                 }
 
-                                pattern_tokens.write_fmt(format_args!("{field_name},", field_name = field_name)).unwrap();
-                                pattern_2_tokens.write_fmt(format_args!("{field_name}: ___{field_name},", field_name = field_name)).unwrap();
+                                pattern_tokens
+                                    .write_fmt(format_args!(
+                                        "{field_name},",
+                                        field_name = field_name
+                                    ))
+                                    .unwrap();
+                                pattern_2_tokens
+                                    .write_fmt(format_args!(
+                                        "{field_name}: ___{field_name},",
+                                        field_name = field_name
+                                    ))
+                                    .unwrap();
 
                                 field_attributes.insert(rank, field_attribute);
                                 field_names.insert(rank, field_name);
@@ -149,22 +208,21 @@ impl TraitHandler for PartialOrdEnumHandler {
 
                                         block_tokens.write_fmt(format_args!("match {compare_trait}::{compare_method}({field_name}, ___{field_name}) {{ Some(core::cmp::Ordering::Equal) => (), Some(core::cmp::Ordering::Greater) => {{ return Some(core::cmp::Ordering::Greater); }}, Some(core::cmp::Ordering::Less) => {{ return Some(core::cmp::Ordering::Less); }}, None => {{ return None; }} }}", compare_trait = compare_trait, compare_method = compare_method, field_name = field_name)).unwrap();
                                     }
-                                    None => {
-                                        match compare_method {
-                                            Some(compare_method) => {
-                                                block_tokens.write_fmt(format_args!("match {compare_method}({field_name}, ___{field_name}) {{ Some(core::cmp::Ordering::Equal) => (), Some(core::cmp::Ordering::Greater) => {{ return Some(core::cmp::Ordering::Greater); }}, Some(core::cmp::Ordering::Less) => {{ return Some(core::cmp::Ordering::Less); }}, None => {{ return None; }} }}", compare_method = compare_method, field_name = field_name)).unwrap();
-                                            }
-                                            None => {
-                                                block_tokens.write_fmt(format_args!("match core::cmp::PartialOrd::partial_cmp({field_name}, ___{field_name}) {{ Some(core::cmp::Ordering::Equal) => (), Some(core::cmp::Ordering::Greater) => {{ return Some(core::cmp::Ordering::Greater); }}, Some(core::cmp::Ordering::Less) => {{ return Some(core::cmp::Ordering::Less); }}, None => {{ return None; }} }}", field_name = field_name)).unwrap();
-                                            }
+                                    None => match compare_method {
+                                        Some(compare_method) => {
+                                            block_tokens.write_fmt(format_args!("match {compare_method}({field_name}, ___{field_name}) {{ Some(core::cmp::Ordering::Equal) => (), Some(core::cmp::Ordering::Greater) => {{ return Some(core::cmp::Ordering::Greater); }}, Some(core::cmp::Ordering::Less) => {{ return Some(core::cmp::Ordering::Less); }}, None => {{ return None; }} }}", compare_method = compare_method, field_name = field_name)).unwrap();
                                         }
-                                    }
+                                        None => {
+                                            block_tokens.write_fmt(format_args!("match core::cmp::PartialOrd::partial_cmp({field_name}, ___{field_name}) {{ Some(core::cmp::Ordering::Equal) => (), Some(core::cmp::Ordering::Greater) => {{ return Some(core::cmp::Ordering::Greater); }}, Some(core::cmp::Ordering::Less) => {{ return Some(core::cmp::Ordering::Less); }}, None => {{ return None; }} }}", field_name = field_name)).unwrap();
+                                        }
+                                    },
                                 }
                             }
 
                             match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident}{{ {pattern_tokens} }} => {{ if let {enum_name}::{variant_ident} {{ {pattern_2_tokens} }} = other {{ {block_tokens} }} else {{ let other_value = variant_to_integer(other); return core::cmp::PartialOrd::partial_cmp(&{variant_value}, &other_value); }} }}", enum_name = enum_name, variant_ident = variant_ident, pattern_tokens = pattern_tokens, pattern_2_tokens = pattern_2_tokens, block_tokens = block_tokens, variant_value = variant_value)).unwrap();
                         }
-                        Fields::Unnamed(fields) => { // TODO Tuple
+                        Fields::Unnamed(fields) => {
+                            // TODO Tuple
                             let mut pattern_tokens = String::new();
                             let mut pattern_2_tokens = String::new();
                             let mut block_tokens = String::new();
@@ -175,10 +233,11 @@ impl TraitHandler for PartialOrdEnumHandler {
                             for (index, field) in fields.unnamed.iter().enumerate() {
                                 let field_attribute = FieldAttributeBuilder {
                                     enable_ignore: true,
-                                    enable_compare: true,
+                                    enable_impl: true,
                                     rank: isize::min_value() + index as isize,
                                     enable_rank: true,
-                                }.from_attributes(&field.attrs, traits);
+                                }
+                                .from_attributes(&field.attrs, traits);
 
                                 let field_name = format!("{}", index);
 
@@ -194,8 +253,18 @@ impl TraitHandler for PartialOrdEnumHandler {
                                     panic::reuse_a_rank(rank);
                                 }
 
-                                pattern_tokens.write_fmt(format_args!("_{field_name},", field_name = field_name)).unwrap();
-                                pattern_2_tokens.write_fmt(format_args!("__{field_name},", field_name = field_name)).unwrap();
+                                pattern_tokens
+                                    .write_fmt(format_args!(
+                                        "_{field_name},",
+                                        field_name = field_name
+                                    ))
+                                    .unwrap();
+                                pattern_2_tokens
+                                    .write_fmt(format_args!(
+                                        "__{field_name},",
+                                        field_name = field_name
+                                    ))
+                                    .unwrap();
 
                                 field_attributes.insert(rank, field_attribute);
                                 field_names.insert(rank, field_name);
@@ -213,16 +282,14 @@ impl TraitHandler for PartialOrdEnumHandler {
 
                                         block_tokens.write_fmt(format_args!("match {compare_trait}::{compare_method}(_{field_name}, __{field_name}) {{ Some(core::cmp::Ordering::Equal) => (), Some(core::cmp::Ordering::Greater) => {{ return Some(core::cmp::Ordering::Greater); }}, Some(core::cmp::Ordering::Less) => {{ return Some(core::cmp::Ordering::Less); }}, None => {{ return None; }} }}", compare_trait = compare_trait, compare_method = compare_method, field_name = field_name)).unwrap();
                                     }
-                                    None => {
-                                        match compare_method {
-                                            Some(compare_method) => {
-                                                block_tokens.write_fmt(format_args!("match {compare_method}(_{field_name}, __{field_name}) {{ Some(core::cmp::Ordering::Equal) => (), Some(core::cmp::Ordering::Greater) => {{ return Some(core::cmp::Ordering::Greater); }}, Some(core::cmp::Ordering::Less) => {{ return Some(core::cmp::Ordering::Less); }}, None => {{ return None; }} }}", compare_method = compare_method, field_name = field_name)).unwrap();
-                                            }
-                                            None => {
-                                                block_tokens.write_fmt(format_args!("match core::cmp::PartialOrd::partial_cmp(_{field_name}, __{field_name}) {{ Some(core::cmp::Ordering::Equal) => (), Some(core::cmp::Ordering::Greater) => {{ return Some(core::cmp::Ordering::Greater); }}, Some(core::cmp::Ordering::Less) => {{ return Some(core::cmp::Ordering::Less); }}, None => {{ return None; }} }}", field_name = field_name)).unwrap();
-                                            }
+                                    None => match compare_method {
+                                        Some(compare_method) => {
+                                            block_tokens.write_fmt(format_args!("match {compare_method}(_{field_name}, __{field_name}) {{ Some(core::cmp::Ordering::Equal) => (), Some(core::cmp::Ordering::Greater) => {{ return Some(core::cmp::Ordering::Greater); }}, Some(core::cmp::Ordering::Less) => {{ return Some(core::cmp::Ordering::Less); }}, None => {{ return None; }} }}", compare_method = compare_method, field_name = field_name)).unwrap();
                                         }
-                                    }
+                                        None => {
+                                            block_tokens.write_fmt(format_args!("match core::cmp::PartialOrd::partial_cmp(_{field_name}, __{field_name}) {{ Some(core::cmp::Ordering::Equal) => (), Some(core::cmp::Ordering::Greater) => {{ return Some(core::cmp::Ordering::Greater); }}, Some(core::cmp::Ordering::Less) => {{ return Some(core::cmp::Ordering::Less); }}, None => {{ return None; }} }}", field_name = field_name)).unwrap();
+                                        }
+                                    },
                                 }
                             }
 

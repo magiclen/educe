@@ -1,21 +1,27 @@
-use std::str::FromStr;
 use std::fmt::Write;
+use std::str::FromStr;
 
 use super::super::TraitHandler;
-use super::models::{TypeAttributeBuilder, FieldAttributeBuilder};
+use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
 
-use crate::Trait;
 use crate::proc_macro2::TokenStream;
-use crate::syn::{DeriveInput, Meta, Data, Generics, punctuated::Punctuated};
+use crate::syn::{punctuated::Punctuated, Data, DeriveInput, Generics, Meta};
+use crate::Trait;
 
 pub struct CloneStructHandler;
 
 impl TraitHandler for CloneStructHandler {
-    fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta) {
+    fn trait_meta_handler(
+        ast: &DeriveInput,
+        tokens: &mut TokenStream,
+        traits: &[Trait],
+        meta: &Meta,
+    ) {
         let type_attribute = TypeAttributeBuilder {
             enable_flag: true,
             enable_bound: true,
-        }.from_clone_meta(meta);
+        }
+        .from_clone_meta(meta);
 
         let mut bound = Punctuated::new();
 
@@ -28,9 +34,8 @@ impl TraitHandler for CloneStructHandler {
             let mut has_custom_clone_method = false;
 
             for (index, field) in data.fields.iter().enumerate() {
-                let field_attribute = FieldAttributeBuilder {
-                    enable_clone: true,
-                }.from_attributes(&field.attrs, traits);
+                let field_attribute = FieldAttributeBuilder { enable_impl: true }
+                    .from_attributes(&field.attrs, traits);
 
                 let field_name = if let Some(ident) = field.ident.as_ref() {
                     ident.to_string()
@@ -47,7 +52,11 @@ impl TraitHandler for CloneStructHandler {
             }
 
             if cfg!(feature = "Copy") && !has_custom_clone_method && traits.contains(&Trait::Copy) {
-                bound = type_attribute.bound.into_punctuated_where_predicates_by_generic_parameters_with_copy(&ast.generics.params);
+                bound = type_attribute
+                    .bound
+                    .into_punctuated_where_predicates_by_generic_parameters_with_copy(
+                        &ast.generics.params,
+                    );
 
                 clone_tokens.extend(quote!(*self));
 
@@ -59,7 +68,9 @@ impl TraitHandler for CloneStructHandler {
 
                 clone_from_tokens.extend(TokenStream::from_str(&clone_from).unwrap());
             } else {
-                bound = type_attribute.bound.into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
+                bound = type_attribute
+                    .bound
+                    .into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
 
                 let (is_unit, is_tuple) = {
                     if let Some(field) = data.fields.iter().next() {
@@ -94,13 +105,26 @@ impl TraitHandler for CloneStructHandler {
                                 Some(clone_trait) => {
                                     let clone_method = clone_method.unwrap();
 
-                                    clone.write_fmt(format_args!("{clone_trait}::{clone_method}(&self.{field_name}),", clone_trait = clone_trait, clone_method = clone_method, field_name = field_name)).unwrap();
+                                    clone
+                                        .write_fmt(format_args!(
+                                            "{clone_trait}::{clone_method}(&self.{field_name}),",
+                                            clone_trait = clone_trait,
+                                            clone_method = clone_method,
+                                            field_name = field_name
+                                        ))
+                                        .unwrap();
                                     clone_from.write_fmt(format_args!("self.{field_name} = {clone_trait}::{clone_method}(&_source.{field_name});", clone_trait = clone_trait, clone_method = clone_method, field_name = field_name)).unwrap();
                                 }
                                 None => {
                                     match clone_method {
                                         Some(clone_method) => {
-                                            clone.write_fmt(format_args!("{clone_method}(&self.{field_name}),", clone_method = clone_method, field_name = field_name)).unwrap();
+                                            clone
+                                                .write_fmt(format_args!(
+                                                    "{clone_method}(&self.{field_name}),",
+                                                    clone_method = clone_method,
+                                                    field_name = field_name
+                                                ))
+                                                .unwrap();
                                             clone_from.write_fmt(format_args!("self.{field_name} = {clone_method}(&_source.{field_name});", clone_method = clone_method, field_name = field_name)).unwrap();
                                         }
                                         None => {

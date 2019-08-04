@@ -1,5 +1,4 @@
 #![cfg(feature = "Deref")]
-
 #![no_std]
 
 #[macro_use]
@@ -12,7 +11,7 @@ fn basic() {
     #[educe(Deref)]
     enum Enum {
         Struct {
-            f1: u8
+            f1: u8,
         },
         Struct2 {
             f1: u8,
@@ -20,21 +19,12 @@ fn basic() {
             f2: u8,
         },
         Tuple(u8),
-        Tuple2(
-            u8,
-            #[educe(Deref)]
-            u8
-        ),
+        Tuple2(u8, #[educe(Deref)] u8),
     }
 
-    let s1 = Enum::Struct {
-        f1: 1
-    };
+    let s1 = Enum::Struct { f1: 1 };
 
-    let s2 = Enum::Struct2 {
-        f1: 1,
-        f2: 2,
-    };
+    let s2 = Enum::Struct2 { f1: 1, f2: 2 };
 
     let t1 = Enum::Tuple(1);
 

@@ -1,26 +1,34 @@
-use std::str::FromStr;
 use std::collections::BTreeMap;
+use std::str::FromStr;
 
 use super::super::TraitHandler;
-use super::models::{TypeAttributeBuilder, FieldAttributeBuilder};
+use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
 
-use crate::Trait;
-use crate::proc_macro2::TokenStream;
-use crate::syn::{DeriveInput, Meta, Data, Generics};
 use crate::panic;
+use crate::proc_macro2::TokenStream;
+use crate::syn::{Data, DeriveInput, Generics, Meta};
+use crate::Trait;
 
 pub struct PartialOrdStructHandler;
 
 impl TraitHandler for PartialOrdStructHandler {
-    fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta) {
+    fn trait_meta_handler(
+        ast: &DeriveInput,
+        tokens: &mut TokenStream,
+        traits: &[Trait],
+        meta: &Meta,
+    ) {
         let type_attribute = TypeAttributeBuilder {
             enable_flag: true,
             enable_bound: true,
-            value: 0,
-            enable_value: false,
-        }.from_partial_ord_meta(meta);
+            rank: 0,
+            enable_rank: false,
+        }
+        .from_partial_ord_meta(meta);
 
-        let bound = type_attribute.bound.into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
+        let bound = type_attribute
+            .bound
+            .into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
 
         let mut comparer_tokens = TokenStream::new();
 
@@ -31,10 +39,11 @@ impl TraitHandler for PartialOrdStructHandler {
             for (index, field) in data.fields.iter().enumerate() {
                 let field_attribute = FieldAttributeBuilder {
                     enable_ignore: true,
-                    enable_compare: true,
+                    enable_impl: true,
                     rank: isize::min_value() + index as isize,
                     enable_rank: true,
-                }.from_attributes(&field.attrs, traits);
+                }
+                .from_attributes(&field.attrs, traits);
 
                 if field_attribute.ignore {
                     continue;
@@ -70,20 +79,18 @@ impl TraitHandler for PartialOrdStructHandler {
 
                         comparer_tokens.extend(TokenStream::from_str(&statement).unwrap());
                     }
-                    None => {
-                        match compare_method {
-                            Some(compare_method) => {
-                                let statement = format!("match {compare_method}(&self.{field_name}, &other.{field_name}) {{ Some(core::cmp::Ordering::Equal) => (), Some(core::cmp::Ordering::Greater) => {{ return Some(core::cmp::Ordering::Greater); }}, Some(core::cmp::Ordering::Less) => {{ return Some(core::cmp::Ordering::Less); }}, None => {{ return None; }} }}", compare_method = compare_method, field_name = field_name);
+                    None => match compare_method {
+                        Some(compare_method) => {
+                            let statement = format!("match {compare_method}(&self.{field_name}, &other.{field_name}) {{ Some(core::cmp::Ordering::Equal) => (), Some(core::cmp::Ordering::Greater) => {{ return Some(core::cmp::Ordering::Greater); }}, Some(core::cmp::Ordering::Less) => {{ return Some(core::cmp::Ordering::Less); }}, None => {{ return None; }} }}", compare_method = compare_method, field_name = field_name);
 
-                                comparer_tokens.extend(TokenStream::from_str(&statement).unwrap());
-                            }
-                            None => {
-                                let statement = format!("match core::cmp::PartialOrd::partial_cmp(&self.{field_name}, &other.{field_name}) {{ Some(core::cmp::Ordering::Equal) => (), Some(core::cmp::Ordering::Greater) => {{ return Some(core::cmp::Ordering::Greater); }}, Some(core::cmp::Ordering::Less) => {{ return Some(core::cmp::Ordering::Less); }}, None => {{ return None; }} }}", field_name = field_name);
-
-                                comparer_tokens.extend(TokenStream::from_str(&statement).unwrap());
-                            }
+                            comparer_tokens.extend(TokenStream::from_str(&statement).unwrap());
                         }
-                    }
+                        None => {
+                            let statement = format!("match core::cmp::PartialOrd::partial_cmp(&self.{field_name}, &other.{field_name}) {{ Some(core::cmp::Ordering::Equal) => (), Some(core::cmp::Ordering::Greater) => {{ return Some(core::cmp::Ordering::Greater); }}, Some(core::cmp::Ordering::Less) => {{ return Some(core::cmp::Ordering::Less); }}, None => {{ return None; }} }}", field_name = field_name);
+
+                            comparer_tokens.extend(TokenStream::from_str(&statement).unwrap());
+                        }
+                    },
                 }
             }
         }

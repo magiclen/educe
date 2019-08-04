@@ -1,60 +1,68 @@
 #![cfg_attr(not(feature = "default"), allow(dead_code))]
 
-#[cfg(feature = "Debug")]
-mod debug;
-#[cfg(feature = "PartialEq")]
-mod partial_eq;
-#[cfg(feature = "Eq")]
-mod eq;
-#[cfg(feature = "PartialOrd")]
-mod partial_ord;
-#[cfg(feature = "Ord")]
-mod ord;
-#[cfg(feature = "Hash")]
-mod hash;
-#[cfg(feature = "Default")]
-mod default;
 #[cfg(feature = "Clone")]
 mod clone;
 #[cfg(feature = "Copy")]
 mod copy;
+#[cfg(feature = "Debug")]
+mod debug;
+#[cfg(feature = "Default")]
+mod default;
 #[cfg(feature = "Deref")]
 mod deref;
 #[cfg(feature = "DerefMut")]
 mod deref_mut;
+#[cfg(feature = "Eq")]
+mod eq;
+#[cfg(feature = "Hash")]
+mod hash;
+#[cfg(feature = "Ord")]
+mod ord;
+#[cfg(feature = "PartialEq")]
+mod partial_eq;
+#[cfg(feature = "PartialOrd")]
+mod partial_ord;
 
 use std::str::FromStr;
 
-use crate::Trait;
 use crate::proc_macro2::TokenStream;
-use crate::syn::{self, DeriveInput, Meta, LitStr, Path, Expr, WhereClause, WherePredicate, GenericParam, punctuated::Punctuated, token::Comma};
 use crate::quote::ToTokens;
+use crate::syn::{
+    self, punctuated::Punctuated, token::Comma, DeriveInput, Expr, GenericParam, LitStr, Meta,
+    Path, WhereClause, WherePredicate,
+};
+use crate::Trait;
 
-#[cfg(feature = "Debug")]
-pub use debug::DebugHandler;
-#[cfg(feature = "PartialEq")]
-pub use partial_eq::PartialEqHandler;
-#[cfg(feature = "Eq")]
-pub use eq::EqHandler;
-#[cfg(feature = "PartialOrd")]
-pub use partial_ord::PartialOrdHandler;
-#[cfg(feature = "Ord")]
-pub use ord::OrdHandler;
-#[cfg(feature = "Hash")]
-pub use hash::HashHandler;
-#[cfg(feature = "Default")]
-pub use default::DefaultHandler;
 #[cfg(feature = "Clone")]
 pub use clone::CloneHandler;
 #[cfg(feature = "Copy")]
 pub use copy::CopyHandler;
+#[cfg(feature = "Debug")]
+pub use debug::DebugHandler;
+#[cfg(feature = "Default")]
+pub use default::DefaultHandler;
 #[cfg(feature = "Deref")]
 pub use deref::DerefHandler;
 #[cfg(feature = "DerefMut")]
 pub use deref_mut::DerefMutHandler;
+#[cfg(feature = "Eq")]
+pub use eq::EqHandler;
+#[cfg(feature = "Hash")]
+pub use hash::HashHandler;
+#[cfg(feature = "Ord")]
+pub use ord::OrdHandler;
+#[cfg(feature = "PartialEq")]
+pub use partial_eq::PartialEqHandler;
+#[cfg(feature = "PartialOrd")]
+pub use partial_ord::PartialOrdHandler;
 
 pub trait TraitHandler {
-    fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta);
+    fn trait_meta_handler(
+        ast: &DeriveInput,
+        tokens: &mut TokenStream,
+        traits: &[Trait],
+        meta: &Meta,
+    );
 }
 
 #[inline]
@@ -98,7 +106,9 @@ pub fn create_expr_string_from_lit_str(s: &LitStr) -> Option<String> {
 }
 
 #[inline]
-pub fn create_where_predicates_from_lit_str(s: &LitStr) -> Option<Punctuated<WherePredicate, Comma>> {
+pub fn create_where_predicates_from_lit_str(
+    s: &LitStr,
+) -> Option<Punctuated<WherePredicate, Comma>> {
     let s = s.value();
 
     let s = s.trim();
@@ -117,7 +127,10 @@ pub fn create_where_predicates_from_lit_str(s: &LitStr) -> Option<Punctuated<Whe
 }
 
 #[inline]
-pub fn create_where_predicates_from_generic_parameters(p: &Punctuated<GenericParam, Comma>, bound_trait: &Path) -> Punctuated<WherePredicate, Comma> {
+pub fn create_where_predicates_from_generic_parameters(
+    p: &Punctuated<GenericParam, Comma>,
+    bound_trait: &Path,
+) -> Punctuated<WherePredicate, Comma> {
     let mut where_predicates = Punctuated::new();
 
     for param in p.iter() {

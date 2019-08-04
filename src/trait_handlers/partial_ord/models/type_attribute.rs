@@ -1,8 +1,13 @@
-use super::super::super::{create_where_predicates_from_lit_str, create_where_predicates_from_generic_parameters};
+use super::super::super::{
+    create_where_predicates_from_generic_parameters, create_where_predicates_from_lit_str,
+};
 
-use crate::Trait;
-use crate::syn::{Meta, NestedMeta, Lit, Attribute, WherePredicate, GenericParam, punctuated::Punctuated, token::Comma};
 use crate::panic;
+use crate::syn::{
+    punctuated::Punctuated, token::Comma, Attribute, GenericParam, Lit, Meta, NestedMeta,
+    WherePredicate,
+};
+use crate::Trait;
 
 #[derive(Clone)]
 pub enum TypeAttributeBound {
@@ -12,11 +17,17 @@ pub enum TypeAttributeBound {
 }
 
 impl TypeAttributeBound {
-    pub fn into_punctuated_where_predicates_by_generic_parameters(self, params: &Punctuated<GenericParam, Comma>) -> Punctuated<WherePredicate, Comma> {
+    pub fn into_punctuated_where_predicates_by_generic_parameters(
+        self,
+        params: &Punctuated<GenericParam, Comma>,
+    ) -> Punctuated<WherePredicate, Comma> {
         match self {
             TypeAttributeBound::None => Punctuated::new(),
-            TypeAttributeBound::Auto => create_where_predicates_from_generic_parameters(params, &syn::parse(quote!(core::cmp::PartialOrd).into()).unwrap()),
-            TypeAttributeBound::Custom(where_predicates) => where_predicates
+            TypeAttributeBound::Auto => create_where_predicates_from_generic_parameters(
+                params,
+                &syn::parse(quote!(core::cmp::PartialOrd).into()).unwrap(),
+            ),
+            TypeAttributeBound::Custom(where_predicates) => where_predicates,
         }
     }
 }
@@ -25,22 +36,22 @@ impl TypeAttributeBound {
 pub struct TypeAttribute {
     pub flag: bool,
     pub bound: TypeAttributeBound,
-    pub value: isize,
+    pub rank: isize,
 }
 
 #[derive(Debug, Clone)]
 pub struct TypeAttributeBuilder {
     pub enable_flag: bool,
     pub enable_bound: bool,
-    pub value: isize,
-    pub enable_value: bool,
+    pub rank: isize,
+    pub enable_rank: bool,
 }
 
 impl TypeAttributeBuilder {
     pub fn from_partial_ord_meta(&self, meta: &Meta) -> TypeAttribute {
         let mut flag = false;
         let mut bound = TypeAttributeBound::None;
-        let mut value = self.value;
+        let mut rank = self.rank;
 
         let correct_usage_for_partial_ord_attribute = {
             let mut usage = vec![];
@@ -53,13 +64,20 @@ impl TypeAttributeBuilder {
         };
 
         let correct_usage_for_bound = {
-            let usage = vec![stringify!(#[educe(PartialOrd(bound))]), stringify!(#[educe(PartialOrd(bound = "where_predicates"))]), stringify!(#[educe(PartialOrd(bound("where_predicates")))])];
+            let usage = vec![
+                stringify!(#[educe(PartialOrd(bound))]),
+                stringify!(#[educe(PartialOrd(bound = "where_predicates"))]),
+                stringify!(#[educe(PartialOrd(bound("where_predicates")))]),
+            ];
 
             usage
         };
 
-        let correct_usage_for_value = {
-            let usage = vec![stringify!(#[educe(PartialOrd(value = comparison_value))]), stringify!(#[educe(PartialOrd(value(comparison_value)))])];
+        let correct_usage_for_rank = {
+            let usage = vec![
+                stringify!(#[educe(PartialOrd(rank = comparison_value))]),
+                stringify!(#[educe(PartialOrd(rank(comparison_value)))]),
+            ];
 
             usage
         };
@@ -67,7 +85,7 @@ impl TypeAttributeBuilder {
         match meta {
             Meta::List(list) => {
                 let mut bound_is_set = false;
-                let mut value_is_set = false;
+                let mut rank_is_set = false;
 
                 for p in list.nested.iter() {
                     match p {
@@ -87,7 +105,9 @@ impl TypeAttributeBuilder {
                                                     NestedMeta::Literal(lit) => match lit {
                                                         Lit::Str(s) => {
                                                             if bound_is_set {
-                                                                panic::reset_parameter(meta_name.as_str());
+                                                                panic::reset_parameter(
+                                                                    meta_name.as_str(),
+                                                                );
                                                             }
 
                                                             bound_is_set = true;
@@ -95,13 +115,25 @@ impl TypeAttributeBuilder {
                                                             let where_predicates = create_where_predicates_from_lit_str(s);
 
                                                             bound = match where_predicates {
-                                                                Some(where_predicates) => TypeAttributeBound::Custom(where_predicates),
-                                                                None => panic::empty_parameter(meta_name.as_str())
+                                                                Some(where_predicates) => {
+                                                                    TypeAttributeBound::Custom(
+                                                                        where_predicates,
+                                                                    )
+                                                                }
+                                                                None => panic::empty_parameter(
+                                                                    meta_name.as_str(),
+                                                                ),
                                                             };
                                                         }
-                                                        _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_bound)
-                                                    }
-                                                    _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_bound)
+                                                        _ => panic::parameter_incorrect_format(
+                                                            meta_name.as_str(),
+                                                            &correct_usage_for_bound,
+                                                        ),
+                                                    },
+                                                    _ => panic::parameter_incorrect_format(
+                                                        meta_name.as_str(),
+                                                        &correct_usage_for_bound,
+                                                    ),
                                                 }
                                             }
                                         }
@@ -116,14 +148,24 @@ impl TypeAttributeBuilder {
 
                                                     bound_is_set = true;
 
-                                                    let where_predicates = create_where_predicates_from_lit_str(s);
+                                                    let where_predicates =
+                                                        create_where_predicates_from_lit_str(s);
 
                                                     bound = match where_predicates {
-                                                        Some(where_predicates) => TypeAttributeBound::Custom(where_predicates),
-                                                        None => panic::empty_parameter(meta_name.as_str())
+                                                        Some(where_predicates) => {
+                                                            TypeAttributeBound::Custom(
+                                                                where_predicates,
+                                                            )
+                                                        }
+                                                        None => panic::empty_parameter(
+                                                            meta_name.as_str(),
+                                                        ),
                                                     };
                                                 }
-                                                _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_bound)
+                                                _ => panic::parameter_incorrect_format(
+                                                    meta_name.as_str(),
+                                                    &correct_usage_for_bound,
+                                                ),
                                             }
                                         }
                                         Meta::Word(_) => {
@@ -137,8 +179,8 @@ impl TypeAttributeBuilder {
                                         }
                                     }
                                 }
-                                "value" => {
-                                    if !self.enable_value {
+                                "rank" => {
+                                    if !self.enable_rank {
                                         panic::unknown_parameter("PartialOrd", meta_name.as_str());
                                     }
 
@@ -148,23 +190,31 @@ impl TypeAttributeBuilder {
                                                 match p {
                                                     NestedMeta::Literal(lit) => match lit {
                                                         Lit::Int(i) => {
-                                                            if value_is_set {
-                                                                panic::reset_parameter("value");
+                                                            if rank_is_set {
+                                                                panic::reset_parameter(
+                                                                    meta_name.as_str(),
+                                                                );
                                                             }
 
                                                             let i = i.value();
 
-                                                            value_is_set = true;
+                                                            rank_is_set = true;
 
                                                             if i > isize::max_value() as u64 {
-                                                                value = isize::max_value();
+                                                                rank = isize::max_value();
                                                             } else {
-                                                                value = i as isize;
+                                                                rank = i as isize;
                                                             }
                                                         }
-                                                        _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_value)
-                                                    }
-                                                    _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_value)
+                                                        _ => panic::parameter_incorrect_format(
+                                                            meta_name.as_str(),
+                                                            &correct_usage_for_rank,
+                                                        ),
+                                                    },
+                                                    _ => panic::parameter_incorrect_format(
+                                                        meta_name.as_str(),
+                                                        &correct_usage_for_rank,
+                                                    ),
                                                 }
                                             }
                                         }
@@ -173,37 +223,52 @@ impl TypeAttributeBuilder {
 
                                             match lit {
                                                 Lit::Int(i) => {
-                                                    if value_is_set {
-                                                        panic::reset_parameter("value");
+                                                    if rank_is_set {
+                                                        panic::reset_parameter(meta_name.as_str());
                                                     }
 
                                                     let i = i.value();
 
-                                                    value_is_set = true;
+                                                    rank_is_set = true;
 
                                                     if i > isize::max_value() as u64 {
-                                                        value = isize::max_value();
+                                                        rank = isize::max_value();
                                                     } else {
-                                                        value = i as isize;
+                                                        rank = i as isize;
                                                     }
                                                 }
-                                                _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_value)
+                                                _ => panic::parameter_incorrect_format(
+                                                    meta_name.as_str(),
+                                                    &correct_usage_for_rank,
+                                                ),
                                             }
                                         }
-                                        _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_value)
+                                        _ => panic::parameter_incorrect_format(
+                                            meta_name.as_str(),
+                                            &correct_usage_for_rank,
+                                        ),
                                     }
                                 }
-                                _ => panic::unknown_parameter("PartialOrd", meta_name.as_str())
+                                _ => panic::unknown_parameter("PartialOrd", meta_name.as_str()),
                             }
                         }
-                        _ => panic::attribute_incorrect_format("PartialOrd", &correct_usage_for_partial_ord_attribute)
+                        _ => panic::attribute_incorrect_format(
+                            "PartialOrd",
+                            &correct_usage_for_partial_ord_attribute,
+                        ),
                     }
                 }
             }
-            Meta::NameValue(_) => panic::attribute_incorrect_format("PartialOrd", &correct_usage_for_partial_ord_attribute),
+            Meta::NameValue(_) => panic::attribute_incorrect_format(
+                "PartialOrd",
+                &correct_usage_for_partial_ord_attribute,
+            ),
             Meta::Word(_) => {
                 if !self.enable_flag {
-                    panic::attribute_incorrect_format("PartialOrd", &correct_usage_for_partial_ord_attribute);
+                    panic::attribute_incorrect_format(
+                        "PartialOrd",
+                        &correct_usage_for_partial_ord_attribute,
+                    );
                 }
 
                 flag = true;
@@ -213,7 +278,7 @@ impl TypeAttributeBuilder {
         TypeAttribute {
             flag,
             bound,
-            value,
+            rank: rank,
         }
     }
 
@@ -247,20 +312,20 @@ impl TypeAttributeBuilder {
                                         result = Some(self.from_partial_ord_meta(&meta));
                                     }
                                 }
-                                _ => panic::educe_format_incorrect()
+                                _ => panic::educe_format_incorrect(),
                             }
                         }
                     }
-                    _ => panic::educe_format_incorrect()
-                }
-                _ => ()
+                    _ => panic::educe_format_incorrect(),
+                },
+                _ => (),
             }
         }
 
         result.unwrap_or(TypeAttribute {
             flag: false,
             bound: TypeAttributeBound::None,
-            value: self.value,
+            rank: self.rank,
         })
     }
 }

@@ -1,5 +1,4 @@
 #![cfg(feature = "Default")]
-
 #![no_std]
 
 extern crate alloc;
@@ -57,7 +56,7 @@ fn basic() {
         Unit,
         #[educe(Default)]
         Struct {
-            f1: u8
+            f1: u8,
         },
         Tuple(u8),
     }
@@ -76,9 +75,7 @@ fn type_default_1() {
     #[educe(Default(expression = "Enum::Struct { f1: 1 }"))]
     enum Enum {
         Unit,
-        Struct {
-            f1: u8
-        },
+        Struct { f1: u8 },
         Tuple(u8),
     }
 
@@ -98,9 +95,7 @@ fn type_default_2() {
     #[educe(Default(expression("Enum::Struct { f1: 1 }")))]
     enum Enum {
         Unit,
-        Struct {
-            f1: u8
-        },
+        Struct { f1: u8 },
         Tuple(u8),
     }
 
@@ -143,27 +138,29 @@ fn field_default_1() {
         Unit,
         #[educe(Default)]
         Tuple(
-            #[educe(Default = 1)]
-            u8,
-            #[educe(Default = 11111111111111111111111111111)]
-            i128,
-            #[educe(Default = 1.1)]
-            f64,
-            #[educe(Default = true)]
-            bool,
-            #[educe(Default = "Hi")]
-            &'static str,
-            #[educe(Default = "Hello")]
-            String,
-            #[educe(Default = 'M')]
-            char,
+            #[educe(Default = 1)] u8,
+            #[educe(Default = 11111111111111111111111111111)] i128,
+            #[educe(Default = 1.1)] f64,
+            #[educe(Default = true)] bool,
+            #[educe(Default = "Hi")] &'static str,
+            #[educe(Default = "Hello")] String,
+            #[educe(Default = 'M')] char,
         ),
     }
 
     let s = Enum1::default();
     let t = Enum2::default();
 
-    if let Enum1::Struct { f1, f2, f3, f4, f5, f6, f7 } = s {
+    if let Enum1::Struct {
+        f1,
+        f2,
+        f3,
+        f4,
+        f5,
+        f6,
+        f7,
+    } = s
+    {
         assert_eq!(1, f1);
         assert_eq!(11111111111111111111111111111, f2);
         assert_eq!(1.1, f3);
@@ -218,27 +215,29 @@ fn field_default_2() {
         Unit,
         #[educe(Default)]
         Tuple(
-            #[educe(Default = 1)]
-            u8,
-            #[educe(Default = 11111111111111111111111111111)]
-            i128,
-            #[educe(Default = 1.1)]
-            f64,
-            #[educe(Default = true)]
-            bool,
-            #[educe(Default = "Hi")]
-            &'static str,
-            #[educe(Default = "Hello")]
-            String,
-            #[educe(Default = 'M')]
-            char,
+            #[educe(Default = 1)] u8,
+            #[educe(Default = 11111111111111111111111111111)] i128,
+            #[educe(Default = 1.1)] f64,
+            #[educe(Default = true)] bool,
+            #[educe(Default = "Hi")] &'static str,
+            #[educe(Default = "Hello")] String,
+            #[educe(Default = 'M')] char,
         ),
     }
 
     let s = Enum1::default();
     let t = Enum2::default();
 
-    if let Enum1::Struct { f1, f2, f3, f4, f5, f6, f7 } = s {
+    if let Enum1::Struct {
+        f1,
+        f2,
+        f3,
+        f4,
+        f5,
+        f6,
+        f7,
+    } = s
+    {
         assert_eq!(1, f1);
         assert_eq!(11111111111111111111111111111, f2);
         assert_eq!(1.1, f3);
@@ -293,27 +292,29 @@ fn field_default_3() {
         Unit,
         #[educe(Default)]
         Tuple(
-            #[educe(Default(expression = "0 + 1"))]
-            u8,
-            #[educe(Default(expression = "-11111111111111111111111111111 * -1"))]
-            i128,
-            #[educe(Default(expression = "1.0 + 0.1"))]
-            f64,
-            #[educe(Default(expression = "!false"))]
-            bool,
-            #[educe(Default(expression = "\"Hi\""))]
-            &'static str,
-            #[educe(Default(expression = "String::from(\"Hello\")"))]
-            String,
-            #[educe(Default(expression = "'M'"))]
-            char,
+            #[educe(Default(expression = "0 + 1"))] u8,
+            #[educe(Default(expression = "-11111111111111111111111111111 * -1"))] i128,
+            #[educe(Default(expression = "1.0 + 0.1"))] f64,
+            #[educe(Default(expression = "!false"))] bool,
+            #[educe(Default(expression = "\"Hi\""))] &'static str,
+            #[educe(Default(expression = "String::from(\"Hello\")"))] String,
+            #[educe(Default(expression = "'M'"))] char,
         ),
     }
 
     let s = Enum1::default();
     let t = Enum2::default();
 
-    if let Enum1::Struct { f1, f2, f3, f4, f5, f6, f7 } = s {
+    if let Enum1::Struct {
+        f1,
+        f2,
+        f3,
+        f4,
+        f5,
+        f6,
+        f7,
+    } = s
+    {
         assert_eq!(1, f1);
         assert_eq!(11111111111111111111111111111, f2);
         assert_eq!(1.1, f3);
@@ -368,27 +369,29 @@ fn field_default_4() {
         Unit,
         #[educe(Default)]
         Tuple(
-            #[educe(Default(expression("0 + 1")))]
-            u8,
-            #[educe(Default(expression("-11111111111111111111111111111 * -1")))]
-            i128,
-            #[educe(Default(expression("1.0 + 0.1")))]
-            f64,
-            #[educe(Default(expression("!false")))]
-            bool,
-            #[educe(Default(expression("\"Hi\"")))]
-            &'static str,
-            #[educe(Default(expression("String::from(\"Hello\")")))]
-            String,
-            #[educe(Default(expression("'M'")))]
-            char,
+            #[educe(Default(expression("0 + 1")))] u8,
+            #[educe(Default(expression("-11111111111111111111111111111 * -1")))] i128,
+            #[educe(Default(expression("1.0 + 0.1")))] f64,
+            #[educe(Default(expression("!false")))] bool,
+            #[educe(Default(expression("\"Hi\"")))] &'static str,
+            #[educe(Default(expression("String::from(\"Hello\")")))] String,
+            #[educe(Default(expression("'M'")))] char,
         ),
     }
 
     let s = Enum1::default();
     let t = Enum2::default();
 
-    if let Enum1::Struct { f1, f2, f3, f4, f5, f6, f7 } = s {
+    if let Enum1::Struct {
+        f1,
+        f2,
+        f3,
+        f4,
+        f5,
+        f6,
+        f7,
+    } = s
+    {
         assert_eq!(1, f1);
         assert_eq!(11111111111111111111111111111, f2);
         assert_eq!(1.1, f3);
@@ -422,7 +425,7 @@ fn bound_1() {
         Unit,
         #[educe(Default)]
         Struct {
-            f1: T
+            f1: T,
         },
         Tuple(T),
     }
@@ -443,7 +446,7 @@ fn bound_2() {
         Unit,
         #[educe(Default)]
         Struct {
-            f1: T
+            f1: T,
         },
         Tuple(T),
     }
@@ -464,7 +467,7 @@ fn bound_3() {
         Unit,
         #[educe(Default)]
         Struct {
-            f1: T
+            f1: T,
         },
         Tuple(T),
     }
@@ -485,7 +488,7 @@ fn new() {
         Unit,
         #[educe(Default)]
         Struct {
-            f1: u8
+            f1: u8,
         },
         Tuple(u8),
     }

@@ -1,22 +1,30 @@
 use std::str::FromStr;
 
 use super::super::TraitHandler;
-use super::models::{TypeAttributeBuilder, FieldAttributeBuilder};
+use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
 
-use crate::Trait;
 use crate::proc_macro2::TokenStream;
-use crate::syn::{DeriveInput, Meta, Data, Generics};
+use crate::syn::{Data, DeriveInput, Generics, Meta};
+use crate::Trait;
 
 pub struct HashStructHandler;
 
 impl TraitHandler for HashStructHandler {
-    fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta) {
+    fn trait_meta_handler(
+        ast: &DeriveInput,
+        tokens: &mut TokenStream,
+        traits: &[Trait],
+        meta: &Meta,
+    ) {
         let type_attribute = TypeAttributeBuilder {
             enable_flag: true,
             enable_bound: true,
-        }.from_hash_meta(meta);
+        }
+        .from_hash_meta(meta);
 
-        let bound = type_attribute.bound.into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
+        let bound = type_attribute
+            .bound
+            .into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
 
         let mut hasher_tokens = TokenStream::new();
 
@@ -24,8 +32,9 @@ impl TraitHandler for HashStructHandler {
             for (index, field) in data.fields.iter().enumerate() {
                 let field_attribute = FieldAttributeBuilder {
                     enable_ignore: true,
-                    enable_hash: true,
-                }.from_attributes(&field.attrs, traits);
+                    enable_impl: true,
+                }
+                .from_attributes(&field.attrs, traits);
 
                 if field_attribute.ignore {
                     continue;
@@ -44,24 +53,34 @@ impl TraitHandler for HashStructHandler {
                     Some(hash_trait) => {
                         let hash_method = hash_method.unwrap();
 
-                        let statement = format!("{hash_trait}::{hash_method}(&self.{field_name}, state);", hash_trait = hash_trait, hash_method = hash_method, field_name = field_name);
+                        let statement = format!(
+                            "{hash_trait}::{hash_method}(&self.{field_name}, state);",
+                            hash_trait = hash_trait,
+                            hash_method = hash_method,
+                            field_name = field_name
+                        );
 
                         hasher_tokens.extend(TokenStream::from_str(&statement).unwrap());
                     }
-                    None => {
-                        match hash_method {
-                            Some(hash_method) => {
-                                let statement = format!("{hash_method}(&self.{field_name}, state);", hash_method = hash_method, field_name = field_name);
+                    None => match hash_method {
+                        Some(hash_method) => {
+                            let statement = format!(
+                                "{hash_method}(&self.{field_name}, state);",
+                                hash_method = hash_method,
+                                field_name = field_name
+                            );
 
-                                hasher_tokens.extend(TokenStream::from_str(&statement).unwrap());
-                            }
-                            None => {
-                                let statement = format!("core::hash::Hash::hash(&self.{field_name}, state);", field_name = field_name);
-
-                                hasher_tokens.extend(TokenStream::from_str(&statement).unwrap());
-                            }
+                            hasher_tokens.extend(TokenStream::from_str(&statement).unwrap());
                         }
-                    }
+                        None => {
+                            let statement = format!(
+                                "core::hash::Hash::hash(&self.{field_name}, state);",
+                                field_name = field_name
+                            );
+
+                            hasher_tokens.extend(TokenStream::from_str(&statement).unwrap());
+                        }
+                    },
                 }
             }
         }

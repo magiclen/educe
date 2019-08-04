@@ -59,7 +59,11 @@ impl Trait {
             "Deref" => Trait::Deref,
             #[cfg(feature = "DerefMut")]
             "DerefMut" => Trait::DerefMut,
-            _ => panic!("Unsupported trait `{}`. Available traits are {:?}", s, Trait::support_traits())
+            _ => panic!(
+                "Unsupported trait `{}`. Available traits are {:?}",
+                s,
+                Trait::support_traits()
+            ),
         }
     }
 
@@ -68,61 +72,60 @@ impl Trait {
         let mut traits = Vec::new();
 
         #[cfg(feature = "Debug")]
-            {
-                traits.push(Trait::Debug.as_str());
-            }
+        {
+            traits.push(Trait::Debug.as_str());
+        }
 
         #[cfg(feature = "PartialEq")]
-            {
-                traits.push(Trait::PartialEq.as_str());
-            }
+        {
+            traits.push(Trait::PartialEq.as_str());
+        }
 
         #[cfg(feature = "Eq")]
-            {
-                traits.push(Trait::Eq.as_str());
-            }
+        {
+            traits.push(Trait::Eq.as_str());
+        }
 
         #[cfg(feature = "PartialOrd")]
-            {
-                traits.push(Trait::PartialOrd.as_str());
-            }
+        {
+            traits.push(Trait::PartialOrd.as_str());
+        }
 
         #[cfg(feature = "Ord")]
-            {
-                traits.push(Trait::Ord.as_str());
-            }
+        {
+            traits.push(Trait::Ord.as_str());
+        }
 
         #[cfg(feature = "Hash")]
-            {
-                traits.push(Trait::Hash.as_str());
-            }
+        {
+            traits.push(Trait::Hash.as_str());
+        }
 
         #[cfg(feature = "Default")]
-            {
-                traits.push(Trait::Default.as_str());
-            }
+        {
+            traits.push(Trait::Default.as_str());
+        }
 
         #[cfg(feature = "Clone")]
-            {
-                traits.push(Trait::Clone.as_str());
-            }
+        {
+            traits.push(Trait::Clone.as_str());
+        }
 
         #[cfg(feature = "Copy")]
-            {
-                traits.push(Trait::Copy.as_str());
-            }
+        {
+            traits.push(Trait::Copy.as_str());
+        }
 
         #[cfg(feature = "Deref")]
-            {
-                traits.push(Trait::Deref.as_str());
-            }
+        {
+            traits.push(Trait::Deref.as_str());
+        }
 
         #[cfg(feature = "DerefMut")]
-            {
-                traits.push(Trait::DerefMut.as_str());
-            }
+        {
+            traits.push(Trait::DerefMut.as_str());
+        }
 
         traits
     }
 }
-

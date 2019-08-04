@@ -1,7 +1,11 @@
-use super::super::super::{create_where_predicates_from_lit_str, create_where_predicates_from_generic_parameters};
+use super::super::super::{
+    create_where_predicates_from_generic_parameters, create_where_predicates_from_lit_str,
+};
 
-use crate::syn::{Meta, NestedMeta, Lit, WherePredicate, GenericParam, punctuated::Punctuated, token::Comma};
 use crate::panic;
+use crate::syn::{
+    punctuated::Punctuated, token::Comma, GenericParam, Lit, Meta, NestedMeta, WherePredicate,
+};
 
 #[derive(Clone)]
 pub enum TypeAttributeBound {
@@ -11,11 +15,17 @@ pub enum TypeAttributeBound {
 }
 
 impl TypeAttributeBound {
-    pub fn into_punctuated_where_predicates_by_generic_parameters(self, params: &Punctuated<GenericParam, Comma>) -> Punctuated<WherePredicate, Comma> {
+    pub fn into_punctuated_where_predicates_by_generic_parameters(
+        self,
+        params: &Punctuated<GenericParam, Comma>,
+    ) -> Punctuated<WherePredicate, Comma> {
         match self {
             TypeAttributeBound::None => Punctuated::new(),
-            TypeAttributeBound::Auto => create_where_predicates_from_generic_parameters(params, &syn::parse(quote!(core::marker::Copy).into()).unwrap()),
-            TypeAttributeBound::Custom(where_predicates) => where_predicates
+            TypeAttributeBound::Auto => create_where_predicates_from_generic_parameters(
+                params,
+                &syn::parse(quote!(core::marker::Copy).into()).unwrap(),
+            ),
+            TypeAttributeBound::Custom(where_predicates) => where_predicates,
         }
     }
 }
@@ -41,7 +51,11 @@ impl TypeAttributeBuilder {
         };
 
         let correct_usage_for_bound = {
-            let usage = vec![stringify!(#[educe(Copy(bound))]), stringify!(#[educe(Copy(bound = "where_predicates"))]), stringify!(#[educe(Copy(bound("where_predicates")))])];
+            let usage = vec![
+                stringify!(#[educe(Copy(bound))]),
+                stringify!(#[educe(Copy(bound = "where_predicates"))]),
+                stringify!(#[educe(Copy(bound("where_predicates")))]),
+            ];
 
             usage
         };
@@ -68,7 +82,9 @@ impl TypeAttributeBuilder {
                                                     NestedMeta::Literal(lit) => match lit {
                                                         Lit::Str(s) => {
                                                             if bound_is_set {
-                                                                panic::reset_parameter(meta_name.as_str());
+                                                                panic::reset_parameter(
+                                                                    meta_name.as_str(),
+                                                                );
                                                             }
 
                                                             bound_is_set = true;
@@ -76,13 +92,25 @@ impl TypeAttributeBuilder {
                                                             let where_predicates = create_where_predicates_from_lit_str(s);
 
                                                             bound = match where_predicates {
-                                                                Some(where_predicates) => TypeAttributeBound::Custom(where_predicates),
-                                                                None => panic::empty_parameter(meta_name.as_str())
+                                                                Some(where_predicates) => {
+                                                                    TypeAttributeBound::Custom(
+                                                                        where_predicates,
+                                                                    )
+                                                                }
+                                                                None => panic::empty_parameter(
+                                                                    meta_name.as_str(),
+                                                                ),
                                                             };
                                                         }
-                                                        _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_bound)
-                                                    }
-                                                    _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_bound)
+                                                        _ => panic::parameter_incorrect_format(
+                                                            meta_name.as_str(),
+                                                            &correct_usage_for_bound,
+                                                        ),
+                                                    },
+                                                    _ => panic::parameter_incorrect_format(
+                                                        meta_name.as_str(),
+                                                        &correct_usage_for_bound,
+                                                    ),
                                                 }
                                             }
                                         }
@@ -97,14 +125,24 @@ impl TypeAttributeBuilder {
 
                                                     bound_is_set = true;
 
-                                                    let where_predicates = create_where_predicates_from_lit_str(s);
+                                                    let where_predicates =
+                                                        create_where_predicates_from_lit_str(s);
 
                                                     bound = match where_predicates {
-                                                        Some(where_predicates) => TypeAttributeBound::Custom(where_predicates),
-                                                        None => panic::empty_parameter(meta_name.as_str())
+                                                        Some(where_predicates) => {
+                                                            TypeAttributeBound::Custom(
+                                                                where_predicates,
+                                                            )
+                                                        }
+                                                        None => panic::empty_parameter(
+                                                            meta_name.as_str(),
+                                                        ),
                                                     };
                                                 }
-                                                _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_bound)
+                                                _ => panic::parameter_incorrect_format(
+                                                    meta_name.as_str(),
+                                                    &correct_usage_for_bound,
+                                                ),
                                             }
                                         }
                                         Meta::Word(_) => {
@@ -118,19 +156,22 @@ impl TypeAttributeBuilder {
                                         }
                                     }
                                 }
-                                _ => panic::unknown_parameter("Copy", meta_name.as_str())
+                                _ => panic::unknown_parameter("Copy", meta_name.as_str()),
                             }
                         }
-                        _ => panic::attribute_incorrect_format("Copy", &correct_usage_for_copy_attribute)
+                        _ => panic::attribute_incorrect_format(
+                            "Copy",
+                            &correct_usage_for_copy_attribute,
+                        ),
                     }
                 }
             }
-            Meta::NameValue(_) => panic::attribute_incorrect_format("Copy", &correct_usage_for_copy_attribute),
-            Meta::Word(_) => ()
+            Meta::NameValue(_) => {
+                panic::attribute_incorrect_format("Copy", &correct_usage_for_copy_attribute)
+            }
+            Meta::Word(_) => (),
         }
 
-        TypeAttribute {
-            bound,
-        }
+        TypeAttribute { bound }
     }
 }

@@ -1,8 +1,8 @@
 use super::super::super::create_path_string_from_lit_str;
 
-use crate::Trait;
-use crate::syn::{Meta, NestedMeta, Lit, Attribute};
 use crate::panic;
+use crate::syn::{Attribute, Lit, Meta, NestedMeta};
+use crate::Trait;
 
 #[derive(Debug, Clone)]
 pub struct FieldAttribute {
@@ -12,7 +12,7 @@ pub struct FieldAttribute {
 
 #[derive(Debug, Clone)]
 pub struct FieldAttributeBuilder {
-    pub enable_clone: bool,
+    pub enable_impl: bool,
 }
 
 impl FieldAttributeBuilder {
@@ -26,8 +26,15 @@ impl FieldAttributeBuilder {
             usage
         };
 
-        let correct_usage_for_clone = {
-            let usage = vec![stringify!(#[educe(Clone(clone(method = "path_to_method")))]), stringify!(#[educe(Clone(clone(trait = "path_to_trait")))]), stringify!(#[educe(Clone(clone(trait = "path_to_trait", method = "path_to_method_in_trait")))]), stringify!(#[educe(Clone(clone(method("path_to_method"))))]), stringify!(#[educe(Clone(clone(trait("path_to_trait"))))]), stringify!(#[educe(Clone(clone(trait("path_to_trait"), method("path_to_method_in_trait"))))]), stringify!(#[educe(Clone(clone = "path_to_method"))]), stringify!(#[educe(Clone(clone("path_to_method")))])];
+        let correct_usage_for_impl = {
+            let usage = vec![
+                stringify!(#[educe(Clone(method = "path_to_method"))]),
+                stringify!(#[educe(Clone(trait = "path_to_trait"))]),
+                stringify!(#[educe(Clone(trait = "path_to_trait", method = "path_to_method_in_trait"))]),
+                stringify!(#[educe(Clone(method("path_to_method")))]),
+                stringify!(#[educe(Clone(trait("path_to_trait")))]),
+                stringify!(#[educe(Clone(trait("path_to_trait"), method("path_to_method_in_trait")))]),
+            ];
 
             usage
         };
@@ -40,8 +47,8 @@ impl FieldAttributeBuilder {
                             let meta_name = meta.name().to_string();
 
                             match meta_name.as_str() {
-                                "clone" | "impl" => {
-                                    if !self.enable_clone {
+                                "method" => {
+                                    if !self.enable_impl {
                                         panic::unknown_parameter("Clone", meta_name.as_str());
                                     }
 
@@ -49,121 +56,34 @@ impl FieldAttributeBuilder {
                                         Meta::List(list) => {
                                             for p in list.nested.iter() {
                                                 match p {
-                                                    NestedMeta::Meta(meta) => {
-                                                        let meta_name = meta.name().to_string();
-
-                                                        match meta_name.as_str() {
-                                                            "method" => match meta {
-                                                                Meta::List(list) => {
-                                                                    for p in list.nested.iter() {
-                                                                        match p {
-                                                                            NestedMeta::Literal(lit) => match lit {
-                                                                                Lit::Str(s) => {
-                                                                                    if clone_method.is_some() {
-                                                                                        panic::reset_parameter("clone_method");
-                                                                                    }
-
-                                                                                    let s = create_path_string_from_lit_str(s);
-
-                                                                                    if let Some(s) = s {
-                                                                                        clone_method = Some(s);
-                                                                                    } else {
-                                                                                        panic::empty_parameter("clone_method");
-                                                                                    }
-                                                                                }
-                                                                                _ => panic::parameter_incorrect_format("clone_method", &correct_usage_for_clone)
-                                                                            }
-                                                                            _ => panic::parameter_incorrect_format("clone_method", &correct_usage_for_clone)
-                                                                        }
-                                                                    }
-                                                                }
-                                                                Meta::NameValue(named_value) => {
-                                                                    let lit = &named_value.lit;
-
-                                                                    match lit {
-                                                                        Lit::Str(s) => {
-                                                                            if clone_method.is_some() {
-                                                                                panic::reset_parameter("clone_method");
-                                                                            }
-
-                                                                            let s = create_path_string_from_lit_str(s);
-
-                                                                            if let Some(s) = s {
-                                                                                clone_method = Some(s);
-                                                                            } else {
-                                                                                panic::empty_parameter("clone_method");
-                                                                            }
-                                                                        }
-                                                                        _ => panic::parameter_incorrect_format("clone_method", &correct_usage_for_clone)
-                                                                    }
-                                                                }
-                                                                _ => panic::parameter_incorrect_format("clone_method", &correct_usage_for_clone)
-                                                            }
-                                                            "trait" => match meta {
-                                                                Meta::List(list) => {
-                                                                    for p in list.nested.iter() {
-                                                                        match p {
-                                                                            NestedMeta::Literal(lit) => match lit {
-                                                                                Lit::Str(s) => {
-                                                                                    if clone_trait.is_some() {
-                                                                                        panic::reset_parameter("clone_trait");
-                                                                                    }
-
-                                                                                    let s = create_path_string_from_lit_str(s);
-
-                                                                                    if let Some(s) = s {
-                                                                                        clone_trait = Some(s);
-                                                                                    } else {
-                                                                                        panic::empty_parameter("clone_trait");
-                                                                                    }
-                                                                                }
-                                                                                _ => panic::parameter_incorrect_format("clone_trait", &correct_usage_for_clone)
-                                                                            }
-                                                                            _ => panic::parameter_incorrect_format("clone_trait", &correct_usage_for_clone)
-                                                                        }
-                                                                    }
-                                                                }
-                                                                Meta::NameValue(named_value) => {
-                                                                    let lit = &named_value.lit;
-
-                                                                    match lit {
-                                                                        Lit::Str(s) => {
-                                                                            if clone_trait.is_some() {
-                                                                                panic::reset_parameter("clone_trait");
-                                                                            }
-
-                                                                            let s = create_path_string_from_lit_str(s);
-
-                                                                            if let Some(s) = s {
-                                                                                clone_trait = Some(s);
-                                                                            } else {
-                                                                                panic::empty_parameter("clone_trait");
-                                                                            }
-                                                                        }
-                                                                        _ => panic::parameter_incorrect_format("clone_trait", &correct_usage_for_clone)
-                                                                    }
-                                                                }
-                                                                _ => panic::parameter_incorrect_format("clone_trait", &correct_usage_for_clone)
-                                                            }
-                                                            _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_clone)
-                                                        }
-                                                    }
                                                     NestedMeta::Literal(lit) => match lit {
                                                         Lit::Str(s) => {
                                                             if clone_method.is_some() {
-                                                                panic::reset_parameter("clone_method");
+                                                                panic::reset_parameter(
+                                                                    meta_name.as_str(),
+                                                                );
                                                             }
 
-                                                            let s = create_path_string_from_lit_str(s);
+                                                            let s =
+                                                                create_path_string_from_lit_str(s);
 
                                                             if let Some(s) = s {
                                                                 clone_method = Some(s);
                                                             } else {
-                                                                panic::empty_parameter("clone_method");
+                                                                panic::empty_parameter(
+                                                                    meta_name.as_str(),
+                                                                );
                                                             }
                                                         }
-                                                        _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_clone)
-                                                    }
+                                                        _ => panic::parameter_incorrect_format(
+                                                            meta_name.as_str(),
+                                                            &correct_usage_for_impl,
+                                                        ),
+                                                    },
+                                                    _ => panic::parameter_incorrect_format(
+                                                        meta_name.as_str(),
+                                                        &correct_usage_for_impl,
+                                                    ),
                                                 }
                                             }
                                         }
@@ -173,7 +93,7 @@ impl FieldAttributeBuilder {
                                             match lit {
                                                 Lit::Str(s) => {
                                                     if clone_method.is_some() {
-                                                        panic::reset_parameter("clone_method");
+                                                        panic::reset_parameter(meta_name.as_str());
                                                     }
 
                                                     let s = create_path_string_from_lit_str(s);
@@ -181,23 +101,101 @@ impl FieldAttributeBuilder {
                                                     if let Some(s) = s {
                                                         clone_method = Some(s);
                                                     } else {
-                                                        panic::empty_parameter("clone_method");
+                                                        panic::empty_parameter(meta_name.as_str());
                                                     }
                                                 }
-                                                _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_clone)
+                                                _ => panic::parameter_incorrect_format(
+                                                    meta_name.as_str(),
+                                                    &correct_usage_for_impl,
+                                                ),
                                             }
                                         }
-                                        _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_clone)
+                                        _ => panic::parameter_incorrect_format(
+                                            meta_name.as_str(),
+                                            &correct_usage_for_impl,
+                                        ),
                                     }
                                 }
-                                _ => panic::unknown_parameter("Clone", meta_name.as_str())
+                                "trait" => {
+                                    if !self.enable_impl {
+                                        panic::unknown_parameter("Clone", meta_name.as_str());
+                                    }
+
+                                    match meta {
+                                        Meta::List(list) => {
+                                            for p in list.nested.iter() {
+                                                match p {
+                                                    NestedMeta::Literal(lit) => match lit {
+                                                        Lit::Str(s) => {
+                                                            if clone_trait.is_some() {
+                                                                panic::reset_parameter(
+                                                                    meta_name.as_str(),
+                                                                );
+                                                            }
+
+                                                            let s =
+                                                                create_path_string_from_lit_str(s);
+
+                                                            if let Some(s) = s {
+                                                                clone_trait = Some(s);
+                                                            } else {
+                                                                panic::empty_parameter(
+                                                                    meta_name.as_str(),
+                                                                );
+                                                            }
+                                                        }
+                                                        _ => panic::parameter_incorrect_format(
+                                                            meta_name.as_str(),
+                                                            &correct_usage_for_impl,
+                                                        ),
+                                                    },
+                                                    _ => panic::parameter_incorrect_format(
+                                                        meta_name.as_str(),
+                                                        &correct_usage_for_impl,
+                                                    ),
+                                                }
+                                            }
+                                        }
+                                        Meta::NameValue(named_value) => {
+                                            let lit = &named_value.lit;
+
+                                            match lit {
+                                                Lit::Str(s) => {
+                                                    if clone_trait.is_some() {
+                                                        panic::reset_parameter(meta_name.as_str());
+                                                    }
+
+                                                    let s = create_path_string_from_lit_str(s);
+
+                                                    if let Some(s) = s {
+                                                        clone_trait = Some(s);
+                                                    } else {
+                                                        panic::empty_parameter(meta_name.as_str());
+                                                    }
+                                                }
+                                                _ => panic::parameter_incorrect_format(
+                                                    meta_name.as_str(),
+                                                    &correct_usage_for_impl,
+                                                ),
+                                            }
+                                        }
+                                        _ => panic::parameter_incorrect_format(
+                                            meta_name.as_str(),
+                                            &correct_usage_for_impl,
+                                        ),
+                                    }
+                                }
+                                _ => panic::unknown_parameter("Clone", meta_name.as_str()),
                             }
                         }
-                        _ => panic::attribute_incorrect_format("Clone", &correct_usage_for_clone_attribute)
+                        _ => panic::attribute_incorrect_format(
+                            "Clone",
+                            &correct_usage_for_clone_attribute,
+                        ),
                     }
                 }
             }
-            _ => panic::attribute_incorrect_format("Clone", &correct_usage_for_clone_attribute)
+            _ => panic::attribute_incorrect_format("Clone", &correct_usage_for_clone_attribute),
         }
 
         if clone_trait.is_some() {
@@ -242,13 +240,13 @@ impl FieldAttributeBuilder {
                                         result = Some(self.from_clone_meta(&meta));
                                     }
                                 }
-                                _ => panic::educe_format_incorrect()
+                                _ => panic::educe_format_incorrect(),
                             }
                         }
                     }
-                    _ => panic::educe_format_incorrect()
-                }
-                _ => ()
+                    _ => panic::educe_format_incorrect(),
+                },
+                _ => (),
             }
         }
 

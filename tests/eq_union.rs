@@ -1,5 +1,4 @@
 #![cfg(all(feature = "PartialEq", feature = "Eq"))]
-
 #![no_std]
 
 #[macro_use]
@@ -11,7 +10,7 @@ fn basic() {
     #[derive(Educe)]
     #[educe(Eq)]
     union Union {
-        f1: u8
+        f1: u8,
     }
 
     impl core::cmp::PartialEq for Union {
@@ -27,7 +26,7 @@ fn bound_1() {
     #[derive(Educe)]
     #[educe(Eq(bound))]
     union Union<T: Copy> {
-        f1: T
+        f1: T,
     }
 
     impl<T: Copy> core::cmp::PartialEq for Union<T> {
@@ -43,7 +42,7 @@ fn bound_2() {
     #[derive(Educe)]
     #[educe(Eq(bound = "T: core::cmp::Eq"))]
     union Union<T: Copy> {
-        f1: T
+        f1: T,
     }
 
     impl<T: Copy> core::cmp::PartialEq for Union<T> {
@@ -59,7 +58,7 @@ fn bound_3() {
     #[derive(Educe)]
     #[educe(Eq(bound = "T: core::cmp::PartialEq"))]
     union Union<T: Copy> {
-        f1: T
+        f1: T,
     }
 
     impl<T: Copy> core::cmp::PartialEq for Union<T> {

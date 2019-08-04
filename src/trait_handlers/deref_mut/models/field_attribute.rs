@@ -1,6 +1,6 @@
-use crate::Trait;
-use crate::syn::{Meta, NestedMeta, Attribute};
 use crate::panic;
+use crate::syn::{Attribute, Meta, NestedMeta};
+use crate::Trait;
 
 #[derive(Clone)]
 pub struct FieldAttribute {
@@ -27,20 +27,27 @@ impl FieldAttributeBuilder {
         };
 
         match meta {
-            Meta::List(_) => panic::attribute_incorrect_format("DerefMut", &correct_usage_for_deref_mut_attribute),
-            Meta::NameValue(_) => panic::attribute_incorrect_format("DerefMut", &correct_usage_for_deref_mut_attribute),
+            Meta::List(_) => panic::attribute_incorrect_format(
+                "DerefMut",
+                &correct_usage_for_deref_mut_attribute,
+            ),
+            Meta::NameValue(_) => panic::attribute_incorrect_format(
+                "DerefMut",
+                &correct_usage_for_deref_mut_attribute,
+            ),
             Meta::Word(_) => {
                 if !self.enable_flag {
-                    panic::attribute_incorrect_format("DerefMut", &correct_usage_for_deref_mut_attribute);
+                    panic::attribute_incorrect_format(
+                        "DerefMut",
+                        &correct_usage_for_deref_mut_attribute,
+                    );
                 }
 
                 flag = true;
             }
         }
 
-        FieldAttribute {
-            flag,
-        }
+        FieldAttribute { flag }
     }
 
     pub fn from_attributes(self, attributes: &[Attribute], traits: &[Trait]) -> FieldAttribute {
@@ -73,18 +80,16 @@ impl FieldAttributeBuilder {
                                         result = Some(self.from_deref_mut_meta(&meta));
                                     }
                                 }
-                                _ => panic::educe_format_incorrect()
+                                _ => panic::educe_format_incorrect(),
                             }
                         }
                     }
-                    _ => panic::educe_format_incorrect()
-                }
-                _ => ()
+                    _ => panic::educe_format_incorrect(),
+                },
+                _ => (),
             }
         }
 
-        result.unwrap_or(FieldAttribute {
-            flag: false,
-        })
+        result.unwrap_or(FieldAttribute { flag: false })
     }
 }

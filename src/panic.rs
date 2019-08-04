@@ -17,17 +17,28 @@ pub fn trait_not_support_union(trait_name: &str) -> ! {
 
 #[inline]
 pub fn attribute_incorrect_format(attribute_name: &str, correct_usage: &[&str]) -> ! {
-    panic!("You are using an incorrect format of the `{}` attribute.{}", attribute_name, concat_string_slice_array(correct_usage))
+    panic!(
+        "You are using an incorrect format of the `{}` attribute.{}",
+        attribute_name,
+        concat_string_slice_array(correct_usage)
+    )
 }
 
 #[inline]
 pub fn parameter_incorrect_format(parameter_name: &str, correct_usage: &[&str]) -> ! {
-    panic!("You are using an incorrect format of the `{}` parameter.{}", parameter_name, concat_string_slice_array(correct_usage))
+    panic!(
+        "You are using an incorrect format of the `{}` parameter.{}",
+        parameter_name,
+        concat_string_slice_array(correct_usage)
+    )
 }
 
 #[inline]
 pub fn derive_attribute_not_set_up_yet(attribute_name: &str) -> ! {
-    panic!("You are using `{}` in the `derive` attribute, but it has not been set up yet.", attribute_name)
+    panic!(
+        "You are using `{}` in the `derive` attribute, but it has not been set up yet.",
+        attribute_name
+    )
 }
 
 #[inline]
@@ -37,7 +48,10 @@ pub fn reset_parameter(parameter_name: &str) -> ! {
 
 #[inline]
 pub fn unknown_parameter(attribute_name: &str, parameter_name: &str) -> ! {
-    panic!("Unknown parameter `{}` used in the `{}` attribute.", parameter_name, attribute_name)
+    panic!(
+        "Unknown parameter `{}` used in the `{}` attribute.",
+        parameter_name, attribute_name
+    )
 }
 
 #[inline]
@@ -77,7 +91,10 @@ pub fn no_deref_field() -> ! {
 
 #[inline]
 pub fn no_deref_field_of_variant(variant_name: &str) -> ! {
-    panic!("There is no field for the `{variant_name}` variant which is assigned for `Deref`.", variant_name = variant_name)
+    panic!(
+        "There is no field for the `{variant_name}` variant which is assigned for `Deref`.",
+        variant_name = variant_name
+    )
 }
 
 #[inline]
@@ -87,7 +104,10 @@ pub fn multiple_deref_fields() -> ! {
 
 #[inline]
 pub fn multiple_deref_fields_of_variant(variant_name: &str) -> ! {
-    panic!("Multiple fields of the `{variant_name}` variant are set for deref.", variant_name = variant_name)
+    panic!(
+        "Multiple fields of the `{variant_name}` variant are set for deref.",
+        variant_name = variant_name
+    )
 }
 
 #[inline]
@@ -102,7 +122,10 @@ pub fn no_deref_mut_field() -> ! {
 
 #[inline]
 pub fn no_deref_mut_field_of_variant(variant_name: &str) -> ! {
-    panic!("There is no field for the `{variant_name}` variant which is assigned for `DerefMut`.", variant_name = variant_name)
+    panic!(
+        "There is no field for the `{variant_name}` variant which is assigned for `DerefMut`.",
+        variant_name = variant_name
+    )
 }
 
 #[inline]
@@ -112,7 +135,10 @@ pub fn multiple_deref_mut_fields() -> ! {
 
 #[inline]
 pub fn multiple_deref_mut_fields_of_variant(variant_name: &str) -> ! {
-    panic!("Multiple fields of the `{variant_name}` variant are set for `DerefMut`.", variant_name = variant_name)
+    panic!(
+        "Multiple fields of the `{variant_name}` variant are set for `DerefMut`.",
+        variant_name = variant_name
+    )
 }
 
 #[inline]
@@ -164,7 +190,10 @@ pub fn reuse_a_value(value: isize) -> ! {
 
 #[inline]
 pub fn educe_format_incorrect() -> ! {
-    attribute_incorrect_format("educe", &[stringify!(#[educe(Trait1, Trait2, ..., TraitN)])])
+    attribute_incorrect_format(
+        "educe",
+        &[stringify!(#[educe(Trait1, Trait2, ..., TraitN)])],
+    )
 }
 
 fn concat_string_slice_array(array: &[&str]) -> String {

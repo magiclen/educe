@@ -1,18 +1,25 @@
 use std::str::FromStr;
 
 use super::super::TraitHandler;
-use super::models::{TypeAttributeBuilder, TypeAttributeName, FieldAttributeBuilder, FieldAttributeName};
+use super::models::{
+    FieldAttributeBuilder, FieldAttributeName, TypeAttributeBuilder, TypeAttributeName,
+};
 
-use crate::Trait;
-use crate::proc_macro2::TokenStream;
-use crate::syn::{DeriveInput, Meta, Data, Generics};
-use crate::quote::ToTokens;
 use crate::panic;
+use crate::proc_macro2::TokenStream;
+use crate::quote::ToTokens;
+use crate::syn::{Data, DeriveInput, Generics, Meta};
+use crate::Trait;
 
 pub struct DebugStructHandler;
 
 impl TraitHandler for DebugStructHandler {
-    fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta) {
+    fn trait_meta_handler(
+        ast: &DeriveInput,
+        tokens: &mut TokenStream,
+        traits: &[Trait],
+        meta: &Meta,
+    ) {
         let is_tuple = {
             if let Data::Struct(data) = &ast.data {
                 if let Some(field) = data.fields.iter().next() {
@@ -36,13 +43,16 @@ impl TraitHandler for DebugStructHandler {
             named_field: !is_tuple,
             enable_named_field: true,
             enable_bound: true,
-        }.from_debug_meta(meta);
+        }
+        .from_debug_meta(meta);
 
         let name = type_attribute.name.into_string_by_ident(&ast.ident);
 
         let named_field = type_attribute.named_field;
 
-        let bound = type_attribute.bound.into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
+        let bound = type_attribute
+            .bound
+            .into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
 
         let mut builder_tokens = TokenStream::new();
         let mut has_fields = false;
@@ -69,8 +79,9 @@ impl TraitHandler for DebugStructHandler {
                         name: FieldAttributeName::Default,
                         enable_name: true,
                         enable_ignore: true,
-                        enable_format: true,
-                    }.from_attributes(&field.attrs, traits);
+                        enable_impl: true,
+                    }
+                    .from_attributes(&field.attrs, traits);
 
                     if field_attribute.ignore {
                         continue;
@@ -124,12 +135,11 @@ impl TraitHandler for DebugStructHandler {
 
                             builder_tokens.extend(TokenStream::from_str(&statement).unwrap());
                         }
-                        None => {
-                            match format_method {
-                                Some(format_method) => {
-                                    let ty = field.ty.clone().into_token_stream().to_string();
+                        None => match format_method {
+                            Some(format_method) => {
+                                let ty = field.ty.clone().into_token_stream().to_string();
 
-                                    builder_tokens.extend(TokenStream::from_str(&format!("
+                                builder_tokens.extend(TokenStream::from_str(&format!("
                                         let arg = {{
                                             struct MyDebug<'a>(&'a {ty});
 
@@ -143,25 +153,32 @@ impl TraitHandler for DebugStructHandler {
                                         }};
                                     ", ty = ty, format_method = format_method, field_name = field_name)).unwrap());
 
-                                    let statement = if name.is_empty() {
-                                        format!("builder.entry(&RawString({key:?}), &arg);", key = key)
-                                    } else {
-                                        format!("builder.field({key:?}, &arg);", key = key)
-                                    };
+                                let statement = if name.is_empty() {
+                                    format!("builder.entry(&RawString({key:?}), &arg);", key = key)
+                                } else {
+                                    format!("builder.field({key:?}, &arg);", key = key)
+                                };
 
-                                    builder_tokens.extend(TokenStream::from_str(&statement).unwrap());
-                                }
-                                None => {
-                                    let statement = if name.is_empty() {
-                                        format!("builder.entry(&RawString({key:?}), &self.{field_name});", key = key, field_name = field_name)
-                                    } else {
-                                        format!("builder.field({key:?}, &self.{field_name});", key = key, field_name = field_name)
-                                    };
-
-                                    builder_tokens.extend(TokenStream::from_str(&statement).unwrap());
-                                }
+                                builder_tokens.extend(TokenStream::from_str(&statement).unwrap());
                             }
-                        }
+                            None => {
+                                let statement = if name.is_empty() {
+                                    format!(
+                                        "builder.entry(&RawString({key:?}), &self.{field_name});",
+                                        key = key,
+                                        field_name = field_name
+                                    )
+                                } else {
+                                    format!(
+                                        "builder.field({key:?}, &self.{field_name});",
+                                        key = key,
+                                        field_name = field_name
+                                    )
+                                };
+
+                                builder_tokens.extend(TokenStream::from_str(&statement).unwrap());
+                            }
+                        },
                     }
 
                     has_fields = true;
@@ -176,8 +193,9 @@ impl TraitHandler for DebugStructHandler {
                         name: FieldAttributeName::Default,
                         enable_name: false,
                         enable_ignore: true,
-                        enable_format: true,
-                    }.from_attributes(&field.attrs, traits);
+                        enable_impl: true,
+                    }
+                    .from_attributes(&field.attrs, traits);
 
                     if field_attribute.ignore {
                         continue;
@@ -210,14 +228,14 @@ impl TraitHandler for DebugStructHandler {
                                 }};
                             ", format_trait = format_trait, format_method = format_method, field_name = field_name)).unwrap());
 
-                            builder_tokens.extend(TokenStream::from_str("builder.field(&arg);").unwrap());
+                            builder_tokens
+                                .extend(TokenStream::from_str("builder.field(&arg);").unwrap());
                         }
-                        None => {
-                            match format_method {
-                                Some(format_method) => {
-                                    let ty = field.ty.clone().into_token_stream().to_string();
+                        None => match format_method {
+                            Some(format_method) => {
+                                let ty = field.ty.clone().into_token_stream().to_string();
 
-                                    builder_tokens.extend(TokenStream::from_str(&format!("
+                                builder_tokens.extend(TokenStream::from_str(&format!("
                                         let arg = {{
                                             struct MyDebug<'a>(&'a {ty});
 
@@ -231,15 +249,18 @@ impl TraitHandler for DebugStructHandler {
                                         }};
                                     ", ty = ty, format_method = format_method, field_name = field_name)).unwrap());
 
-                                    builder_tokens.extend(TokenStream::from_str("builder.field(&arg);").unwrap());
-                                }
-                                None => {
-                                    let statement = format!("builder.field(&self.{field_name});", field_name = field_name);
-
-                                    builder_tokens.extend(TokenStream::from_str(&statement).unwrap());
-                                }
+                                builder_tokens
+                                    .extend(TokenStream::from_str("builder.field(&arg);").unwrap());
                             }
-                        }
+                            None => {
+                                let statement = format!(
+                                    "builder.field(&self.{field_name});",
+                                    field_name = field_name
+                                );
+
+                                builder_tokens.extend(TokenStream::from_str(&statement).unwrap());
+                            }
+                        },
                     }
 
                     has_fields = true;

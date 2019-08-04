@@ -1,21 +1,24 @@
-use std::str::FromStr;
 use std::fmt::Write;
+use std::str::FromStr;
 
 use super::super::TraitHandler;
-use super::models::{TypeAttributeBuilder, FieldAttributeBuilder};
+use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
 
-use crate::Trait;
-use crate::proc_macro2::TokenStream;
-use crate::syn::{DeriveInput, Meta, Data, Fields};
 use crate::panic;
+use crate::proc_macro2::TokenStream;
+use crate::syn::{Data, DeriveInput, Fields, Meta};
+use crate::Trait;
 
 pub struct DerefMutEnumHandler;
 
 impl TraitHandler for DerefMutEnumHandler {
-    fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta) {
-        let _ = TypeAttributeBuilder {
-            enable_flag: true,
-        }.from_deref_mut_meta(meta);
+    fn trait_meta_handler(
+        ast: &DeriveInput,
+        tokens: &mut TokenStream,
+        traits: &[Trait],
+        meta: &Meta,
+    ) {
+        let _ = TypeAttributeBuilder { enable_flag: true }.from_deref_mut_meta(meta);
 
         let enum_name = ast.ident.to_string();
 
@@ -25,26 +28,26 @@ impl TraitHandler for DerefMutEnumHandler {
 
         if let Data::Enum(data) = &ast.data {
             for variant in data.variants.iter() {
-                let _ = TypeAttributeBuilder {
-                    enable_flag: false,
-                }.from_attributes(&variant.attrs, traits);
+                let _ = TypeAttributeBuilder { enable_flag: false }
+                    .from_attributes(&variant.attrs, traits);
 
                 let variant_ident = variant.ident.to_string();
 
                 match &variant.fields {
-                    Fields::Unit => { // TODO Unit
+                    Fields::Unit => {
+                        // TODO Unit
                         panic::deref_mut_cannot_support_unit_variant();
                     }
-                    Fields::Named(fields) => {  // TODO Struct
+                    Fields::Named(fields) => {
+                        // TODO Struct
                         let mut pattern_tokens = String::new();
                         let mut block_tokens = String::new();
 
                         let mut counter = 0;
 
                         for field in fields.named.iter() {
-                            let field_attribute = FieldAttributeBuilder {
-                                enable_flag: true,
-                            }.from_attributes(&field.attrs, traits);
+                            let field_attribute = FieldAttributeBuilder { enable_flag: true }
+                                .from_attributes(&field.attrs, traits);
 
                             if field_attribute.flag {
                                 if !block_tokens.is_empty() {
@@ -53,8 +56,18 @@ impl TraitHandler for DerefMutEnumHandler {
 
                                 let field_name = field.ident.as_ref().unwrap().to_string();
 
-                                block_tokens.write_fmt(format_args!("return {field_name};", field_name = field_name)).unwrap();
-                                pattern_tokens.write_fmt(format_args!("{field_name}, ..", field_name = field_name)).unwrap();
+                                block_tokens
+                                    .write_fmt(format_args!(
+                                        "return {field_name};",
+                                        field_name = field_name
+                                    ))
+                                    .unwrap();
+                                pattern_tokens
+                                    .write_fmt(format_args!(
+                                        "{field_name}, ..",
+                                        field_name = field_name
+                                    ))
+                                    .unwrap();
                             }
 
                             counter += 1;
@@ -66,8 +79,18 @@ impl TraitHandler for DerefMutEnumHandler {
 
                                 let field_name = field.ident.as_ref().unwrap().to_string();
 
-                                block_tokens.write_fmt(format_args!("return {field_name};", field_name = field_name)).unwrap();
-                                pattern_tokens.write_fmt(format_args!("{field_name}, ..", field_name = field_name)).unwrap();
+                                block_tokens
+                                    .write_fmt(format_args!(
+                                        "return {field_name};",
+                                        field_name = field_name
+                                    ))
+                                    .unwrap();
+                                pattern_tokens
+                                    .write_fmt(format_args!(
+                                        "{field_name}, ..",
+                                        field_name = field_name
+                                    ))
+                                    .unwrap();
                             } else {
                                 panic::no_deref_mut_field_of_variant(&variant_ident);
                             }
@@ -75,16 +98,16 @@ impl TraitHandler for DerefMutEnumHandler {
 
                         match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident} {{ {pattern_tokens} }} => {{ {block_tokens} }}", enum_name = enum_name, variant_ident = variant_ident, pattern_tokens = pattern_tokens, block_tokens = block_tokens)).unwrap();
                     }
-                    Fields::Unnamed(fields) => { // TODO Tuple
+                    Fields::Unnamed(fields) => {
+                        // TODO Tuple
                         let mut pattern_tokens = String::new();
                         let mut block_tokens = String::new();
 
                         let mut counter = 0;
 
                         for (index, field) in fields.unnamed.iter().enumerate() {
-                            let field_attribute = FieldAttributeBuilder {
-                                enable_flag: true,
-                            }.from_attributes(&field.attrs, traits);
+                            let field_attribute = FieldAttributeBuilder { enable_flag: true }
+                                .from_attributes(&field.attrs, traits);
 
                             if field_attribute.flag {
                                 if !block_tokens.is_empty() {
@@ -93,8 +116,18 @@ impl TraitHandler for DerefMutEnumHandler {
 
                                 let field_name = format!("{}", index);
 
-                                block_tokens.write_fmt(format_args!("return _{field_name};", field_name = field_name)).unwrap();
-                                pattern_tokens.write_fmt(format_args!("_{field_name},", field_name = field_name)).unwrap();
+                                block_tokens
+                                    .write_fmt(format_args!(
+                                        "return _{field_name};",
+                                        field_name = field_name
+                                    ))
+                                    .unwrap();
+                                pattern_tokens
+                                    .write_fmt(format_args!(
+                                        "_{field_name},",
+                                        field_name = field_name
+                                    ))
+                                    .unwrap();
                             } else {
                                 pattern_tokens.push_str("_,");
                             }
@@ -106,10 +139,20 @@ impl TraitHandler for DerefMutEnumHandler {
                             if counter == 1 {
                                 let field_name = String::from("0");
 
-                                block_tokens.write_fmt(format_args!("return _{field_name};", field_name = field_name)).unwrap();
+                                block_tokens
+                                    .write_fmt(format_args!(
+                                        "return _{field_name};",
+                                        field_name = field_name
+                                    ))
+                                    .unwrap();
 
                                 pattern_tokens.clear();
-                                pattern_tokens.write_fmt(format_args!("_{field_name}", field_name = field_name)).unwrap();
+                                pattern_tokens
+                                    .write_fmt(format_args!(
+                                        "_{field_name}",
+                                        field_name = field_name
+                                    ))
+                                    .unwrap();
                             } else {
                                 panic::no_deref_mut_field_of_variant(&variant_ident);
                             }

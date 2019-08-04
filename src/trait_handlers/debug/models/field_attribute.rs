@@ -1,8 +1,8 @@
 use super::super::super::create_path_string_from_lit_str;
 
-use crate::Trait;
-use crate::syn::{Meta, NestedMeta, Lit, Attribute};
 use crate::panic;
+use crate::syn::{Attribute, Lit, Meta, NestedMeta};
+use crate::Trait;
 
 #[derive(Debug, Clone)]
 pub enum FieldAttributeName {
@@ -14,7 +14,7 @@ impl FieldAttributeName {
     pub fn into_option_string(self) -> Option<String> {
         match self {
             FieldAttributeName::Default => None,
-            FieldAttributeName::Custom(s) => Some(s)
+            FieldAttributeName::Custom(s) => Some(s),
         }
     }
 }
@@ -32,7 +32,7 @@ pub struct FieldAttributeBuilder {
     pub name: FieldAttributeName,
     pub enable_name: bool,
     pub enable_ignore: bool,
-    pub enable_format: bool,
+    pub enable_impl: bool,
 }
 
 impl FieldAttributeBuilder {
@@ -61,7 +61,10 @@ impl FieldAttributeBuilder {
         };
 
         let correct_usage_for_name = {
-            let usage = vec![stringify!(#[educe(Debug(name = "new_name"))]), stringify!(#[educe(Debug(name("new_name")))])];
+            let usage = vec![
+                stringify!(#[educe(Debug(name = "new_name"))]),
+                stringify!(#[educe(Debug(name("new_name")))]),
+            ];
 
             usage
         };
@@ -72,8 +75,15 @@ impl FieldAttributeBuilder {
             usage
         };
 
-        let correct_usage_for_format = {
-            let usage = vec![stringify!(#[educe(Debug(format(method = "path_to_method")))]), stringify!(#[educe(Debug(format(trait = "path_to_trait")))]), stringify!(#[educe(Debug(format(trait = "path_to_trait", method = "path_to_method_in_trait")))]), stringify!(#[educe(Debug(format(method("path_to_method"))))]), stringify!(#[educe(Debug(format(trait("path_to_trait"))))]), stringify!(#[educe(Debug(format(trait("path_to_trait"), method("path_to_method_in_trait"))))]), stringify!(#[educe(Debug(format = "path_to_method"))]), stringify!(#[educe(Debug(format("path_to_method")))])];
+        let correct_usage_for_impl = {
+            let usage = vec![
+                stringify!(#[educe(Debug(method = "path_to_method"))]),
+                stringify!(#[educe(Debug(trait = "path_to_trait"))]),
+                stringify!(#[educe(Debug(trait = "path_to_trait", method = "path_to_method_in_trait"))]),
+                stringify!(#[educe(Debug(method("path_to_method")))]),
+                stringify!(#[educe(Debug(trait("path_to_trait")))]),
+                stringify!(#[educe(Debug(trait("path_to_trait"), method("path_to_method_in_trait")))]),
+            ];
 
             usage
         };
@@ -101,21 +111,31 @@ impl FieldAttributeBuilder {
                                                     NestedMeta::Literal(lit) => match lit {
                                                         Lit::Str(s) => {
                                                             if name_is_set {
-                                                                panic::reset_parameter(meta_name.as_str());
+                                                                panic::reset_parameter(
+                                                                    meta_name.as_str(),
+                                                                );
                                                             }
 
                                                             name_is_set = true;
 
-                                                            let s = create_path_string_from_lit_str(s);
+                                                            let s =
+                                                                create_path_string_from_lit_str(s);
 
                                                             name = match s {
-                                                                Some(s) => FieldAttributeName::Custom(s),
-                                                                None => panic::disable_named_field_name()
+                                                                Some(s) => {
+                                                                    FieldAttributeName::Custom(s)
+                                                                }
+                                                                None => {
+                                                                    panic::disable_named_field_name(
+                                                                    )
+                                                                }
                                                             };
                                                         }
                                                         Lit::Bool(s) => {
                                                             if name_is_set {
-                                                                panic::reset_parameter(meta_name.as_str());
+                                                                panic::reset_parameter(
+                                                                    meta_name.as_str(),
+                                                                );
                                                             }
 
                                                             name_is_set = true;
@@ -126,9 +146,15 @@ impl FieldAttributeBuilder {
                                                                 panic::disable_named_field_name();
                                                             }
                                                         }
-                                                        _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_name)
-                                                    }
-                                                    _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_name)
+                                                        _ => panic::parameter_incorrect_format(
+                                                            meta_name.as_str(),
+                                                            &correct_usage_for_name,
+                                                        ),
+                                                    },
+                                                    _ => panic::parameter_incorrect_format(
+                                                        meta_name.as_str(),
+                                                        &correct_usage_for_name,
+                                                    ),
                                                 }
                                             }
                                         }
@@ -147,7 +173,7 @@ impl FieldAttributeBuilder {
 
                                                     name = match s {
                                                         Some(s) => FieldAttributeName::Custom(s),
-                                                        None => panic::disable_named_field_name()
+                                                        None => panic::disable_named_field_name(),
                                                     };
                                                 }
                                                 Lit::Bool(s) => {
@@ -163,10 +189,16 @@ impl FieldAttributeBuilder {
                                                         panic::disable_named_field_name();
                                                     }
                                                 }
-                                                _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_name)
+                                                _ => panic::parameter_incorrect_format(
+                                                    meta_name.as_str(),
+                                                    &correct_usage_for_name,
+                                                ),
                                             }
                                         }
-                                        _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_name)
+                                        _ => panic::parameter_incorrect_format(
+                                            meta_name.as_str(),
+                                            &correct_usage_for_name,
+                                        ),
                                     }
                                 }
                                 "ignore" => {
@@ -184,11 +216,14 @@ impl FieldAttributeBuilder {
 
                                             ignore = true;
                                         }
-                                        _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_ignore)
+                                        _ => panic::parameter_incorrect_format(
+                                            meta_name.as_str(),
+                                            &correct_usage_for_ignore,
+                                        ),
                                     }
                                 }
-                                "format" | "impl" => {
-                                    if !self.enable_format {
+                                "method" => {
+                                    if !self.enable_impl {
                                         panic::unknown_parameter("Debug", meta_name.as_str());
                                     }
 
@@ -196,121 +231,34 @@ impl FieldAttributeBuilder {
                                         Meta::List(list) => {
                                             for p in list.nested.iter() {
                                                 match p {
-                                                    NestedMeta::Meta(meta) => {
-                                                        let meta_name = meta.name().to_string();
-
-                                                        match meta_name.as_str() {
-                                                            "method" => match meta {
-                                                                Meta::List(list) => {
-                                                                    for p in list.nested.iter() {
-                                                                        match p {
-                                                                            NestedMeta::Literal(lit) => match lit {
-                                                                                Lit::Str(s) => {
-                                                                                    if format_method.is_some() {
-                                                                                        panic::reset_parameter("format_method");
-                                                                                    }
-
-                                                                                    let s = create_path_string_from_lit_str(s);
-
-                                                                                    if let Some(s) = s {
-                                                                                        format_method = Some(s);
-                                                                                    } else {
-                                                                                        panic::empty_parameter("format_method");
-                                                                                    }
-                                                                                }
-                                                                                _ => panic::parameter_incorrect_format("format_method", &correct_usage_for_format)
-                                                                            }
-                                                                            _ => panic::parameter_incorrect_format("format_method", &correct_usage_for_format)
-                                                                        }
-                                                                    }
-                                                                }
-                                                                Meta::NameValue(named_value) => {
-                                                                    let lit = &named_value.lit;
-
-                                                                    match lit {
-                                                                        Lit::Str(s) => {
-                                                                            if format_method.is_some() {
-                                                                                panic::reset_parameter("format_method");
-                                                                            }
-
-                                                                            let s = create_path_string_from_lit_str(s);
-
-                                                                            if let Some(s) = s {
-                                                                                format_method = Some(s);
-                                                                            } else {
-                                                                                panic::empty_parameter("format_method");
-                                                                            }
-                                                                        }
-                                                                        _ => panic::parameter_incorrect_format("format_method", &correct_usage_for_format)
-                                                                    }
-                                                                }
-                                                                _ => panic::parameter_incorrect_format("format_method", &correct_usage_for_format)
-                                                            }
-                                                            "trait" => match meta {
-                                                                Meta::List(list) => {
-                                                                    for p in list.nested.iter() {
-                                                                        match p {
-                                                                            NestedMeta::Literal(lit) => match lit {
-                                                                                Lit::Str(s) => {
-                                                                                    if format_trait.is_some() {
-                                                                                        panic::reset_parameter("format_trait");
-                                                                                    }
-
-                                                                                    let s = create_path_string_from_lit_str(s);
-
-                                                                                    if let Some(s) = s {
-                                                                                        format_trait = Some(s);
-                                                                                    } else {
-                                                                                        panic::empty_parameter("format_trait");
-                                                                                    }
-                                                                                }
-                                                                                _ => panic::parameter_incorrect_format("format_trait", &correct_usage_for_format)
-                                                                            }
-                                                                            _ => panic::parameter_incorrect_format("format_trait", &correct_usage_for_format)
-                                                                        }
-                                                                    }
-                                                                }
-                                                                Meta::NameValue(named_value) => {
-                                                                    let lit = &named_value.lit;
-
-                                                                    match lit {
-                                                                        Lit::Str(s) => {
-                                                                            if format_trait.is_some() {
-                                                                                panic::reset_parameter("format_trait");
-                                                                            }
-
-                                                                            let s = create_path_string_from_lit_str(s);
-
-                                                                            if let Some(s) = s {
-                                                                                format_trait = Some(s);
-                                                                            } else {
-                                                                                panic::empty_parameter("format_trait");
-                                                                            }
-                                                                        }
-                                                                        _ => panic::parameter_incorrect_format("format_trait", &correct_usage_for_format)
-                                                                    }
-                                                                }
-                                                                _ => panic::parameter_incorrect_format("format_trait", &correct_usage_for_format)
-                                                            }
-                                                            _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_format)
-                                                        }
-                                                    }
                                                     NestedMeta::Literal(lit) => match lit {
                                                         Lit::Str(s) => {
                                                             if format_method.is_some() {
-                                                                panic::reset_parameter("format_method");
+                                                                panic::reset_parameter(
+                                                                    meta_name.as_str(),
+                                                                );
                                                             }
 
-                                                            let s = create_path_string_from_lit_str(s);
+                                                            let s =
+                                                                create_path_string_from_lit_str(s);
 
                                                             if let Some(s) = s {
                                                                 format_method = Some(s);
                                                             } else {
-                                                                panic::empty_parameter("format_method");
+                                                                panic::empty_parameter(
+                                                                    meta_name.as_str(),
+                                                                );
                                                             }
                                                         }
-                                                        _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_format)
-                                                    }
+                                                        _ => panic::parameter_incorrect_format(
+                                                            meta_name.as_str(),
+                                                            &correct_usage_for_impl,
+                                                        ),
+                                                    },
+                                                    _ => panic::parameter_incorrect_format(
+                                                        meta_name.as_str(),
+                                                        &correct_usage_for_impl,
+                                                    ),
                                                 }
                                             }
                                         }
@@ -320,7 +268,7 @@ impl FieldAttributeBuilder {
                                             match lit {
                                                 Lit::Str(s) => {
                                                     if format_method.is_some() {
-                                                        panic::reset_parameter("format_method");
+                                                        panic::reset_parameter(meta_name.as_str());
                                                     }
 
                                                     let s = create_path_string_from_lit_str(s);
@@ -328,54 +276,136 @@ impl FieldAttributeBuilder {
                                                     if let Some(s) = s {
                                                         format_method = Some(s);
                                                     } else {
-                                                        panic::empty_parameter("format_method");
+                                                        panic::empty_parameter(meta_name.as_str());
                                                     }
                                                 }
-                                                _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_format)
+                                                _ => panic::parameter_incorrect_format(
+                                                    meta_name.as_str(),
+                                                    &correct_usage_for_impl,
+                                                ),
                                             }
                                         }
-                                        _ => panic::parameter_incorrect_format(meta_name.as_str(), &correct_usage_for_format)
+                                        _ => panic::parameter_incorrect_format(
+                                            meta_name.as_str(),
+                                            &correct_usage_for_impl,
+                                        ),
                                     }
                                 }
-                                _ => panic::unknown_parameter("Debug", meta_name.as_str())
+                                "trait" => {
+                                    if !self.enable_impl {
+                                        panic::unknown_parameter("Debug", meta_name.as_str());
+                                    }
+
+                                    match meta {
+                                        Meta::List(list) => {
+                                            for p in list.nested.iter() {
+                                                match p {
+                                                    NestedMeta::Literal(lit) => match lit {
+                                                        Lit::Str(s) => {
+                                                            if format_trait.is_some() {
+                                                                panic::reset_parameter(
+                                                                    meta_name.as_str(),
+                                                                );
+                                                            }
+
+                                                            let s =
+                                                                create_path_string_from_lit_str(s);
+
+                                                            if let Some(s) = s {
+                                                                format_trait = Some(s);
+                                                            } else {
+                                                                panic::empty_parameter(
+                                                                    meta_name.as_str(),
+                                                                );
+                                                            }
+                                                        }
+                                                        _ => panic::parameter_incorrect_format(
+                                                            meta_name.as_str(),
+                                                            &correct_usage_for_impl,
+                                                        ),
+                                                    },
+                                                    _ => panic::parameter_incorrect_format(
+                                                        meta_name.as_str(),
+                                                        &correct_usage_for_impl,
+                                                    ),
+                                                }
+                                            }
+                                        }
+                                        Meta::NameValue(named_value) => {
+                                            let lit = &named_value.lit;
+
+                                            match lit {
+                                                Lit::Str(s) => {
+                                                    if format_trait.is_some() {
+                                                        panic::reset_parameter(meta_name.as_str());
+                                                    }
+
+                                                    let s = create_path_string_from_lit_str(s);
+
+                                                    if let Some(s) = s {
+                                                        format_trait = Some(s);
+                                                    } else {
+                                                        panic::empty_parameter(meta_name.as_str());
+                                                    }
+                                                }
+                                                _ => panic::parameter_incorrect_format(
+                                                    meta_name.as_str(),
+                                                    &correct_usage_for_impl,
+                                                ),
+                                            }
+                                        }
+                                        _ => panic::parameter_incorrect_format(
+                                            meta_name.as_str(),
+                                            &correct_usage_for_impl,
+                                        ),
+                                    }
+                                }
+                                _ => panic::unknown_parameter("Debug", meta_name.as_str()),
                             }
                         }
-                        NestedMeta::Literal(lit) => {
-                            match lit {
-                                Lit::Str(s) => {
-                                    if !self.enable_name {
-                                        panic::attribute_incorrect_format("Debug", &correct_usage_for_debug_attribute)
-                                    }
-
-                                    if name_is_set {
-                                        panic::reset_parameter("name");
-                                    }
-
-                                    name_is_set = true;
-
-                                    let s = create_path_string_from_lit_str(s);
-
-                                    name = match s {
-                                        Some(s) => FieldAttributeName::Custom(s),
-                                        None => panic::disable_named_field_name()
-                                    };
+                        NestedMeta::Literal(lit) => match lit {
+                            Lit::Str(s) => {
+                                if !self.enable_name {
+                                    panic::attribute_incorrect_format(
+                                        "Debug",
+                                        &correct_usage_for_debug_attribute,
+                                    )
                                 }
-                                Lit::Bool(b) => {
-                                    if !self.enable_ignore {
-                                        panic::attribute_incorrect_format("Debug", &correct_usage_for_debug_attribute)
-                                    }
 
-                                    if ignore_is_set {
-                                        panic::reset_parameter("ignore");
-                                    }
-
-                                    ignore_is_set = true;
-
-                                    ignore = !b.value;
+                                if name_is_set {
+                                    panic::reset_parameter("name");
                                 }
-                                _ => panic::attribute_incorrect_format("Debug", &correct_usage_for_debug_attribute)
+
+                                name_is_set = true;
+
+                                let s = create_path_string_from_lit_str(s);
+
+                                name = match s {
+                                    Some(s) => FieldAttributeName::Custom(s),
+                                    None => panic::disable_named_field_name(),
+                                };
                             }
-                        }
+                            Lit::Bool(b) => {
+                                if !self.enable_ignore {
+                                    panic::attribute_incorrect_format(
+                                        "Debug",
+                                        &correct_usage_for_debug_attribute,
+                                    )
+                                }
+
+                                if ignore_is_set {
+                                    panic::reset_parameter("ignore");
+                                }
+
+                                ignore_is_set = true;
+
+                                ignore = !b.value;
+                            }
+                            _ => panic::attribute_incorrect_format(
+                                "Debug",
+                                &correct_usage_for_debug_attribute,
+                            ),
+                        },
                     }
                 }
             }
@@ -385,27 +415,36 @@ impl FieldAttributeBuilder {
                 match lit {
                     Lit::Str(s) => {
                         if !self.enable_name {
-                            panic::attribute_incorrect_format("Debug", &correct_usage_for_debug_attribute)
+                            panic::attribute_incorrect_format(
+                                "Debug",
+                                &correct_usage_for_debug_attribute,
+                            )
                         }
 
                         let s = create_path_string_from_lit_str(s);
 
                         name = match s {
                             Some(s) => FieldAttributeName::Custom(s),
-                            None => panic::disable_named_field_name()
+                            None => panic::disable_named_field_name(),
                         };
                     }
                     Lit::Bool(b) => {
                         if !self.enable_ignore {
-                            panic::attribute_incorrect_format("Debug", &correct_usage_for_debug_attribute)
+                            panic::attribute_incorrect_format(
+                                "Debug",
+                                &correct_usage_for_debug_attribute,
+                            )
                         }
 
                         ignore = !b.value;
                     }
-                    _ => panic::attribute_incorrect_format("Debug", &correct_usage_for_debug_attribute)
+                    _ => panic::attribute_incorrect_format(
+                        "Debug",
+                        &correct_usage_for_debug_attribute,
+                    ),
                 }
             }
-            _ => panic::attribute_incorrect_format("Debug", &correct_usage_for_debug_attribute)
+            _ => panic::attribute_incorrect_format("Debug", &correct_usage_for_debug_attribute),
         }
 
         if format_trait.is_some() {
@@ -452,13 +491,13 @@ impl FieldAttributeBuilder {
                                         result = Some(self.from_debug_meta(&meta));
                                     }
                                 }
-                                _ => panic::educe_format_incorrect()
+                                _ => panic::educe_format_incorrect(),
                             }
                         }
                     }
-                    _ => panic::educe_format_incorrect()
-                }
-                _ => ()
+                    _ => panic::educe_format_incorrect(),
+                },
+                _ => (),
             }
         }
 

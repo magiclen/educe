@@ -1,27 +1,35 @@
-use std::str::FromStr;
 use std::fmt::Write;
+use std::str::FromStr;
 
 use super::super::TraitHandler;
-use super::models::{TypeAttributeBuilder, FieldAttributeBuilder};
+use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
 
-use crate::Trait;
-use crate::proc_macro2::TokenStream;
-use crate::syn::{DeriveInput, Meta, Data, Lit, Generics};
-use crate::quote::ToTokens;
 use crate::panic;
+use crate::proc_macro2::TokenStream;
+use crate::quote::ToTokens;
+use crate::syn::{Data, DeriveInput, Generics, Lit, Meta};
+use crate::Trait;
 
 pub struct DefaultUnionHandler;
 
 impl TraitHandler for DefaultUnionHandler {
-    fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta) {
+    fn trait_meta_handler(
+        ast: &DeriveInput,
+        tokens: &mut TokenStream,
+        traits: &[Trait],
+        meta: &Meta,
+    ) {
         let type_attribute = TypeAttributeBuilder {
             enable_flag: true,
             enable_new: true,
             enable_expression: true,
             enable_bound: true,
-        }.from_default_meta(meta);
+        }
+        .from_default_meta(meta);
 
-        let bound = type_attribute.bound.into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
+        let bound = type_attribute
+            .bound
+            .into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
 
         let mut builder_tokens = TokenStream::new();
 
@@ -33,7 +41,8 @@ impl TraitHandler for DefaultUnionHandler {
                             enable_flag: false,
                             enable_literal: false,
                             enable_expression: false,
-                        }.from_attributes(&field.attrs, traits);
+                        }
+                        .from_attributes(&field.attrs, traits);
                     }
 
                     builder_tokens.extend(quote!(#expression));
@@ -51,11 +60,16 @@ impl TraitHandler for DefaultUnionHandler {
                                 enable_flag: true,
                                 enable_literal: true,
                                 enable_expression: true,
-                            }.from_attributes(&field.attrs, traits);
+                            }
+                            .from_attributes(&field.attrs, traits);
 
                             let field_name = field.ident.as_ref().unwrap().to_string();
 
-                            (field_name, field_attribute, field.ty.clone().into_token_stream().to_string())
+                            (
+                                field_name,
+                                field_attribute,
+                                field.ty.clone().into_token_stream().to_string(),
+                            )
                         } else {
                             let mut fields_iter = fields.iter();
 
@@ -68,60 +82,86 @@ impl TraitHandler for DefaultUnionHandler {
                                             enable_flag: true,
                                             enable_literal: true,
                                             enable_expression: true,
-                                        }.from_attributes(&field.attrs, traits);
+                                        }
+                                        .from_attributes(&field.attrs, traits);
 
-                                        if field_attribute.flag || field_attribute.literal.is_some() || field_attribute.expression.is_some() {
-                                            let field_name = field.ident.as_ref().unwrap().to_string();
+                                        if field_attribute.flag
+                                            || field_attribute.literal.is_some()
+                                            || field_attribute.expression.is_some()
+                                        {
+                                            let field_name =
+                                                field.ident.as_ref().unwrap().to_string();
 
                                             loop {
                                                 let field = fields_iter.next();
 
                                                 match field {
                                                     Some(field) => {
-                                                        let field_attribute = FieldAttributeBuilder {
-                                                            enable_flag: true,
-                                                            enable_literal: true,
-                                                            enable_expression: true,
-                                                        }.from_attributes(&field.attrs, traits);
+                                                        let field_attribute =
+                                                            FieldAttributeBuilder {
+                                                                enable_flag: true,
+                                                                enable_literal: true,
+                                                                enable_expression: true,
+                                                            }
+                                                            .from_attributes(&field.attrs, traits);
 
-                                                        if field_attribute.flag || field_attribute.literal.is_some() || field_attribute.expression.is_some() {
+                                                        if field_attribute.flag
+                                                            || field_attribute.literal.is_some()
+                                                            || field_attribute.expression.is_some()
+                                                        {
                                                             panic::multiple_default_fields();
                                                         }
                                                     }
-                                                    None => break
+                                                    None => break,
                                                 }
                                             }
 
-                                            break (field_name, field_attribute, field.ty.clone().into_token_stream().to_string());
+                                            break (
+                                                field_name,
+                                                field_attribute,
+                                                field.ty.clone().into_token_stream().to_string(),
+                                            );
                                         }
                                     }
-                                    None => panic::no_default_field()
+                                    None => panic::no_default_field(),
                                 }
                             }
                         }
                     };
 
-                    let mut union_tokens = format!("{ident} {{ {field_name}: ", ident = ident, field_name = field_name);
+                    let mut union_tokens = format!(
+                        "{ident} {{ {field_name}: ",
+                        ident = ident,
+                        field_name = field_name
+                    );
 
                     match field_attribute.literal {
-                        Some(value) => {
-                            match &value {
-                                Lit::Str(s) => {
-                                    union_tokens.write_fmt(format_args!("core::convert::Into::into({s})", s = s.into_token_stream().to_string())).unwrap();
-                                }
-                                _ => {
-                                    union_tokens.push_str(&value.into_token_stream().to_string());
-                                }
+                        Some(value) => match &value {
+                            Lit::Str(s) => {
+                                union_tokens
+                                    .write_fmt(format_args!(
+                                        "core::convert::Into::into({s})",
+                                        s = s.into_token_stream().to_string()
+                                    ))
+                                    .unwrap();
                             }
-                        }
+                            _ => {
+                                union_tokens.push_str(&value.into_token_stream().to_string());
+                            }
+                        },
                         None => match field_attribute.expression {
                             Some(expression) => {
                                 union_tokens.push_str(&expression);
                             }
                             None => {
-                                union_tokens.write_fmt(format_args!("<{typ} as core::default::Default>::default()", typ = typ)).unwrap();
+                                union_tokens
+                                    .write_fmt(format_args!(
+                                        "<{typ} as core::default::Default>::default()",
+                                        typ = typ
+                                    ))
+                                    .unwrap();
                             }
-                        }
+                        },
                     }
 
                     union_tokens.push('}');

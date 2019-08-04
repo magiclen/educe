@@ -1,5 +1,4 @@
 #![cfg(all(feature = "PartialEq", feature = "Eq"))]
-
 #![no_std]
 
 #[macro_use]
@@ -12,26 +11,16 @@ fn basic() {
     enum Enum {
         Unit,
         Unit2,
-        Struct {
-            f1: u8
-        },
+        Struct { f1: u8 },
         Tuple(u8),
     }
 
     assert!(Enum::Unit == Enum::Unit);
     assert!(Enum::Unit != Enum::Unit2);
 
-    assert!(Enum::Struct {
-        f1: 1
-    } == Enum::Struct {
-        f1: 1
-    });
+    assert!(Enum::Struct { f1: 1 } == Enum::Struct { f1: 1 });
 
-    assert!(Enum::Struct {
-        f1: 1
-    } != Enum::Struct {
-        f1: 2
-    });
+    assert!(Enum::Struct { f1: 1 } != Enum::Struct { f1: 2 });
 
     assert!(Enum::Tuple(1) == Enum::Tuple(1));
     assert!(Enum::Tuple(1) != Enum::Tuple(2));
@@ -43,25 +32,15 @@ fn bound_1() {
     #[educe(PartialEq(bound), Eq(bound))]
     enum Enum<T> {
         Unit,
-        Struct {
-            f1: T
-        },
+        Struct { f1: T },
         Tuple(T),
     }
 
     assert!(Enum::<u8>::Unit == Enum::<u8>::Unit);
 
-    assert!(Enum::Struct {
-        f1: 1
-    } == Enum::Struct {
-        f1: 1
-    });
+    assert!(Enum::Struct { f1: 1 } == Enum::Struct { f1: 1 });
 
-    assert!(Enum::Struct {
-        f1: 1
-    } != Enum::Struct {
-        f1: 2
-    });
+    assert!(Enum::Struct { f1: 1 } != Enum::Struct { f1: 2 });
 
     assert!(Enum::Tuple(1) == Enum::Tuple(1));
     assert!(Enum::Tuple(1) != Enum::Tuple(2));
@@ -73,25 +52,15 @@ fn bound_2() {
     #[educe(PartialEq(bound), Eq(bound = "T: core::cmp::Eq"))]
     enum Enum<T> {
         Unit,
-        Struct {
-            f1: T
-        },
+        Struct { f1: T },
         Tuple(T),
     }
 
     assert!(Enum::<u8>::Unit == Enum::<u8>::Unit);
 
-    assert!(Enum::Struct {
-        f1: 1
-    } == Enum::Struct {
-        f1: 1
-    });
+    assert!(Enum::Struct { f1: 1 } == Enum::Struct { f1: 1 });
 
-    assert!(Enum::Struct {
-        f1: 1
-    } != Enum::Struct {
-        f1: 2
-    });
+    assert!(Enum::Struct { f1: 1 } != Enum::Struct { f1: 2 });
 
     assert!(Enum::Tuple(1) == Enum::Tuple(1));
     assert!(Enum::Tuple(1) != Enum::Tuple(2));
@@ -103,25 +72,15 @@ fn bound_3() {
     #[educe(PartialEq(bound), Eq(bound("T: core::cmp::Eq")))]
     enum Enum<T> {
         Unit,
-        Struct {
-            f1: T
-        },
+        Struct { f1: T },
         Tuple(T),
     }
 
     assert!(Enum::<u8>::Unit == Enum::<u8>::Unit);
 
-    assert!(Enum::Struct {
-        f1: 1
-    } == Enum::Struct {
-        f1: 1
-    });
+    assert!(Enum::Struct { f1: 1 } == Enum::Struct { f1: 1 });
 
-    assert!(Enum::Struct {
-        f1: 1
-    } != Enum::Struct {
-        f1: 2
-    });
+    assert!(Enum::Struct { f1: 1 } != Enum::Struct { f1: 2 });
 
     assert!(Enum::Tuple(1) == Enum::Tuple(1));
     assert!(Enum::Tuple(1) != Enum::Tuple(2));

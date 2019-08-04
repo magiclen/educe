@@ -1,21 +1,27 @@
-use std::str::FromStr;
 use std::fmt::Write;
+use std::str::FromStr;
 
 use super::super::TraitHandler;
-use super::models::{TypeAttributeBuilder, FieldAttributeBuilder, FieldAttribute};
+use super::models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder};
 
-use crate::Trait;
 use crate::proc_macro2::TokenStream;
-use crate::syn::{DeriveInput, Meta, Data, Generics, Fields, punctuated::Punctuated};
+use crate::syn::{punctuated::Punctuated, Data, DeriveInput, Fields, Generics, Meta};
+use crate::Trait;
 
 pub struct CloneEnumHandler;
 
 impl TraitHandler for CloneEnumHandler {
-    fn trait_meta_handler(ast: &DeriveInput, tokens: &mut TokenStream, traits: &[Trait], meta: &Meta) {
+    fn trait_meta_handler(
+        ast: &DeriveInput,
+        tokens: &mut TokenStream,
+        traits: &[Trait],
+        meta: &Meta,
+    ) {
         let type_attribute = TypeAttributeBuilder {
             enable_flag: true,
             enable_bound: true,
-        }.from_clone_meta(meta);
+        }
+        .from_clone_meta(meta);
 
         let mut bound = Punctuated::new();
 
@@ -24,14 +30,16 @@ impl TraitHandler for CloneEnumHandler {
 
         if let Data::Enum(data) = &ast.data {
             let mut variant_idents = Vec::new();
-            let mut field_attributes_names: Vec<(bool, Vec<FieldAttribute>, Vec<String>)> = Vec::new();
+            let mut field_attributes_names: Vec<(bool, Vec<FieldAttribute>, Vec<String>)> =
+                Vec::new();
             let mut has_custom_clone_method = false;
 
             for variant in data.variants.iter() {
                 let _ = TypeAttributeBuilder {
                     enable_flag: false,
                     enable_bound: false,
-                }.from_attributes(&variant.attrs, traits);
+                }
+                .from_attributes(&variant.attrs, traits);
 
                 let mut field_attributes = Vec::new();
                 let mut field_names = Vec::new();
@@ -39,13 +47,13 @@ impl TraitHandler for CloneEnumHandler {
 
                 match &variant.fields {
                     Fields::Unit => (),
-                    Fields::Named(fields) => {  // TODO Struct
+                    Fields::Named(fields) => {
+                        // TODO Struct
                         is_tuple = false;
 
                         for field in fields.named.iter() {
-                            let field_attribute = FieldAttributeBuilder {
-                                enable_clone: true,
-                            }.from_attributes(&field.attrs, traits);
+                            let field_attribute = FieldAttributeBuilder { enable_impl: true }
+                                .from_attributes(&field.attrs, traits);
 
                             let field_name = field.ident.as_ref().unwrap().to_string();
 
@@ -57,11 +65,11 @@ impl TraitHandler for CloneEnumHandler {
                             field_names.push(field_name);
                         }
                     }
-                    Fields::Unnamed(fields) => {  // TODO Tuple
+                    Fields::Unnamed(fields) => {
+                        // TODO Tuple
                         for (index, field) in fields.unnamed.iter().enumerate() {
-                            let field_attribute = FieldAttributeBuilder {
-                                enable_clone: true,
-                            }.from_attributes(&field.attrs, traits);
+                            let field_attribute = FieldAttributeBuilder { enable_impl: true }
+                                .from_attributes(&field.attrs, traits);
 
                             let field_name = format!("_{}", index);
 
@@ -82,7 +90,11 @@ impl TraitHandler for CloneEnumHandler {
             let enum_name = ast.ident.to_string();
 
             if cfg!(feature = "Copy") && !has_custom_clone_method && traits.contains(&Trait::Copy) {
-                bound = type_attribute.bound.into_punctuated_where_predicates_by_generic_parameters_with_copy(&ast.generics.params);
+                bound = type_attribute
+                    .bound
+                    .into_punctuated_where_predicates_by_generic_parameters_with_copy(
+                        &ast.generics.params,
+                    );
 
                 clone_tokens.extend(quote!(*self));
 
@@ -103,13 +115,33 @@ impl TraitHandler for CloneEnumHandler {
 
                         if is_tuple {
                             for field_name in field_names {
-                                pattern_tokens.write_fmt(format_args!("{field_name},", field_name = field_name)).unwrap();
-                                pattern_2_tokens.write_fmt(format_args!("___{field_name},", field_name = field_name)).unwrap();
+                                pattern_tokens
+                                    .write_fmt(format_args!(
+                                        "{field_name},",
+                                        field_name = field_name
+                                    ))
+                                    .unwrap();
+                                pattern_2_tokens
+                                    .write_fmt(format_args!(
+                                        "___{field_name},",
+                                        field_name = field_name
+                                    ))
+                                    .unwrap();
                             }
                         } else {
                             for field_name in field_names {
-                                pattern_tokens.write_fmt(format_args!("{field_name},", field_name = field_name)).unwrap();
-                                pattern_2_tokens.write_fmt(format_args!("{field_name}: ___{field_name},", field_name = field_name)).unwrap();
+                                pattern_tokens
+                                    .write_fmt(format_args!(
+                                        "{field_name},",
+                                        field_name = field_name
+                                    ))
+                                    .unwrap();
+                                pattern_2_tokens
+                                    .write_fmt(format_args!(
+                                        "{field_name}: ___{field_name},",
+                                        field_name = field_name
+                                    ))
+                                    .unwrap();
                             }
                         }
 
@@ -152,7 +184,9 @@ impl TraitHandler for CloneEnumHandler {
 
                 clone_from_tokens.extend(TokenStream::from_str(&match_tokens).unwrap());
             } else {
-                bound = type_attribute.bound.into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
+                bound = type_attribute
+                    .bound
+                    .into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
 
                 let mut clone_match_tokens = String::from("match self {");
                 let mut clone_from_match_tokens = String::from("match self {");
@@ -173,13 +207,32 @@ impl TraitHandler for CloneEnumHandler {
                         let mut pattern_3_tokens = String::new();
 
                         if is_tuple {
-                            let mut clone = format!("{enum_name}::{variant_ident}(", enum_name = enum_name, variant_ident = variant_ident);
+                            let mut clone = format!(
+                                "{enum_name}::{variant_ident}(",
+                                enum_name = enum_name,
+                                variant_ident = variant_ident
+                            );
                             let mut clone_from = String::new();
 
                             for field_name in field_names {
-                                pattern_tokens.write_fmt(format_args!("{field_name},", field_name = field_name)).unwrap();
-                                pattern_2_tokens.write_fmt(format_args!("{field_name},", field_name = field_name)).unwrap();
-                                pattern_3_tokens.write_fmt(format_args!("___{field_name},", field_name = field_name)).unwrap();
+                                pattern_tokens
+                                    .write_fmt(format_args!(
+                                        "{field_name},",
+                                        field_name = field_name
+                                    ))
+                                    .unwrap();
+                                pattern_2_tokens
+                                    .write_fmt(format_args!(
+                                        "{field_name},",
+                                        field_name = field_name
+                                    ))
+                                    .unwrap();
+                                pattern_3_tokens
+                                    .write_fmt(format_args!(
+                                        "___{field_name},",
+                                        field_name = field_name
+                                    ))
+                                    .unwrap();
                             }
 
                             for (index, field_attribute) in field_attributes.iter().enumerate() {
@@ -192,21 +245,37 @@ impl TraitHandler for CloneEnumHandler {
                                     Some(clone_trait) => {
                                         let clone_method = clone_method.as_ref().unwrap();
 
-                                        clone.write_fmt(format_args!("{clone_trait}::{clone_method}({field_name}),", clone_trait = clone_trait, clone_method = clone_method, field_name = field_name)).unwrap();
+                                        clone
+                                            .write_fmt(format_args!(
+                                                "{clone_trait}::{clone_method}({field_name}),",
+                                                clone_trait = clone_trait,
+                                                clone_method = clone_method,
+                                                field_name = field_name
+                                            ))
+                                            .unwrap();
                                         clone_from.write_fmt(format_args!("*{field_name} = {clone_trait}::{clone_method}(___{field_name});", clone_trait = clone_trait, clone_method = clone_method, field_name = field_name)).unwrap();
                                     }
-                                    None => {
-                                        match clone_method {
-                                            Some(clone_method) => {
-                                                clone.write_fmt(format_args!("{clone_method}({field_name}),", clone_method = clone_method, field_name = field_name)).unwrap();
-                                                clone_from.write_fmt(format_args!("*{field_name} = {clone_method}(___{field_name});", clone_method = clone_method, field_name = field_name)).unwrap();
-                                            }
-                                            None => {
-                                                clone.write_fmt(format_args!("core::clone::Clone::clone({field_name}),", field_name = field_name)).unwrap();
-                                                clone_from.write_fmt(format_args!("core::clone::Clone::clone_from({field_name}, ___{field_name});", field_name = field_name)).unwrap();
-                                            }
+                                    None => match clone_method {
+                                        Some(clone_method) => {
+                                            clone
+                                                .write_fmt(format_args!(
+                                                    "{clone_method}({field_name}),",
+                                                    clone_method = clone_method,
+                                                    field_name = field_name
+                                                ))
+                                                .unwrap();
+                                            clone_from.write_fmt(format_args!("*{field_name} = {clone_method}(___{field_name});", clone_method = clone_method, field_name = field_name)).unwrap();
                                         }
-                                    }
+                                        None => {
+                                            clone
+                                                .write_fmt(format_args!(
+                                                    "core::clone::Clone::clone({field_name}),",
+                                                    field_name = field_name
+                                                ))
+                                                .unwrap();
+                                            clone_from.write_fmt(format_args!("core::clone::Clone::clone_from({field_name}, ___{field_name});", field_name = field_name)).unwrap();
+                                        }
+                                    },
                                 }
                             }
 
@@ -215,13 +284,32 @@ impl TraitHandler for CloneEnumHandler {
                             clone_match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident} ( {pattern_tokens} ) => {{ {clone} }}", enum_name = enum_name, variant_ident = variant_ident, pattern_tokens = pattern_tokens, clone = clone)).unwrap();
                             clone_from_match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident} ( {pattern_2_tokens} ) => {{ if let {enum_name}::{variant_ident} ( {pattern_3_tokens} ) = _source {{ {block_tokens} done = true; }} }}", enum_name = enum_name, variant_ident = variant_ident, pattern_2_tokens = pattern_2_tokens, pattern_3_tokens = pattern_3_tokens, block_tokens = clone_from)).unwrap();
                         } else {
-                            let mut clone = format!("{enum_name}::{variant_ident} {{", enum_name = enum_name, variant_ident = variant_ident);
+                            let mut clone = format!(
+                                "{enum_name}::{variant_ident} {{",
+                                enum_name = enum_name,
+                                variant_ident = variant_ident
+                            );
                             let mut clone_from = String::new();
 
                             for field_name in field_names {
-                                pattern_tokens.write_fmt(format_args!("{field_name},", field_name = field_name)).unwrap();
-                                pattern_2_tokens.write_fmt(format_args!("{field_name},", field_name = field_name)).unwrap();
-                                pattern_3_tokens.write_fmt(format_args!("{field_name}: ___{field_name},", field_name = field_name)).unwrap();
+                                pattern_tokens
+                                    .write_fmt(format_args!(
+                                        "{field_name},",
+                                        field_name = field_name
+                                    ))
+                                    .unwrap();
+                                pattern_2_tokens
+                                    .write_fmt(format_args!(
+                                        "{field_name},",
+                                        field_name = field_name
+                                    ))
+                                    .unwrap();
+                                pattern_3_tokens
+                                    .write_fmt(format_args!(
+                                        "{field_name}: ___{field_name},",
+                                        field_name = field_name
+                                    ))
+                                    .unwrap();
                             }
 
                             for (index, field_attribute) in field_attributes.iter().enumerate() {
