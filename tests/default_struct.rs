@@ -366,7 +366,11 @@ fn new() {
     #[educe(Default(new))]
     struct Tuple(u8);
 
-    assert!(if let Unit = Unit::new() { true } else { false });
+    assert!(if let Unit = Unit::new() {
+        true
+    } else {
+        false
+    });
 
     assert_eq!(0, Struct::new().f1);
     assert_eq!(0, Tuple::new().0);

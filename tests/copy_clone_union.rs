@@ -12,7 +12,10 @@ fn basic() {
         f1: u8,
     }
 
-    let u = Union { f1: 1 }.clone();
+    let u = Union {
+        f1: 1,
+    }
+    .clone();
 
     assert_eq!(1, unsafe { u.f1 });
 }

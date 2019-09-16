@@ -136,32 +136,36 @@ impl TraitHandler for DefaultUnionHandler {
                     );
 
                     match field_attribute.literal {
-                        Some(value) => match &value {
-                            Lit::Str(s) => {
-                                union_tokens
-                                    .write_fmt(format_args!(
-                                        "core::convert::Into::into({s})",
-                                        s = s.into_token_stream().to_string()
-                                    ))
-                                    .unwrap();
+                        Some(value) => {
+                            match &value {
+                                Lit::Str(s) => {
+                                    union_tokens
+                                        .write_fmt(format_args!(
+                                            "core::convert::Into::into({s})",
+                                            s = s.into_token_stream().to_string()
+                                        ))
+                                        .unwrap();
+                                }
+                                _ => {
+                                    union_tokens.push_str(&value.into_token_stream().to_string());
+                                }
                             }
-                            _ => {
-                                union_tokens.push_str(&value.into_token_stream().to_string());
+                        }
+                        None => {
+                            match field_attribute.expression {
+                                Some(expression) => {
+                                    union_tokens.push_str(&expression);
+                                }
+                                None => {
+                                    union_tokens
+                                        .write_fmt(format_args!(
+                                            "<{typ} as core::default::Default>::default()",
+                                            typ = typ
+                                        ))
+                                        .unwrap();
+                                }
                             }
-                        },
-                        None => match field_attribute.expression {
-                            Some(expression) => {
-                                union_tokens.push_str(&expression);
-                            }
-                            None => {
-                                union_tokens
-                                    .write_fmt(format_args!(
-                                        "<{typ} as core::default::Default>::default()",
-                                        typ = typ
-                                    ))
-                                    .unwrap();
-                            }
-                        },
+                        }
                     }
 
                     union_tokens.push('}');

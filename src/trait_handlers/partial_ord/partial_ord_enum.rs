@@ -208,14 +208,16 @@ impl TraitHandler for PartialOrdEnumHandler {
 
                                         block_tokens.write_fmt(format_args!("match {compare_trait}::{compare_method}({field_name}, ___{field_name}) {{ Some(core::cmp::Ordering::Equal) => (), Some(core::cmp::Ordering::Greater) => {{ return Some(core::cmp::Ordering::Greater); }}, Some(core::cmp::Ordering::Less) => {{ return Some(core::cmp::Ordering::Less); }}, None => {{ return None; }} }}", compare_trait = compare_trait, compare_method = compare_method, field_name = field_name)).unwrap();
                                     }
-                                    None => match compare_method {
-                                        Some(compare_method) => {
-                                            block_tokens.write_fmt(format_args!("match {compare_method}({field_name}, ___{field_name}) {{ Some(core::cmp::Ordering::Equal) => (), Some(core::cmp::Ordering::Greater) => {{ return Some(core::cmp::Ordering::Greater); }}, Some(core::cmp::Ordering::Less) => {{ return Some(core::cmp::Ordering::Less); }}, None => {{ return None; }} }}", compare_method = compare_method, field_name = field_name)).unwrap();
+                                    None => {
+                                        match compare_method {
+                                            Some(compare_method) => {
+                                                block_tokens.write_fmt(format_args!("match {compare_method}({field_name}, ___{field_name}) {{ Some(core::cmp::Ordering::Equal) => (), Some(core::cmp::Ordering::Greater) => {{ return Some(core::cmp::Ordering::Greater); }}, Some(core::cmp::Ordering::Less) => {{ return Some(core::cmp::Ordering::Less); }}, None => {{ return None; }} }}", compare_method = compare_method, field_name = field_name)).unwrap();
+                                            }
+                                            None => {
+                                                block_tokens.write_fmt(format_args!("match core::cmp::PartialOrd::partial_cmp({field_name}, ___{field_name}) {{ Some(core::cmp::Ordering::Equal) => (), Some(core::cmp::Ordering::Greater) => {{ return Some(core::cmp::Ordering::Greater); }}, Some(core::cmp::Ordering::Less) => {{ return Some(core::cmp::Ordering::Less); }}, None => {{ return None; }} }}", field_name = field_name)).unwrap();
+                                            }
                                         }
-                                        None => {
-                                            block_tokens.write_fmt(format_args!("match core::cmp::PartialOrd::partial_cmp({field_name}, ___{field_name}) {{ Some(core::cmp::Ordering::Equal) => (), Some(core::cmp::Ordering::Greater) => {{ return Some(core::cmp::Ordering::Greater); }}, Some(core::cmp::Ordering::Less) => {{ return Some(core::cmp::Ordering::Less); }}, None => {{ return None; }} }}", field_name = field_name)).unwrap();
-                                        }
-                                    },
+                                    }
                                 }
                             }
 
@@ -282,14 +284,16 @@ impl TraitHandler for PartialOrdEnumHandler {
 
                                         block_tokens.write_fmt(format_args!("match {compare_trait}::{compare_method}(_{field_name}, __{field_name}) {{ Some(core::cmp::Ordering::Equal) => (), Some(core::cmp::Ordering::Greater) => {{ return Some(core::cmp::Ordering::Greater); }}, Some(core::cmp::Ordering::Less) => {{ return Some(core::cmp::Ordering::Less); }}, None => {{ return None; }} }}", compare_trait = compare_trait, compare_method = compare_method, field_name = field_name)).unwrap();
                                     }
-                                    None => match compare_method {
-                                        Some(compare_method) => {
-                                            block_tokens.write_fmt(format_args!("match {compare_method}(_{field_name}, __{field_name}) {{ Some(core::cmp::Ordering::Equal) => (), Some(core::cmp::Ordering::Greater) => {{ return Some(core::cmp::Ordering::Greater); }}, Some(core::cmp::Ordering::Less) => {{ return Some(core::cmp::Ordering::Less); }}, None => {{ return None; }} }}", compare_method = compare_method, field_name = field_name)).unwrap();
+                                    None => {
+                                        match compare_method {
+                                            Some(compare_method) => {
+                                                block_tokens.write_fmt(format_args!("match {compare_method}(_{field_name}, __{field_name}) {{ Some(core::cmp::Ordering::Equal) => (), Some(core::cmp::Ordering::Greater) => {{ return Some(core::cmp::Ordering::Greater); }}, Some(core::cmp::Ordering::Less) => {{ return Some(core::cmp::Ordering::Less); }}, None => {{ return None; }} }}", compare_method = compare_method, field_name = field_name)).unwrap();
+                                            }
+                                            None => {
+                                                block_tokens.write_fmt(format_args!("match core::cmp::PartialOrd::partial_cmp(_{field_name}, __{field_name}) {{ Some(core::cmp::Ordering::Equal) => (), Some(core::cmp::Ordering::Greater) => {{ return Some(core::cmp::Ordering::Greater); }}, Some(core::cmp::Ordering::Less) => {{ return Some(core::cmp::Ordering::Less); }}, None => {{ return None; }} }}", field_name = field_name)).unwrap();
+                                            }
                                         }
-                                        None => {
-                                            block_tokens.write_fmt(format_args!("match core::cmp::PartialOrd::partial_cmp(_{field_name}, __{field_name}) {{ Some(core::cmp::Ordering::Equal) => (), Some(core::cmp::Ordering::Greater) => {{ return Some(core::cmp::Ordering::Greater); }}, Some(core::cmp::Ordering::Less) => {{ return Some(core::cmp::Ordering::Less); }}, None => {{ return None; }} }}", field_name = field_name)).unwrap();
-                                        }
-                                    },
+                                    }
                                 }
                             }
 

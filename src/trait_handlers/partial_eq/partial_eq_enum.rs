@@ -108,14 +108,16 @@ impl TraitHandler for PartialEqEnumHandler {
 
                                     block_tokens.write_fmt(format_args!("if !{compare_trait}::{compare_method}({field_name}, ___{field_name}) {{ return false; }}", compare_trait = compare_trait, compare_method = compare_method, field_name = field_name)).unwrap();
                                 }
-                                None => match compare_method {
-                                    Some(compare_method) => {
-                                        block_tokens.write_fmt(format_args!("if !{compare_method}({field_name}, ___{field_name}) {{ return false; }}", compare_method = compare_method, field_name = field_name)).unwrap();
+                                None => {
+                                    match compare_method {
+                                        Some(compare_method) => {
+                                            block_tokens.write_fmt(format_args!("if !{compare_method}({field_name}, ___{field_name}) {{ return false; }}", compare_method = compare_method, field_name = field_name)).unwrap();
+                                        }
+                                        None => {
+                                            block_tokens.write_fmt(format_args!("if core::cmp::PartialEq::ne({field_name}, ___{field_name}) {{ return false; }}", field_name = field_name)).unwrap();
+                                        }
                                     }
-                                    None => {
-                                        block_tokens.write_fmt(format_args!("if core::cmp::PartialEq::ne({field_name}, ___{field_name}) {{ return false; }}", field_name = field_name)).unwrap();
-                                    }
-                                },
+                                }
                             }
                         }
 
@@ -168,14 +170,16 @@ impl TraitHandler for PartialEqEnumHandler {
 
                                     block_tokens.write_fmt(format_args!("if !{compare_trait}::{compare_method}(_{field_name}, __{field_name}) {{ return false; }}", compare_trait = compare_trait, compare_method = compare_method, field_name = field_name)).unwrap();
                                 }
-                                None => match compare_method {
-                                    Some(compare_method) => {
-                                        block_tokens.write_fmt(format_args!("if !{compare_method}(_{field_name}, __{field_name}) {{ return false; }}", compare_method = compare_method, field_name = field_name)).unwrap();
+                                None => {
+                                    match compare_method {
+                                        Some(compare_method) => {
+                                            block_tokens.write_fmt(format_args!("if !{compare_method}(_{field_name}, __{field_name}) {{ return false; }}", compare_method = compare_method, field_name = field_name)).unwrap();
+                                        }
+                                        None => {
+                                            block_tokens.write_fmt(format_args!("if core::cmp::PartialEq::ne(_{field_name}, __{field_name}) {{ return false; }}", field_name = field_name)).unwrap();
+                                        }
                                     }
-                                    None => {
-                                        block_tokens.write_fmt(format_args!("if core::cmp::PartialEq::ne(_{field_name}, __{field_name}) {{ return false; }}", field_name = field_name)).unwrap();
-                                    }
-                                },
+                                }
                             }
                         }
 

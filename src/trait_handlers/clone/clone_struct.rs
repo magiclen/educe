@@ -34,8 +34,10 @@ impl TraitHandler for CloneStructHandler {
             let mut has_custom_clone_method = false;
 
             for (index, field) in data.fields.iter().enumerate() {
-                let field_attribute = FieldAttributeBuilder { enable_impl: true }
-                    .from_attributes(&field.attrs, traits);
+                let field_attribute = FieldAttributeBuilder {
+                    enable_impl: true,
+                }
+                .from_attributes(&field.attrs, traits);
 
                 let field_name = if let Some(ident) = field.ident.as_ref() {
                     ident.to_string()
@@ -74,7 +76,7 @@ impl TraitHandler for CloneStructHandler {
 
                 let (is_unit, is_tuple) = {
                     if let Some(field) = data.fields.iter().next() {
-                        if let Some(_) = field.ident {
+                        if field.ident.is_some() {
                             (false, false)
                         } else {
                             (false, true)

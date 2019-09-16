@@ -208,14 +208,16 @@ impl TraitHandler for OrdEnumHandler {
 
                                         block_tokens.write_fmt(format_args!("match {compare_trait}::{compare_method}({field_name}, ___{field_name}) {{ core::cmp::Ordering::Equal => (), core::cmp::Ordering::Greater => {{ return core::cmp::Ordering::Greater; }}, core::cmp::Ordering::Less => {{ return core::cmp::Ordering::Less; }} }}", compare_trait = compare_trait, compare_method = compare_method, field_name = field_name)).unwrap();
                                     }
-                                    None => match compare_method {
-                                        Some(compare_method) => {
-                                            block_tokens.write_fmt(format_args!("match {compare_method}({field_name}, ___{field_name}) {{ core::cmp::Ordering::Equal => (), core::cmp::Ordering::Greater => {{ return core::cmp::Ordering::Greater; }}, core::cmp::Ordering::Less => {{ return core::cmp::Ordering::Less; }} }}", compare_method = compare_method, field_name = field_name)).unwrap();
+                                    None => {
+                                        match compare_method {
+                                            Some(compare_method) => {
+                                                block_tokens.write_fmt(format_args!("match {compare_method}({field_name}, ___{field_name}) {{ core::cmp::Ordering::Equal => (), core::cmp::Ordering::Greater => {{ return core::cmp::Ordering::Greater; }}, core::cmp::Ordering::Less => {{ return core::cmp::Ordering::Less; }} }}", compare_method = compare_method, field_name = field_name)).unwrap();
+                                            }
+                                            None => {
+                                                block_tokens.write_fmt(format_args!("match core::cmp::Ord::cmp({field_name}, ___{field_name}) {{ core::cmp::Ordering::Equal => (), core::cmp::Ordering::Greater => {{ return core::cmp::Ordering::Greater; }}, core::cmp::Ordering::Less => {{ return core::cmp::Ordering::Less; }} }}", field_name = field_name)).unwrap();
+                                            }
                                         }
-                                        None => {
-                                            block_tokens.write_fmt(format_args!("match core::cmp::Ord::cmp({field_name}, ___{field_name}) {{ core::cmp::Ordering::Equal => (), core::cmp::Ordering::Greater => {{ return core::cmp::Ordering::Greater; }}, core::cmp::Ordering::Less => {{ return core::cmp::Ordering::Less; }} }}", field_name = field_name)).unwrap();
-                                        }
-                                    },
+                                    }
                                 }
                             }
 
@@ -282,14 +284,16 @@ impl TraitHandler for OrdEnumHandler {
 
                                         block_tokens.write_fmt(format_args!("match {compare_trait}::{compare_method}(_{field_name}, __{field_name}) {{ core::cmp::Ordering::Equal => (), core::cmp::Ordering::Greater => {{ return core::cmp::Ordering::Greater; }}, core::cmp::Ordering::Less => {{ return core::cmp::Ordering::Less; }} }}", compare_trait = compare_trait, compare_method = compare_method, field_name = field_name)).unwrap();
                                     }
-                                    None => match compare_method {
-                                        Some(compare_method) => {
-                                            block_tokens.write_fmt(format_args!("match {compare_method}(_{field_name}, __{field_name}) {{ core::cmp::Ordering::Equal => (), core::cmp::Ordering::Greater => {{ return core::cmp::Ordering::Greater; }}, core::cmp::Ordering::Less => {{ return core::cmp::Ordering::Less; }} }}", compare_method = compare_method, field_name = field_name)).unwrap();
+                                    None => {
+                                        match compare_method {
+                                            Some(compare_method) => {
+                                                block_tokens.write_fmt(format_args!("match {compare_method}(_{field_name}, __{field_name}) {{ core::cmp::Ordering::Equal => (), core::cmp::Ordering::Greater => {{ return core::cmp::Ordering::Greater; }}, core::cmp::Ordering::Less => {{ return core::cmp::Ordering::Less; }} }}", compare_method = compare_method, field_name = field_name)).unwrap();
+                                            }
+                                            None => {
+                                                block_tokens.write_fmt(format_args!("match core::cmp::Ord::cmp(_{field_name}, __{field_name}) {{ core::cmp::Ordering::Equal => (), core::cmp::Ordering::Greater => {{ return core::cmp::Ordering::Greater; }}, core::cmp::Ordering::Less => {{ return core::cmp::Ordering::Less; }} }}", field_name = field_name)).unwrap();
+                                            }
                                         }
-                                        None => {
-                                            block_tokens.write_fmt(format_args!("match core::cmp::Ord::cmp(_{field_name}, __{field_name}) {{ core::cmp::Ordering::Equal => (), core::cmp::Ordering::Greater => {{ return core::cmp::Ordering::Greater; }}, core::cmp::Ordering::Less => {{ return core::cmp::Ordering::Less; }} }}", field_name = field_name)).unwrap();
-                                        }
-                                    },
+                                    }
                                 }
                             }
 

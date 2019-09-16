@@ -48,10 +48,7 @@ pub fn reset_parameter(parameter_name: &str) -> ! {
 
 #[inline]
 pub fn unknown_parameter(attribute_name: &str, parameter_name: &str) -> ! {
-    panic!(
-        "Unknown parameter `{}` used in the `{}` attribute.",
-        parameter_name, attribute_name
-    )
+    panic!("Unknown parameter `{}` used in the `{}` attribute.", parameter_name, attribute_name)
 }
 
 #[inline]
@@ -190,10 +187,7 @@ pub fn reuse_a_value(value: isize) -> ! {
 
 #[inline]
 pub fn educe_format_incorrect() -> ! {
-    attribute_incorrect_format(
-        "educe",
-        &[stringify!(#[educe(Trait1, Trait2, ..., TraitN)])],
-    )
+    attribute_incorrect_format("educe", &[stringify!(#[educe(Trait1, Trait2, ..., TraitN)])])
 }
 
 fn concat_string_slice_array(array: &[&str]) -> String {

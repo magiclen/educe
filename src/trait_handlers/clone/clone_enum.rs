@@ -11,6 +11,7 @@ use crate::Trait;
 pub struct CloneEnumHandler;
 
 impl TraitHandler for CloneEnumHandler {
+    #[allow(clippy::cognitive_complexity)]
     fn trait_meta_handler(
         ast: &DeriveInput,
         tokens: &mut TokenStream,
@@ -52,8 +53,10 @@ impl TraitHandler for CloneEnumHandler {
                         is_tuple = false;
 
                         for field in fields.named.iter() {
-                            let field_attribute = FieldAttributeBuilder { enable_impl: true }
-                                .from_attributes(&field.attrs, traits);
+                            let field_attribute = FieldAttributeBuilder {
+                                enable_impl: true,
+                            }
+                            .from_attributes(&field.attrs, traits);
 
                             let field_name = field.ident.as_ref().unwrap().to_string();
 
@@ -68,8 +71,10 @@ impl TraitHandler for CloneEnumHandler {
                     Fields::Unnamed(fields) => {
                         // TODO Tuple
                         for (index, field) in fields.unnamed.iter().enumerate() {
-                            let field_attribute = FieldAttributeBuilder { enable_impl: true }
-                                .from_attributes(&field.attrs, traits);
+                            let field_attribute = FieldAttributeBuilder {
+                                enable_impl: true,
+                            }
+                            .from_attributes(&field.attrs, traits);
 
                             let field_name = format!("_{}", index);
 
@@ -105,7 +110,7 @@ impl TraitHandler for CloneEnumHandler {
                     let is_tuple = field_attributes_names.0;
                     let field_attributes = &field_attributes_names.1;
                     let field_names = &field_attributes_names.2;
-                    let is_unit = field_names.len() == 0;
+                    let is_unit = field_names.is_empty();
 
                     if is_unit {
                         match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident} => {{ if let {enum_name}::{variant_ident} = _source {{ done = true; }} }}", enum_name = enum_name, variant_ident = variant_ident)).unwrap();
@@ -196,7 +201,7 @@ impl TraitHandler for CloneEnumHandler {
                     let is_tuple = field_attributes_names.0;
                     let field_attributes = &field_attributes_names.1;
                     let field_names = &field_attributes_names.2;
-                    let is_unit = field_names.len() == 0;
+                    let is_unit = field_names.is_empty();
 
                     if is_unit {
                         clone_match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident} => {{ {enum_name}::{variant_ident} }}", enum_name = enum_name, variant_ident = variant_ident)).unwrap();
@@ -255,27 +260,29 @@ impl TraitHandler for CloneEnumHandler {
                                             .unwrap();
                                         clone_from.write_fmt(format_args!("*{field_name} = {clone_trait}::{clone_method}(___{field_name});", clone_trait = clone_trait, clone_method = clone_method, field_name = field_name)).unwrap();
                                     }
-                                    None => match clone_method {
-                                        Some(clone_method) => {
-                                            clone
-                                                .write_fmt(format_args!(
-                                                    "{clone_method}({field_name}),",
-                                                    clone_method = clone_method,
-                                                    field_name = field_name
-                                                ))
-                                                .unwrap();
-                                            clone_from.write_fmt(format_args!("*{field_name} = {clone_method}(___{field_name});", clone_method = clone_method, field_name = field_name)).unwrap();
+                                    None => {
+                                        match clone_method {
+                                            Some(clone_method) => {
+                                                clone
+                                                    .write_fmt(format_args!(
+                                                        "{clone_method}({field_name}),",
+                                                        clone_method = clone_method,
+                                                        field_name = field_name
+                                                    ))
+                                                    .unwrap();
+                                                clone_from.write_fmt(format_args!("*{field_name} = {clone_method}(___{field_name});", clone_method = clone_method, field_name = field_name)).unwrap();
+                                            }
+                                            None => {
+                                                clone
+                                                    .write_fmt(format_args!(
+                                                        "core::clone::Clone::clone({field_name}),",
+                                                        field_name = field_name
+                                                    ))
+                                                    .unwrap();
+                                                clone_from.write_fmt(format_args!("core::clone::Clone::clone_from({field_name}, ___{field_name});", field_name = field_name)).unwrap();
+                                            }
                                         }
-                                        None => {
-                                            clone
-                                                .write_fmt(format_args!(
-                                                    "core::clone::Clone::clone({field_name}),",
-                                                    field_name = field_name
-                                                ))
-                                                .unwrap();
-                                            clone_from.write_fmt(format_args!("core::clone::Clone::clone_from({field_name}, ___{field_name});", field_name = field_name)).unwrap();
-                                        }
-                                    },
+                                    }
                                 }
                             }
 

@@ -1,4 +1,5 @@
 use crate::panic;
+use crate::quote::ToTokens;
 use crate::syn::{Attribute, Meta, NestedMeta};
 use crate::Trait;
 
@@ -27,15 +28,19 @@ impl TypeAttributeBuilder {
         };
 
         match meta {
-            Meta::List(_) => panic::attribute_incorrect_format(
-                "DerefMut",
-                &correct_usage_for_deref_mut_attribute,
-            ),
-            Meta::NameValue(_) => panic::attribute_incorrect_format(
-                "DerefMut",
-                &correct_usage_for_deref_mut_attribute,
-            ),
-            Meta::Word(_) => {
+            Meta::List(_) => {
+                panic::attribute_incorrect_format(
+                    "DerefMut",
+                    &correct_usage_for_deref_mut_attribute,
+                )
+            }
+            Meta::NameValue(_) => {
+                panic::attribute_incorrect_format(
+                    "DerefMut",
+                    &correct_usage_for_deref_mut_attribute,
+                )
+            }
+            Meta::Path(_) => {
                 if !self.enable_flag {
                     panic::attribute_incorrect_format(
                         "DerefMut",
@@ -47,28 +52,31 @@ impl TypeAttributeBuilder {
             }
         }
 
-        TypeAttribute { flag }
+        TypeAttribute {
+            flag,
+        }
     }
 
+    #[allow(clippy::wrong_self_convention)]
     pub fn from_attributes(self, attributes: &[Attribute], traits: &[Trait]) -> TypeAttribute {
         let mut result = None;
 
         for attribute in attributes.iter() {
             let meta = attribute.parse_meta().unwrap();
 
-            let meta_name = meta.name().to_string();
+            let meta_name = meta.path().into_token_stream().to_string();
 
-            match meta_name.as_str() {
-                "educe" => match meta {
+            if meta_name.as_str() == "educe" {
+                match meta {
                     Meta::List(list) => {
                         for p in list.nested.iter() {
                             match p {
                                 NestedMeta::Meta(meta) => {
-                                    let meta_name = meta.name().to_string();
+                                    let meta_name = meta.path().into_token_stream().to_string();
 
                                     let t = Trait::from_str(meta_name);
 
-                                    if let Err(_) = traits.binary_search(&t) {
+                                    if traits.binary_search(&t).is_err() {
                                         panic::trait_not_used(t.as_str());
                                     }
 
@@ -85,11 +93,12 @@ impl TypeAttributeBuilder {
                         }
                     }
                     _ => panic::educe_format_incorrect(),
-                },
-                _ => (),
+                }
             }
         }
 
-        result.unwrap_or(TypeAttribute { flag: false })
+        result.unwrap_or(TypeAttribute {
+            flag: false,
+        })
     }
 }

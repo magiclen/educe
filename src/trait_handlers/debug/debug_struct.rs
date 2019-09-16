@@ -23,11 +23,7 @@ impl TraitHandler for DebugStructHandler {
         let is_tuple = {
             if let Data::Struct(data) = &ast.data {
                 if let Some(field) = data.fields.iter().next() {
-                    if let Some(_) = field.ident {
-                        false
-                    } else {
-                        true
-                    }
+                    field.ident.is_none()
                 } else {
                     true
                 }
@@ -135,11 +131,12 @@ impl TraitHandler for DebugStructHandler {
 
                             builder_tokens.extend(TokenStream::from_str(&statement).unwrap());
                         }
-                        None => match format_method {
-                            Some(format_method) => {
-                                let ty = field.ty.clone().into_token_stream().to_string();
+                        None => {
+                            match format_method {
+                                Some(format_method) => {
+                                    let ty = field.ty.clone().into_token_stream().to_string();
 
-                                builder_tokens.extend(TokenStream::from_str(&format!("
+                                    builder_tokens.extend(TokenStream::from_str(&format!("
                                         let arg = {{
                                             struct MyDebug<'a>(&'a {ty});
 
@@ -153,32 +150,38 @@ impl TraitHandler for DebugStructHandler {
                                         }};
                                     ", ty = ty, format_method = format_method, field_name = field_name)).unwrap());
 
-                                let statement = if name.is_empty() {
-                                    format!("builder.entry(&RawString({key:?}), &arg);", key = key)
-                                } else {
-                                    format!("builder.field({key:?}, &arg);", key = key)
-                                };
+                                    let statement = if name.is_empty() {
+                                        format!(
+                                            "builder.entry(&RawString({key:?}), &arg);",
+                                            key = key
+                                        )
+                                    } else {
+                                        format!("builder.field({key:?}, &arg);", key = key)
+                                    };
 
-                                builder_tokens.extend(TokenStream::from_str(&statement).unwrap());
-                            }
-                            None => {
-                                let statement = if name.is_empty() {
-                                    format!(
+                                    builder_tokens
+                                        .extend(TokenStream::from_str(&statement).unwrap());
+                                }
+                                None => {
+                                    let statement = if name.is_empty() {
+                                        format!(
                                         "builder.entry(&RawString({key:?}), &self.{field_name});",
                                         key = key,
                                         field_name = field_name
                                     )
-                                } else {
-                                    format!(
-                                        "builder.field({key:?}, &self.{field_name});",
-                                        key = key,
-                                        field_name = field_name
-                                    )
-                                };
+                                    } else {
+                                        format!(
+                                            "builder.field({key:?}, &self.{field_name});",
+                                            key = key,
+                                            field_name = field_name
+                                        )
+                                    };
 
-                                builder_tokens.extend(TokenStream::from_str(&statement).unwrap());
+                                    builder_tokens
+                                        .extend(TokenStream::from_str(&statement).unwrap());
+                                }
                             }
-                        },
+                        }
                     }
 
                     has_fields = true;
@@ -231,11 +234,12 @@ impl TraitHandler for DebugStructHandler {
                             builder_tokens
                                 .extend(TokenStream::from_str("builder.field(&arg);").unwrap());
                         }
-                        None => match format_method {
-                            Some(format_method) => {
-                                let ty = field.ty.clone().into_token_stream().to_string();
+                        None => {
+                            match format_method {
+                                Some(format_method) => {
+                                    let ty = field.ty.clone().into_token_stream().to_string();
 
-                                builder_tokens.extend(TokenStream::from_str(&format!("
+                                    builder_tokens.extend(TokenStream::from_str(&format!("
                                         let arg = {{
                                             struct MyDebug<'a>(&'a {ty});
 
@@ -249,18 +253,21 @@ impl TraitHandler for DebugStructHandler {
                                         }};
                                     ", ty = ty, format_method = format_method, field_name = field_name)).unwrap());
 
-                                builder_tokens
-                                    .extend(TokenStream::from_str("builder.field(&arg);").unwrap());
-                            }
-                            None => {
-                                let statement = format!(
-                                    "builder.field(&self.{field_name});",
-                                    field_name = field_name
-                                );
+                                    builder_tokens.extend(
+                                        TokenStream::from_str("builder.field(&arg);").unwrap(),
+                                    );
+                                }
+                                None => {
+                                    let statement = format!(
+                                        "builder.field(&self.{field_name});",
+                                        field_name = field_name
+                                    );
 
-                                builder_tokens.extend(TokenStream::from_str(&statement).unwrap());
+                                    builder_tokens
+                                        .extend(TokenStream::from_str(&statement).unwrap());
+                                }
                             }
-                        },
+                        }
                     }
 
                     has_fields = true;

@@ -22,9 +22,21 @@ fn basic() {
 
     assert!(Unit == Unit);
 
-    assert!(Struct { f1: 1 } == Struct { f1: 1 });
+    assert!(
+        Struct {
+            f1: 1
+        } == Struct {
+            f1: 1
+        }
+    );
 
-    assert!(Struct { f1: 1 } != Struct { f1: 2 });
+    assert!(
+        Struct {
+            f1: 1
+        } != Struct {
+            f1: 2
+        }
+    );
 
     assert!(Tuple(1) == Tuple(1));
     assert!(Tuple(1) != Tuple(2));
@@ -42,9 +54,21 @@ fn bound_1() {
     #[educe(PartialEq(bound), Eq(bound))]
     struct Tuple<T>(T);
 
-    assert!(Struct { f1: 1 } == Struct { f1: 1 });
+    assert!(
+        Struct {
+            f1: 1
+        } == Struct {
+            f1: 1
+        }
+    );
 
-    assert!(Struct { f1: 1 } != Struct { f1: 2 });
+    assert!(
+        Struct {
+            f1: 1
+        } != Struct {
+            f1: 2
+        }
+    );
 
     assert!(Tuple(1) == Tuple(1));
     assert!(Tuple(1) != Tuple(2));
@@ -62,9 +86,21 @@ fn bound_2() {
     #[educe(PartialEq(bound), Eq(bound = "T: core::cmp::Eq"))]
     struct Tuple<T>(T);
 
-    assert!(Struct { f1: 1 } == Struct { f1: 1 });
+    assert!(
+        Struct {
+            f1: 1
+        } == Struct {
+            f1: 1
+        }
+    );
 
-    assert!(Struct { f1: 1 } != Struct { f1: 2 });
+    assert!(
+        Struct {
+            f1: 1
+        } != Struct {
+            f1: 2
+        }
+    );
 
     assert!(Tuple(1) == Tuple(1));
     assert!(Tuple(1) != Tuple(2));
@@ -82,9 +118,21 @@ fn bound_3() {
     #[educe(PartialEq(bound), Eq(bound("T: core::cmp::Eq")))]
     struct Tuple<T>(T);
 
-    assert!(Struct { f1: 1 } == Struct { f1: 1 });
+    assert!(
+        Struct {
+            f1: 1
+        } == Struct {
+            f1: 1
+        }
+    );
 
-    assert!(Struct { f1: 1 } != Struct { f1: 2 });
+    assert!(
+        Struct {
+            f1: 1
+        } != Struct {
+            f1: 2
+        }
+    );
 
     assert!(Tuple(1) == Tuple(1));
     assert!(Tuple(1) != Tuple(2));

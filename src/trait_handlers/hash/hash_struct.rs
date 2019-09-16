@@ -62,25 +62,27 @@ impl TraitHandler for HashStructHandler {
 
                         hasher_tokens.extend(TokenStream::from_str(&statement).unwrap());
                     }
-                    None => match hash_method {
-                        Some(hash_method) => {
-                            let statement = format!(
-                                "{hash_method}(&self.{field_name}, state);",
-                                hash_method = hash_method,
-                                field_name = field_name
-                            );
+                    None => {
+                        match hash_method {
+                            Some(hash_method) => {
+                                let statement = format!(
+                                    "{hash_method}(&self.{field_name}, state);",
+                                    hash_method = hash_method,
+                                    field_name = field_name
+                                );
 
-                            hasher_tokens.extend(TokenStream::from_str(&statement).unwrap());
-                        }
-                        None => {
-                            let statement = format!(
-                                "core::hash::Hash::hash(&self.{field_name}, state);",
-                                field_name = field_name
-                            );
+                                hasher_tokens.extend(TokenStream::from_str(&statement).unwrap());
+                            }
+                            None => {
+                                let statement = format!(
+                                    "core::hash::Hash::hash(&self.{field_name}, state);",
+                                    field_name = field_name
+                                );
 
-                            hasher_tokens.extend(TokenStream::from_str(&statement).unwrap());
+                                hasher_tokens.extend(TokenStream::from_str(&statement).unwrap());
+                            }
                         }
-                    },
+                    }
                 }
             }
         }

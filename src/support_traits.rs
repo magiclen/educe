@@ -16,7 +16,7 @@ pub enum Trait {
 
 impl Trait {
     #[inline]
-    pub fn as_str(&self) -> &'static str {
+    pub fn as_str(self) -> &'static str {
         match self {
             Trait::Debug => "Debug",
             Trait::PartialEq => "PartialEq",
@@ -59,11 +59,13 @@ impl Trait {
             "Deref" => Trait::Deref,
             #[cfg(feature = "DerefMut")]
             "DerefMut" => Trait::DerefMut,
-            _ => panic!(
-                "Unsupported trait `{}`. Available traits are {:?}",
-                s,
-                Trait::support_traits()
-            ),
+            _ => {
+                panic!(
+                    "Unsupported trait `{}`. Available traits are {:?}",
+                    s,
+                    Trait::support_traits()
+                )
+            }
         }
     }
 

@@ -1523,6 +1523,7 @@ mod support_traits;
 mod trait_handlers;
 
 use proc_macro2::TokenStream;
+use quote::ToTokens;
 use syn::{DeriveInput, Meta, NestedMeta};
 
 use support_traits::Trait;
@@ -1585,15 +1586,15 @@ fn derive_input_handler(ast: DeriveInput) -> TokenStream {
     for attr in ast.attrs.iter() {
         let attr_meta = attr.parse_meta().unwrap();
 
-        let attr_meta_name = attr_meta.name().to_string();
+        let attr_meta_name = attr_meta.path().into_token_stream().to_string();
 
-        match attr_meta_name.as_str() {
-            "educe" => match attr_meta {
+        if attr_meta_name.as_str() == "educe" {
+            match attr_meta {
                 Meta::List(list) => {
                     for p in list.nested {
                         match p {
                             NestedMeta::Meta(meta) => {
-                                let meta_name = meta.name().to_string();
+                                let meta_name = meta.path().into_token_stream().to_string();
 
                                 let t = Trait::from_str(meta_name);
 
@@ -1604,19 +1605,20 @@ fn derive_input_handler(ast: DeriveInput) -> TokenStream {
                                 traits.push(t);
                                 metas.push(meta);
                             }
-                            NestedMeta::Literal(_) => panic::attribute_incorrect_format(
-                                "educe",
-                                &[stringify!(#[educe(Trait1, Trait2, ..., TraitN)])],
-                            ),
+                            NestedMeta::Lit(_) => {
+                                panic::attribute_incorrect_format("educe", &[
+                                    stringify!(#[educe(Trait1, Trait2, ..., TraitN)]),
+                                ])
+                            }
                         }
                     }
                 }
-                _ => panic::attribute_incorrect_format(
-                    "educe",
-                    &[stringify!(#[educe(Trait1, Trait2, ..., TraitN)])],
-                ),
-            },
-            _ => (),
+                _ => {
+                    panic::attribute_incorrect_format("educe", &[
+                        stringify!(#[educe(Trait1, Trait2, ..., TraitN)]),
+                    ])
+                }
+            }
         }
     }
 

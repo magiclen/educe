@@ -152,20 +152,23 @@ impl TraitHandler for DefaultEnumHandler {
                                     .unwrap();
 
                                 match field_attribute.literal {
-                                    Some(value) => match &value {
-                                        Lit::Str(s) => {
-                                            enum_tokens
-                                                .write_fmt(format_args!(
-                                                    "core::convert::Into::into({s})",
-                                                    s = s.into_token_stream().to_string()
-                                                ))
-                                                .unwrap();
+                                    Some(value) => {
+                                        match &value {
+                                            Lit::Str(s) => {
+                                                enum_tokens
+                                                    .write_fmt(format_args!(
+                                                        "core::convert::Into::into({s})",
+                                                        s = s.into_token_stream().to_string()
+                                                    ))
+                                                    .unwrap();
+                                            }
+                                            _ => {
+                                                enum_tokens.push_str(
+                                                    &value.into_token_stream().to_string(),
+                                                );
+                                            }
                                         }
-                                        _ => {
-                                            enum_tokens
-                                                .push_str(&value.into_token_stream().to_string());
-                                        }
-                                    },
+                                    }
                                     None => {
                                         match field_attribute.expression {
                                             Some(expression) => {
@@ -202,20 +205,23 @@ impl TraitHandler for DefaultEnumHandler {
                                 .from_attributes(&field.attrs, traits);
 
                                 match field_attribute.literal {
-                                    Some(value) => match &value {
-                                        Lit::Str(s) => {
-                                            enum_tokens
-                                                .write_fmt(format_args!(
-                                                    "core::convert::Into::into({s})",
-                                                    s = s.into_token_stream().to_string()
-                                                ))
-                                                .unwrap();
+                                    Some(value) => {
+                                        match &value {
+                                            Lit::Str(s) => {
+                                                enum_tokens
+                                                    .write_fmt(format_args!(
+                                                        "core::convert::Into::into({s})",
+                                                        s = s.into_token_stream().to_string()
+                                                    ))
+                                                    .unwrap();
+                                            }
+                                            _ => {
+                                                enum_tokens.push_str(
+                                                    &value.into_token_stream().to_string(),
+                                                );
+                                            }
                                         }
-                                        _ => {
-                                            enum_tokens
-                                                .push_str(&value.into_token_stream().to_string());
-                                        }
-                                    },
+                                    }
                                     None => {
                                         match field_attribute.expression {
                                             Some(expression) => {

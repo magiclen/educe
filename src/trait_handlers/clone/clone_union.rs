@@ -22,8 +22,10 @@ impl TraitHandler for CloneUnionHandler {
 
         if let Data::Union(data) = &ast.data {
             for field in data.fields.named.iter() {
-                let _ = FieldAttributeBuilder { enable_impl: false }
-                    .from_attributes(&field.attrs, traits);
+                let _ = FieldAttributeBuilder {
+                    enable_impl: false,
+                }
+                .from_attributes(&field.attrs, traits);
             }
         }
 

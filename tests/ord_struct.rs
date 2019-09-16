@@ -1,9 +1,4 @@
-#![cfg(all(
-    feature = "PartialEq",
-    feature = "Eq",
-    feature = "PartialOrd",
-    feature = "Ord"
-))]
+#![cfg(all(feature = "PartialEq", feature = "Eq", feature = "PartialOrd", feature = "Ord"))]
 #![no_std]
 
 #[macro_use]
@@ -29,9 +24,25 @@ fn basic_1() {
 
     assert!(Unit == Unit);
 
-    assert_eq!(Ordering::Greater, Struct { f1: 2 }.cmp(&Struct { f1: 1 }));
+    assert_eq!(
+        Ordering::Greater,
+        Struct {
+            f1: 2
+        }
+        .cmp(&Struct {
+            f1: 1
+        })
+    );
 
-    assert_eq!(Ordering::Less, Struct { f1: 1 }.cmp(&Struct { f1: 2 }));
+    assert_eq!(
+        Ordering::Less,
+        Struct {
+            f1: 1
+        }
+        .cmp(&Struct {
+            f1: 2
+        })
+    );
 
     assert_eq!(Ordering::Greater, Tuple(2).cmp(&Tuple(1)));
     assert_eq!(Ordering::Less, Tuple(1).cmp(&Tuple(2)));
@@ -52,12 +63,26 @@ fn basic_2() {
 
     assert_eq!(
         Ordering::Greater,
-        Struct { f1: 2, f2: 1 }.cmp(&Struct { f1: 1, f2: 2 })
+        Struct {
+            f1: 2,
+            f2: 1
+        }
+        .cmp(&Struct {
+            f1: 1,
+            f2: 2
+        })
     );
 
     assert_eq!(
         Ordering::Less,
-        Struct { f1: 1, f2: 2 }.cmp(&Struct { f1: 2, f2: 1 })
+        Struct {
+            f1: 1,
+            f2: 2
+        }
+        .cmp(&Struct {
+            f1: 2,
+            f2: 1
+        })
     );
 
     assert_eq!(Ordering::Greater, Tuple(2, 1).cmp(&Tuple(1, 2)));
@@ -81,17 +106,38 @@ fn ignore() {
 
     assert_eq!(
         Ordering::Greater,
-        Struct { f1: 1, f2: 3 }.cmp(&Struct { f1: 1, f2: 2 })
+        Struct {
+            f1: 1,
+            f2: 3
+        }
+        .cmp(&Struct {
+            f1: 1,
+            f2: 2
+        })
     );
 
     assert_eq!(
         Ordering::Less,
-        Struct { f1: 1, f2: 2 }.cmp(&Struct { f1: 1, f2: 3 })
+        Struct {
+            f1: 1,
+            f2: 2
+        }
+        .cmp(&Struct {
+            f1: 1,
+            f2: 3
+        })
     );
 
     assert_eq!(
         Ordering::Equal,
-        Struct { f1: 2, f2: 2 }.cmp(&Struct { f1: 1, f2: 2 })
+        Struct {
+            f1: 2,
+            f2: 2
+        }
+        .cmp(&Struct {
+            f1: 1,
+            f2: 2
+        })
     );
 
     assert_eq!(Ordering::Greater, Tuple(1, 3).cmp(&Tuple(1, 2)));
@@ -125,17 +171,38 @@ fn compare_without_trait_1() {
 
     assert_eq!(
         Ordering::Less,
-        Struct { f1: 1, f2: 3 }.cmp(&Struct { f1: 1, f2: 2 })
+        Struct {
+            f1: 1,
+            f2: 3
+        }
+        .cmp(&Struct {
+            f1: 1,
+            f2: 2
+        })
     );
 
     assert_eq!(
         Ordering::Greater,
-        Struct { f1: 1, f2: 2 }.cmp(&Struct { f1: 1, f2: 3 })
+        Struct {
+            f1: 1,
+            f2: 2
+        }
+        .cmp(&Struct {
+            f1: 1,
+            f2: 3
+        })
     );
 
     assert_eq!(
         Ordering::Equal,
-        Struct { f1: 1, f2: 2 }.cmp(&Struct { f1: 1, f2: 2 })
+        Struct {
+            f1: 1,
+            f2: 2
+        }
+        .cmp(&Struct {
+            f1: 1,
+            f2: 2
+        })
     );
 
     assert_eq!(Ordering::Less, Tuple(1, 3).cmp(&Tuple(1, 2)));
@@ -169,17 +236,38 @@ fn compare_without_trait_2() {
 
     assert_eq!(
         Ordering::Less,
-        Struct { f1: 1, f2: 3 }.cmp(&Struct { f1: 1, f2: 2 })
+        Struct {
+            f1: 1,
+            f2: 3
+        }
+        .cmp(&Struct {
+            f1: 1,
+            f2: 2
+        })
     );
 
     assert_eq!(
         Ordering::Greater,
-        Struct { f1: 1, f2: 2 }.cmp(&Struct { f1: 1, f2: 3 })
+        Struct {
+            f1: 1,
+            f2: 2
+        }
+        .cmp(&Struct {
+            f1: 1,
+            f2: 3
+        })
     );
 
     assert_eq!(
         Ordering::Equal,
-        Struct { f1: 1, f2: 2 }.cmp(&Struct { f1: 1, f2: 2 })
+        Struct {
+            f1: 1,
+            f2: 2
+        }
+        .cmp(&Struct {
+            f1: 1,
+            f2: 2
+        })
     );
 
     assert_eq!(Ordering::Less, Tuple(1, 3).cmp(&Tuple(1, 2)));
@@ -219,17 +307,38 @@ fn compare_with_trait_1() {
 
     assert_eq!(
         Ordering::Less,
-        Struct { f1: 1, f2: 3 }.cmp(&Struct { f1: 1, f2: 2 })
+        Struct {
+            f1: 1,
+            f2: 3
+        }
+        .cmp(&Struct {
+            f1: 1,
+            f2: 2
+        })
     );
 
     assert_eq!(
         Ordering::Greater,
-        Struct { f1: 1, f2: 2 }.cmp(&Struct { f1: 1, f2: 3 })
+        Struct {
+            f1: 1,
+            f2: 2
+        }
+        .cmp(&Struct {
+            f1: 1,
+            f2: 3
+        })
     );
 
     assert_eq!(
         Ordering::Equal,
-        Struct { f1: 1, f2: 2 }.cmp(&Struct { f1: 1, f2: 2 })
+        Struct {
+            f1: 1,
+            f2: 2
+        }
+        .cmp(&Struct {
+            f1: 1,
+            f2: 2
+        })
     );
 
     assert_eq!(Ordering::Less, Tuple(1, 3).cmp(&Tuple(1, 2)));
@@ -269,17 +378,38 @@ fn compare_with_trait_2() {
 
     assert_eq!(
         Ordering::Less,
-        Struct { f1: 1, f2: 3 }.cmp(&Struct { f1: 1, f2: 2 })
+        Struct {
+            f1: 1,
+            f2: 3
+        }
+        .cmp(&Struct {
+            f1: 1,
+            f2: 2
+        })
     );
 
     assert_eq!(
         Ordering::Greater,
-        Struct { f1: 1, f2: 2 }.cmp(&Struct { f1: 1, f2: 3 })
+        Struct {
+            f1: 1,
+            f2: 2
+        }
+        .cmp(&Struct {
+            f1: 1,
+            f2: 3
+        })
     );
 
     assert_eq!(
         Ordering::Equal,
-        Struct { f1: 1, f2: 2 }.cmp(&Struct { f1: 1, f2: 2 })
+        Struct {
+            f1: 1,
+            f2: 2
+        }
+        .cmp(&Struct {
+            f1: 1,
+            f2: 2
+        })
     );
 
     assert_eq!(Ordering::Less, Tuple(1, 3).cmp(&Tuple(1, 2)));
@@ -319,17 +449,38 @@ fn compare_with_trait_3() {
 
     assert_eq!(
         Ordering::Less,
-        Struct { f1: 1, f2: 3 }.cmp(&Struct { f1: 1, f2: 2 })
+        Struct {
+            f1: 1,
+            f2: 3
+        }
+        .cmp(&Struct {
+            f1: 1,
+            f2: 2
+        })
     );
 
     assert_eq!(
         Ordering::Greater,
-        Struct { f1: 1, f2: 2 }.cmp(&Struct { f1: 1, f2: 3 })
+        Struct {
+            f1: 1,
+            f2: 2
+        }
+        .cmp(&Struct {
+            f1: 1,
+            f2: 3
+        })
     );
 
     assert_eq!(
         Ordering::Equal,
-        Struct { f1: 1, f2: 2 }.cmp(&Struct { f1: 1, f2: 2 })
+        Struct {
+            f1: 1,
+            f2: 2
+        }
+        .cmp(&Struct {
+            f1: 1,
+            f2: 2
+        })
     );
 
     assert_eq!(Ordering::Less, Tuple(1, 3).cmp(&Tuple(1, 2)));
@@ -369,17 +520,38 @@ fn compare_with_trait_4() {
 
     assert_eq!(
         Ordering::Less,
-        Struct { f1: 1, f2: 3 }.cmp(&Struct { f1: 1, f2: 2 })
+        Struct {
+            f1: 1,
+            f2: 3
+        }
+        .cmp(&Struct {
+            f1: 1,
+            f2: 2
+        })
     );
 
     assert_eq!(
         Ordering::Greater,
-        Struct { f1: 1, f2: 2 }.cmp(&Struct { f1: 1, f2: 3 })
+        Struct {
+            f1: 1,
+            f2: 2
+        }
+        .cmp(&Struct {
+            f1: 1,
+            f2: 3
+        })
     );
 
     assert_eq!(
         Ordering::Equal,
-        Struct { f1: 1, f2: 2 }.cmp(&Struct { f1: 1, f2: 2 })
+        Struct {
+            f1: 1,
+            f2: 2
+        }
+        .cmp(&Struct {
+            f1: 1,
+            f2: 2
+        })
     );
 
     assert_eq!(Ordering::Less, Tuple(1, 3).cmp(&Tuple(1, 2)));
@@ -399,9 +571,25 @@ fn bound_1() {
     #[educe(PartialEq(bound), Eq(bound), PartialOrd(bound), Ord(bound))]
     struct Tuple<T>(T);
 
-    assert_eq!(Ordering::Greater, Struct { f1: 2 }.cmp(&Struct { f1: 1 }));
+    assert_eq!(
+        Ordering::Greater,
+        Struct {
+            f1: 2
+        }
+        .cmp(&Struct {
+            f1: 1
+        })
+    );
 
-    assert_eq!(Ordering::Less, Struct { f1: 1 }.cmp(&Struct { f1: 2 }));
+    assert_eq!(
+        Ordering::Less,
+        Struct {
+            f1: 1
+        }
+        .cmp(&Struct {
+            f1: 2
+        })
+    );
 
     assert_eq!(Ordering::Greater, Tuple(2).cmp(&Tuple(1)));
     assert_eq!(Ordering::Less, Tuple(1).cmp(&Tuple(2)));
@@ -410,28 +598,34 @@ fn bound_1() {
 #[test]
 fn bound_2() {
     #[derive(Educe)]
-    #[educe(
-        PartialEq(bound),
-        Eq(bound),
-        PartialOrd(bound),
-        Ord(bound = "T: core::cmp::Ord")
-    )]
+    #[educe(PartialEq(bound), Eq(bound), PartialOrd(bound), Ord(bound = "T: core::cmp::Ord"))]
     struct Struct<T> {
         f1: T,
     }
 
     #[derive(Educe)]
-    #[educe(
-        PartialEq(bound),
-        Eq(bound),
-        PartialOrd(bound),
-        Ord(bound = "T: core::cmp::Ord")
-    )]
+    #[educe(PartialEq(bound), Eq(bound), PartialOrd(bound), Ord(bound = "T: core::cmp::Ord"))]
     struct Tuple<T>(T);
 
-    assert_eq!(Ordering::Greater, Struct { f1: 2 }.cmp(&Struct { f1: 1 }));
+    assert_eq!(
+        Ordering::Greater,
+        Struct {
+            f1: 2
+        }
+        .cmp(&Struct {
+            f1: 1
+        })
+    );
 
-    assert_eq!(Ordering::Less, Struct { f1: 1 }.cmp(&Struct { f1: 2 }));
+    assert_eq!(
+        Ordering::Less,
+        Struct {
+            f1: 1
+        }
+        .cmp(&Struct {
+            f1: 2
+        })
+    );
 
     assert_eq!(Ordering::Greater, Tuple(2).cmp(&Tuple(1)));
     assert_eq!(Ordering::Less, Tuple(1).cmp(&Tuple(2)));
@@ -440,28 +634,34 @@ fn bound_2() {
 #[test]
 fn bound_3() {
     #[derive(Educe)]
-    #[educe(
-        PartialEq(bound),
-        Eq(bound),
-        PartialOrd(bound),
-        Ord(bound("T: core::cmp::Ord"))
-    )]
+    #[educe(PartialEq(bound), Eq(bound), PartialOrd(bound), Ord(bound("T: core::cmp::Ord")))]
     struct Struct<T> {
         f1: T,
     }
 
     #[derive(Educe)]
-    #[educe(
-        PartialEq(bound),
-        Eq(bound),
-        PartialOrd(bound),
-        Ord(bound("T: core::cmp::Ord"))
-    )]
+    #[educe(PartialEq(bound), Eq(bound), PartialOrd(bound), Ord(bound("T: core::cmp::Ord")))]
     struct Tuple<T>(T);
 
-    assert_eq!(Ordering::Greater, Struct { f1: 2 }.cmp(&Struct { f1: 1 }));
+    assert_eq!(
+        Ordering::Greater,
+        Struct {
+            f1: 2
+        }
+        .cmp(&Struct {
+            f1: 1
+        })
+    );
 
-    assert_eq!(Ordering::Less, Struct { f1: 1 }.cmp(&Struct { f1: 2 }));
+    assert_eq!(
+        Ordering::Less,
+        Struct {
+            f1: 1
+        }
+        .cmp(&Struct {
+            f1: 2
+        })
+    );
 
     assert_eq!(Ordering::Greater, Tuple(2).cmp(&Tuple(1)));
     assert_eq!(Ordering::Less, Tuple(1).cmp(&Tuple(2)));
@@ -483,12 +683,26 @@ fn rank_1() {
 
     assert_eq!(
         Ordering::Less,
-        Struct { f1: 2, f2: 1 }.cmp(&Struct { f1: 1, f2: 2 })
+        Struct {
+            f1: 2,
+            f2: 1
+        }
+        .cmp(&Struct {
+            f1: 1,
+            f2: 2
+        })
     );
 
     assert_eq!(
         Ordering::Greater,
-        Struct { f1: 1, f2: 2 }.cmp(&Struct { f1: 2, f2: 1 })
+        Struct {
+            f1: 1,
+            f2: 2
+        }
+        .cmp(&Struct {
+            f1: 2,
+            f2: 1
+        })
     );
 
     assert_eq!(Ordering::Less, Tuple(2, 1).cmp(&Tuple(1, 2)));
@@ -511,12 +725,26 @@ fn rank_2() {
 
     assert_eq!(
         Ordering::Less,
-        Struct { f1: 2, f2: 1 }.cmp(&Struct { f1: 1, f2: 2 })
+        Struct {
+            f1: 2,
+            f2: 1
+        }
+        .cmp(&Struct {
+            f1: 1,
+            f2: 2
+        })
     );
 
     assert_eq!(
         Ordering::Greater,
-        Struct { f1: 1, f2: 2 }.cmp(&Struct { f1: 2, f2: 1 })
+        Struct {
+            f1: 1,
+            f2: 2
+        }
+        .cmp(&Struct {
+            f1: 2,
+            f2: 1
+        })
     );
 
     assert_eq!(Ordering::Less, Tuple(2, 1).cmp(&Tuple(1, 2)));
@@ -540,12 +768,26 @@ fn rank_3() {
 
     assert_eq!(
         Ordering::Less,
-        Struct { f1: 2, f2: 1 }.cmp(&Struct { f1: 1, f2: 2 })
+        Struct {
+            f1: 2,
+            f2: 1
+        }
+        .cmp(&Struct {
+            f1: 1,
+            f2: 2
+        })
     );
 
     assert_eq!(
         Ordering::Greater,
-        Struct { f1: 1, f2: 2 }.cmp(&Struct { f1: 2, f2: 1 })
+        Struct {
+            f1: 1,
+            f2: 2
+        }
+        .cmp(&Struct {
+            f1: 2,
+            f2: 1
+        })
     );
 
     assert_eq!(Ordering::Less, Tuple(2, 1).cmp(&Tuple(1, 2)));
@@ -569,12 +811,26 @@ fn rank_4() {
 
     assert_eq!(
         Ordering::Less,
-        Struct { f1: 2, f2: 1 }.cmp(&Struct { f1: 1, f2: 2 })
+        Struct {
+            f1: 2,
+            f2: 1
+        }
+        .cmp(&Struct {
+            f1: 1,
+            f2: 2
+        })
     );
 
     assert_eq!(
         Ordering::Greater,
-        Struct { f1: 1, f2: 2 }.cmp(&Struct { f1: 2, f2: 1 })
+        Struct {
+            f1: 1,
+            f2: 2
+        }
+        .cmp(&Struct {
+            f1: 2,
+            f2: 1
+        })
     );
 
     assert_eq!(Ordering::Less, Tuple(2, 1).cmp(&Tuple(1, 2)));

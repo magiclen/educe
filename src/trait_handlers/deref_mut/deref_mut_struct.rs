@@ -17,7 +17,10 @@ impl TraitHandler for DerefMutStructHandler {
         traits: &[Trait],
         meta: &Meta,
     ) {
-        let _ = TypeAttributeBuilder { enable_flag: true }.from_deref_mut_meta(meta);
+        let _ = TypeAttributeBuilder {
+            enable_flag: true,
+        }
+        .from_deref_mut_meta(meta);
 
         let mut deref_mut_tokens = TokenStream::new();
 
@@ -25,8 +28,10 @@ impl TraitHandler for DerefMutStructHandler {
             let mut counter = 0;
 
             for (index, field) in data.fields.iter().enumerate() {
-                let field_attribute = FieldAttributeBuilder { enable_flag: true }
-                    .from_attributes(&field.attrs, traits);
+                let field_attribute = FieldAttributeBuilder {
+                    enable_flag: true,
+                }
+                .from_attributes(&field.attrs, traits);
 
                 if field_attribute.flag {
                     if !deref_mut_tokens.is_empty() {

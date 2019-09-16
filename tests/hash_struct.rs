@@ -34,7 +34,10 @@ fn basic() {
     let struct_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Struct { f1: 1 }.hash(&mut hasher);
+        Struct {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };
@@ -80,7 +83,10 @@ fn ignore() {
     let struct_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Struct { f1: 1 }.hash(&mut hasher);
+        Struct {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };
@@ -137,7 +143,10 @@ fn hash_without_trait_1() {
     let struct_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Struct { f1: 1 }.hash(&mut hasher);
+        Struct {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };
@@ -145,7 +154,10 @@ fn hash_without_trait_1() {
     let struct2_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Struct2 { f1: 1 }.hash(&mut hasher);
+        Struct2 {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };
@@ -203,7 +215,10 @@ fn hash_without_trait_2() {
     let struct_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Struct { f1: 1 }.hash(&mut hasher);
+        Struct {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };
@@ -211,7 +226,10 @@ fn hash_without_trait_2() {
     let struct2_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Struct2 { f1: 1 }.hash(&mut hasher);
+        Struct2 {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };
@@ -273,7 +291,10 @@ fn hash_with_trait_1() {
     let struct_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Struct { f1: 1 }.hash(&mut hasher);
+        Struct {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };
@@ -281,7 +302,10 @@ fn hash_with_trait_1() {
     let struct2_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Struct2 { f1: 1 }.hash(&mut hasher);
+        Struct2 {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };
@@ -343,7 +367,10 @@ fn hash_with_trait_2() {
     let struct_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Struct { f1: 1 }.hash(&mut hasher);
+        Struct {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };
@@ -351,7 +378,10 @@ fn hash_with_trait_2() {
     let struct2_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Struct2 { f1: 1 }.hash(&mut hasher);
+        Struct2 {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };
@@ -413,7 +443,10 @@ fn hash_with_trait_3() {
     let struct_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Struct { f1: 1 }.hash(&mut hasher);
+        Struct {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };
@@ -421,7 +454,10 @@ fn hash_with_trait_3() {
     let struct2_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Struct2 { f1: 1 }.hash(&mut hasher);
+        Struct2 {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };
@@ -483,7 +519,10 @@ fn hash_with_trait_4() {
     let struct_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Struct { f1: 1 }.hash(&mut hasher);
+        Struct {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };
@@ -491,7 +530,10 @@ fn hash_with_trait_4() {
     let struct2_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Struct2 { f1: 1 }.hash(&mut hasher);
+        Struct2 {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };
@@ -524,7 +566,10 @@ fn bound_1() {
     let struct_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Struct { f1: 1 }.hash(&mut hasher);
+        Struct {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };
@@ -555,7 +600,10 @@ fn bound_2() {
     let struct_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Struct { f1: 1 }.hash(&mut hasher);
+        Struct {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };
@@ -586,7 +634,10 @@ fn bound_3() {
     let struct_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Struct { f1: 1 }.hash(&mut hasher);
+        Struct {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };

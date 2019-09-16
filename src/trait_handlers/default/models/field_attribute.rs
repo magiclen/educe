@@ -1,6 +1,7 @@
 use super::super::super::create_expr_string_from_lit_str;
 
 use crate::panic;
+use crate::quote::ToTokens;
 use crate::syn::{Attribute, Lit, Meta, NestedMeta};
 use crate::Trait;
 
@@ -53,7 +54,7 @@ impl FieldAttributeBuilder {
                 for p in list.nested.iter() {
                     match p {
                         NestedMeta::Meta(meta) => {
-                            let meta_name = meta.name().to_string();
+                            let meta_name = meta.path().into_token_stream().to_string();
 
                             match meta_name.as_str() {
                                 "expression" | "expr" => {
@@ -65,34 +66,42 @@ impl FieldAttributeBuilder {
                                         Meta::List(list) => {
                                             for p in list.nested.iter() {
                                                 match p {
-                                                    NestedMeta::Literal(lit) => match lit {
-                                                        Lit::Str(s) => {
-                                                            if expression.is_some() {
-                                                                panic::reset_parameter(
-                                                                    meta_name.as_str(),
-                                                                );
+                                                    NestedMeta::Lit(lit) => {
+                                                        match lit {
+                                                            Lit::Str(s) => {
+                                                                if expression.is_some() {
+                                                                    panic::reset_parameter(
+                                                                        meta_name.as_str(),
+                                                                    );
+                                                                }
+
+                                                                let s =
+                                                                    create_expr_string_from_lit_str(
+                                                                        s,
+                                                                    );
+
+                                                                if s.is_some() {
+                                                                    expression = s;
+                                                                } else {
+                                                                    panic::empty_parameter(
+                                                                        meta_name.as_str(),
+                                                                    )
+                                                                }
                                                             }
-
-                                                            let s =
-                                                                create_expr_string_from_lit_str(s);
-
-                                                            if s.is_some() {
-                                                                expression = s;
-                                                            } else {
-                                                                panic::empty_parameter(
+                                                            _ => {
+                                                                panic::parameter_incorrect_format(
                                                                     meta_name.as_str(),
+                                                                    &correct_usage_for_expression,
                                                                 )
                                                             }
                                                         }
-                                                        _ => panic::parameter_incorrect_format(
+                                                    }
+                                                    _ => {
+                                                        panic::parameter_incorrect_format(
                                                             meta_name.as_str(),
                                                             &correct_usage_for_expression,
-                                                        ),
-                                                    },
-                                                    _ => panic::parameter_incorrect_format(
-                                                        meta_name.as_str(),
-                                                        &correct_usage_for_expression,
-                                                    ),
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
@@ -113,22 +122,26 @@ impl FieldAttributeBuilder {
                                                         panic::empty_parameter(meta_name.as_str())
                                                     }
                                                 }
-                                                _ => panic::parameter_incorrect_format(
-                                                    meta_name.as_str(),
-                                                    &correct_usage_for_expression,
-                                                ),
+                                                _ => {
+                                                    panic::parameter_incorrect_format(
+                                                        meta_name.as_str(),
+                                                        &correct_usage_for_expression,
+                                                    )
+                                                }
                                             }
                                         }
-                                        _ => panic::parameter_incorrect_format(
-                                            meta_name.as_str(),
-                                            &correct_usage_for_expression,
-                                        ),
+                                        _ => {
+                                            panic::parameter_incorrect_format(
+                                                meta_name.as_str(),
+                                                &correct_usage_for_expression,
+                                            )
+                                        }
                                     }
                                 }
                                 _ => panic::unknown_parameter("Default", meta_name.as_str()),
                             }
                         }
-                        NestedMeta::Literal(lit) => {
+                        NestedMeta::Lit(lit) => {
                             if !self.enable_literal {
                                 panic::attribute_incorrect_format(
                                     "Default",
@@ -157,7 +170,7 @@ impl FieldAttributeBuilder {
 
                 value = Some(lit.clone());
             }
-            Meta::Word(_) => {
+            Meta::Path(_) => {
                 if !self.enable_flag {
                     panic::attribute_incorrect_format(
                         "Default",
@@ -180,25 +193,26 @@ impl FieldAttributeBuilder {
         }
     }
 
+    #[allow(clippy::wrong_self_convention)]
     pub fn from_attributes(self, attributes: &[Attribute], traits: &[Trait]) -> FieldAttribute {
         let mut result = None;
 
         for attribute in attributes.iter() {
             let meta = attribute.parse_meta().unwrap();
 
-            let meta_name = meta.name().to_string();
+            let meta_name = meta.path().into_token_stream().to_string();
 
-            match meta_name.as_str() {
-                "educe" => match meta {
+            if meta_name.as_str() == "educe" {
+                match meta {
                     Meta::List(list) => {
                         for p in list.nested.iter() {
                             match p {
                                 NestedMeta::Meta(meta) => {
-                                    let meta_name = meta.name().to_string();
+                                    let meta_name = meta.path().into_token_stream().to_string();
 
                                     let t = Trait::from_str(meta_name);
 
-                                    if let Err(_) = traits.binary_search(&t) {
+                                    if traits.binary_search(&t).is_err() {
                                         panic::trait_not_used(t.as_str());
                                     }
 
@@ -215,8 +229,7 @@ impl FieldAttributeBuilder {
                         }
                     }
                     _ => panic::educe_format_incorrect(),
-                },
-                _ => (),
+                }
             }
         }
 

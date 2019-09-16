@@ -29,9 +29,14 @@ fn basic() {
     #[educe(Deref, DerefMut)]
     struct Tuple2(u8, #[educe(Deref, DerefMut)] u8);
 
-    let mut s1 = Struct { f1: 1 };
+    let mut s1 = Struct {
+        f1: 1,
+    };
 
-    let mut s2 = Struct2 { f1: 1, f2: 2 };
+    let mut s2 = Struct2 {
+        f1: 1,
+        f2: 2,
+    };
 
     let mut t1 = Tuple(1);
     let mut t2 = Tuple2(1, 2);

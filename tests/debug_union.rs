@@ -16,7 +16,12 @@ fn name_1() {
         f1: u8,
     }
 
-    assert_eq!("Union([1])", format!("{:?}", Union { f1: 1 }));
+    assert_eq!(
+        "Union([1])",
+        format!("{:?}", Union {
+            f1: 1
+        })
+    );
 }
 
 #[test]
@@ -28,7 +33,12 @@ fn name_2() {
         f1: u8,
     }
 
-    assert_eq!("A([1])", format!("{:?}", Union { f1: 1 }));
+    assert_eq!(
+        "A([1])",
+        format!("{:?}", Union {
+            f1: 1
+        })
+    );
 }
 
 #[test]
@@ -40,7 +50,12 @@ fn name_3() {
         f1: u8,
     }
 
-    assert_eq!("A([1])", format!("{:?}", Union { f1: 1 }));
+    assert_eq!(
+        "A([1])",
+        format!("{:?}", Union {
+            f1: 1
+        })
+    );
 }
 
 #[test]
@@ -52,7 +67,12 @@ fn name_4() {
         f1: u8,
     }
 
-    assert_eq!("A([1])", format!("{:?}", Union { f1: 1 }));
+    assert_eq!(
+        "A([1])",
+        format!("{:?}", Union {
+            f1: 1
+        })
+    );
 }
 
 #[test]
@@ -64,7 +84,12 @@ fn name_5() {
         f1: u8,
     }
 
-    assert_eq!("A([1])", format!("{:?}", Union { f1: 1 }));
+    assert_eq!(
+        "A([1])",
+        format!("{:?}", Union {
+            f1: 1
+        })
+    );
 }
 
 #[test]
@@ -76,7 +101,12 @@ fn unnamed_1() {
         f1: u8,
     }
 
-    assert_eq!("[1]", format!("{:?}", Union { f1: 1 }));
+    assert_eq!(
+        "[1]",
+        format!("{:?}", Union {
+            f1: 1
+        })
+    );
 }
 
 #[test]
@@ -88,7 +118,12 @@ fn unnamed_2() {
         f1: u8,
     }
 
-    assert_eq!("[1]", format!("{:?}", Union { f1: 1 }));
+    assert_eq!(
+        "[1]",
+        format!("{:?}", Union {
+            f1: 1
+        })
+    );
 }
 
 #[test]
@@ -100,7 +135,12 @@ fn unnamed_3() {
         f1: u8,
     }
 
-    assert_eq!("[1]", format!("{:?}", Union { f1: 1 }));
+    assert_eq!(
+        "[1]",
+        format!("{:?}", Union {
+            f1: 1
+        })
+    );
 }
 
 #[test]
@@ -112,7 +152,12 @@ fn unnamed_4() {
         f1: u8,
     }
 
-    assert_eq!("[1]", format!("{:?}", Union { f1: 1 }));
+    assert_eq!(
+        "[1]",
+        format!("{:?}", Union {
+            f1: 1
+        })
+    );
 }
 
 #[test]
@@ -124,7 +169,12 @@ fn unnamed_5() {
         f1: u8,
     }
 
-    assert_eq!("[1]", format!("{:?}", Union { f1: 1 }));
+    assert_eq!(
+        "[1]",
+        format!("{:?}", Union {
+            f1: 1
+        })
+    );
 }
 
 #[test]
@@ -136,7 +186,12 @@ fn unnamed_6() {
         f1: u8,
     }
 
-    assert_eq!("[1]", format!("{:?}", Union { f1: 1 }));
+    assert_eq!(
+        "[1]",
+        format!("{:?}", Union {
+            f1: 1
+        })
+    );
 }
 
 #[test]
@@ -148,7 +203,12 @@ fn bound_1() {
         f1: T,
     }
 
-    assert_eq!("Union([1])", format!("{:?}", Union { f1: 1u8 }));
+    assert_eq!(
+        "Union([1])",
+        format!("{:?}", Union {
+            f1: 1u8
+        })
+    );
 }
 
 #[test]
@@ -160,7 +220,12 @@ fn bound_2() {
         f1: T,
     }
 
-    assert_eq!("Union([1])", format!("{:?}", Union { f1: 1u8 }));
+    assert_eq!(
+        "Union([1])",
+        format!("{:?}", Union {
+            f1: 1u8
+        })
+    );
 }
 
 #[test]
@@ -172,5 +237,10 @@ fn bound_3() {
         f1: T,
     }
 
-    assert_eq!("Union([1])", format!("{:?}", Union { f1: 1u8 }));
+    assert_eq!(
+        "Union([1])",
+        format!("{:?}", Union {
+            f1: 1u8
+        })
+    );
 }

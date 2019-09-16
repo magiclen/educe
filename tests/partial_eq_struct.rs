@@ -22,9 +22,21 @@ fn basic() {
 
     assert!(Unit == Unit);
 
-    assert!(Struct { f1: 1 } == Struct { f1: 1 });
+    assert!(
+        Struct {
+            f1: 1
+        } == Struct {
+            f1: 1
+        }
+    );
 
-    assert!(Struct { f1: 1 } != Struct { f1: 2 });
+    assert!(
+        Struct {
+            f1: 1
+        } != Struct {
+            f1: 2
+        }
+    );
 
     assert!(Tuple(1) == Tuple(1));
     assert!(Tuple(1) != Tuple(2));
@@ -45,11 +57,35 @@ fn ignore() {
     #[educe(PartialEq)]
     struct Tuple(#[educe(PartialEq(ignore))] u8, u8);
 
-    assert!(Struct { f1: 1, f2: 2 } == Struct { f1: 1, f2: 2 });
+    assert!(
+        Struct {
+            f1: 1,
+            f2: 2
+        } == Struct {
+            f1: 1,
+            f2: 2
+        }
+    );
 
-    assert!(Struct { f1: 1, f2: 2 } == Struct { f1: 2, f2: 2 });
+    assert!(
+        Struct {
+            f1: 1,
+            f2: 2
+        } == Struct {
+            f1: 2,
+            f2: 2
+        }
+    );
 
-    assert!(Struct { f1: 1, f2: 2 } != Struct { f1: 2, f2: 3 });
+    assert!(
+        Struct {
+            f1: 1,
+            f2: 2
+        } != Struct {
+            f1: 2,
+            f2: 3
+        }
+    );
 
     assert!(Tuple(1, 2) == Tuple(1, 2));
     assert!(Tuple(1, 2) == Tuple(2, 2));
@@ -74,11 +110,35 @@ fn compare_without_trait_1() {
     #[educe(PartialEq)]
     struct Tuple(#[educe(PartialEq(method = "eq"))] u8, u8);
 
-    assert!(Struct { f1: 1, f2: 2 } != Struct { f1: 1, f2: 2 });
+    assert!(
+        Struct {
+            f1: 1,
+            f2: 2
+        } != Struct {
+            f1: 1,
+            f2: 2
+        }
+    );
 
-    assert!(Struct { f1: 1, f2: 2 } == Struct { f1: 2, f2: 2 });
+    assert!(
+        Struct {
+            f1: 1,
+            f2: 2
+        } == Struct {
+            f1: 2,
+            f2: 2
+        }
+    );
 
-    assert!(Struct { f1: 1, f2: 2 } != Struct { f1: 2, f2: 3 });
+    assert!(
+        Struct {
+            f1: 1,
+            f2: 2
+        } != Struct {
+            f1: 2,
+            f2: 3
+        }
+    );
 
     assert!(Tuple(1, 2) != Tuple(1, 2));
     assert!(Tuple(1, 2) == Tuple(2, 2));
@@ -103,11 +163,35 @@ fn compare_without_trait_2() {
     #[educe(PartialEq)]
     struct Tuple(#[educe(PartialEq(method("eq")))] u8, u8);
 
-    assert!(Struct { f1: 1, f2: 2 } != Struct { f1: 1, f2: 2 });
+    assert!(
+        Struct {
+            f1: 1,
+            f2: 2
+        } != Struct {
+            f1: 1,
+            f2: 2
+        }
+    );
 
-    assert!(Struct { f1: 1, f2: 2 } == Struct { f1: 2, f2: 2 });
+    assert!(
+        Struct {
+            f1: 1,
+            f2: 2
+        } == Struct {
+            f1: 2,
+            f2: 2
+        }
+    );
 
-    assert!(Struct { f1: 1, f2: 2 } != Struct { f1: 2, f2: 3 });
+    assert!(
+        Struct {
+            f1: 1,
+            f2: 2
+        } != Struct {
+            f1: 2,
+            f2: 3
+        }
+    );
 
     assert!(Tuple(1, 2) != Tuple(1, 2));
     assert!(Tuple(1, 2) == Tuple(2, 2));
@@ -138,11 +222,35 @@ fn compare_with_trait_1() {
     #[educe(PartialEq)]
     struct Tuple(#[educe(PartialEq(trait = "A"))] u8, u8);
 
-    assert!(Struct { f1: 1, f2: 2 } != Struct { f1: 1, f2: 2 });
+    assert!(
+        Struct {
+            f1: 1,
+            f2: 2
+        } != Struct {
+            f1: 1,
+            f2: 2
+        }
+    );
 
-    assert!(Struct { f1: 1, f2: 2 } == Struct { f1: 2, f2: 2 });
+    assert!(
+        Struct {
+            f1: 1,
+            f2: 2
+        } == Struct {
+            f1: 2,
+            f2: 2
+        }
+    );
 
-    assert!(Struct { f1: 1, f2: 2 } != Struct { f1: 2, f2: 3 });
+    assert!(
+        Struct {
+            f1: 1,
+            f2: 2
+        } != Struct {
+            f1: 2,
+            f2: 3
+        }
+    );
 
     assert!(Tuple(1, 2) != Tuple(1, 2));
     assert!(Tuple(1, 2) == Tuple(2, 2));
@@ -173,11 +281,35 @@ fn compare_with_trait_2() {
     #[educe(PartialEq)]
     struct Tuple(#[educe(PartialEq(trait("A")))] u8, u8);
 
-    assert!(Struct { f1: 1, f2: 2 } != Struct { f1: 1, f2: 2 });
+    assert!(
+        Struct {
+            f1: 1,
+            f2: 2
+        } != Struct {
+            f1: 1,
+            f2: 2
+        }
+    );
 
-    assert!(Struct { f1: 1, f2: 2 } == Struct { f1: 2, f2: 2 });
+    assert!(
+        Struct {
+            f1: 1,
+            f2: 2
+        } == Struct {
+            f1: 2,
+            f2: 2
+        }
+    );
 
-    assert!(Struct { f1: 1, f2: 2 } != Struct { f1: 2, f2: 3 });
+    assert!(
+        Struct {
+            f1: 1,
+            f2: 2
+        } != Struct {
+            f1: 2,
+            f2: 3
+        }
+    );
 
     assert!(Tuple(1, 2) != Tuple(1, 2));
     assert!(Tuple(1, 2) == Tuple(2, 2));
@@ -208,11 +340,35 @@ fn compare_with_trait_3() {
     #[educe(PartialEq)]
     struct Tuple(#[educe(PartialEq(trait = "A", method = "compare"))] u8, u8);
 
-    assert!(Struct { f1: 1, f2: 2 } != Struct { f1: 1, f2: 2 });
+    assert!(
+        Struct {
+            f1: 1,
+            f2: 2
+        } != Struct {
+            f1: 1,
+            f2: 2
+        }
+    );
 
-    assert!(Struct { f1: 1, f2: 2 } == Struct { f1: 2, f2: 2 });
+    assert!(
+        Struct {
+            f1: 1,
+            f2: 2
+        } == Struct {
+            f1: 2,
+            f2: 2
+        }
+    );
 
-    assert!(Struct { f1: 1, f2: 2 } != Struct { f1: 2, f2: 3 });
+    assert!(
+        Struct {
+            f1: 1,
+            f2: 2
+        } != Struct {
+            f1: 2,
+            f2: 3
+        }
+    );
 
     assert!(Tuple(1, 2) != Tuple(1, 2));
     assert!(Tuple(1, 2) == Tuple(2, 2));
@@ -243,11 +399,35 @@ fn compare_with_trait_4() {
     #[educe(PartialEq)]
     struct Tuple(#[educe(PartialEq(trait("A"), method("compare")))] u8, u8);
 
-    assert!(Struct { f1: 1, f2: 2 } != Struct { f1: 1, f2: 2 });
+    assert!(
+        Struct {
+            f1: 1,
+            f2: 2
+        } != Struct {
+            f1: 1,
+            f2: 2
+        }
+    );
 
-    assert!(Struct { f1: 1, f2: 2 } == Struct { f1: 2, f2: 2 });
+    assert!(
+        Struct {
+            f1: 1,
+            f2: 2
+        } == Struct {
+            f1: 2,
+            f2: 2
+        }
+    );
 
-    assert!(Struct { f1: 1, f2: 2 } != Struct { f1: 2, f2: 3 });
+    assert!(
+        Struct {
+            f1: 1,
+            f2: 2
+        } != Struct {
+            f1: 2,
+            f2: 3
+        }
+    );
 
     assert!(Tuple(1, 2) != Tuple(1, 2));
     assert!(Tuple(1, 2) == Tuple(2, 2));
@@ -266,9 +446,21 @@ fn bound_1() {
     #[educe(PartialEq(bound))]
     struct Tuple<T>(T);
 
-    assert!(Struct { f1: 1 } == Struct { f1: 1 });
+    assert!(
+        Struct {
+            f1: 1
+        } == Struct {
+            f1: 1
+        }
+    );
 
-    assert!(Struct { f1: 1 } != Struct { f1: 2 });
+    assert!(
+        Struct {
+            f1: 1
+        } != Struct {
+            f1: 2
+        }
+    );
 
     assert!(Tuple(1) == Tuple(1));
     assert!(Tuple(1) != Tuple(2));
@@ -286,9 +478,21 @@ fn bound_2() {
     #[educe(PartialEq(bound = "T: core::cmp::PartialEq"))]
     struct Tuple<T>(T);
 
-    assert!(Struct { f1: 1 } == Struct { f1: 1 });
+    assert!(
+        Struct {
+            f1: 1
+        } == Struct {
+            f1: 1
+        }
+    );
 
-    assert!(Struct { f1: 1 } != Struct { f1: 2 });
+    assert!(
+        Struct {
+            f1: 1
+        } != Struct {
+            f1: 2
+        }
+    );
 
     assert!(Tuple(1) == Tuple(1));
     assert!(Tuple(1) != Tuple(2));
@@ -306,9 +510,21 @@ fn bound_3() {
     #[educe(PartialEq(bound("T: core::cmp::PartialEq")))]
     struct Tuple<T>(T);
 
-    assert!(Struct { f1: 1 } == Struct { f1: 1 });
+    assert!(
+        Struct {
+            f1: 1
+        } == Struct {
+            f1: 1
+        }
+    );
 
-    assert!(Struct { f1: 1 } != Struct { f1: 2 });
+    assert!(
+        Struct {
+            f1: 1
+        } != Struct {
+            f1: 2
+        }
+    );
 
     assert!(Tuple(1) == Tuple(1));
     assert!(Tuple(1) != Tuple(2));

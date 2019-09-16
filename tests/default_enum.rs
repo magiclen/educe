@@ -61,7 +61,10 @@ fn basic() {
         Tuple(u8),
     }
 
-    assert!(if let Enum4::Struct { f1: 0 } = Enum4::default() {
+    assert!(if let Enum4::Struct {
+        f1: 0,
+    } = Enum4::default()
+    {
         true
     } else {
         false
@@ -75,13 +78,18 @@ fn type_default_1() {
     #[educe(Default(expression = "Enum::Struct { f1: 1 }"))]
     enum Enum {
         Unit,
-        Struct { f1: u8 },
+        Struct {
+            f1: u8,
+        },
         Tuple(u8),
     }
 
     let e = Enum::default();
 
-    if let Enum::Struct { f1 } = e {
+    if let Enum::Struct {
+        f1,
+    } = e
+    {
         assert_eq!(1, f1);
     } else {
         panic!();
@@ -95,13 +103,18 @@ fn type_default_2() {
     #[educe(Default(expression("Enum::Struct { f1: 1 }")))]
     enum Enum {
         Unit,
-        Struct { f1: u8 },
+        Struct {
+            f1: u8,
+        },
         Tuple(u8),
     }
 
     let e = Enum::default();
 
-    if let Enum::Struct { f1 } = e {
+    if let Enum::Struct {
+        f1,
+    } = e
+    {
         assert_eq!(1, f1);
     } else {
         panic!();
@@ -430,7 +443,10 @@ fn bound_1() {
         Tuple(T),
     }
 
-    assert!(if let Enum::Struct { f1: 0 } = Enum::default() {
+    assert!(if let Enum::Struct {
+        f1: 0,
+    } = Enum::default()
+    {
         true
     } else {
         false
@@ -451,7 +467,10 @@ fn bound_2() {
         Tuple(T),
     }
 
-    assert!(if let Enum::Struct { f1: 0 } = Enum::default() {
+    assert!(if let Enum::Struct {
+        f1: 0,
+    } = Enum::default()
+    {
         true
     } else {
         false
@@ -472,7 +491,10 @@ fn bound_3() {
         Tuple(T),
     }
 
-    assert!(if let Enum::Struct { f1: 0 } = Enum::default() {
+    assert!(if let Enum::Struct {
+        f1: 0,
+    } = Enum::default()
+    {
         true
     } else {
         false
@@ -493,7 +515,10 @@ fn new() {
         Tuple(u8),
     }
 
-    assert!(if let Enum::Struct { f1: 0 } = Enum::new() {
+    assert!(if let Enum::Struct {
+        f1: 0,
+    } = Enum::new()
+    {
         true
     } else {
         false

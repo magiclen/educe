@@ -57,18 +57,20 @@ impl TraitHandler for PartialEqStructHandler {
 
                         comparer_tokens.extend(TokenStream::from_str(&statement).unwrap());
                     }
-                    None => match compare_method {
-                        Some(compare_method) => {
-                            let statement = format!("if !{compare_method}(&self.{field_name}, &other.{field_name}) {{ return false; }}", compare_method = compare_method, field_name = field_name);
+                    None => {
+                        match compare_method {
+                            Some(compare_method) => {
+                                let statement = format!("if !{compare_method}(&self.{field_name}, &other.{field_name}) {{ return false; }}", compare_method = compare_method, field_name = field_name);
 
-                            comparer_tokens.extend(TokenStream::from_str(&statement).unwrap());
-                        }
-                        None => {
-                            let statement = format!("if core::cmp::PartialEq::ne(&self.{field_name}, &other.{field_name}) {{ return false; }}", field_name = field_name);
+                                comparer_tokens.extend(TokenStream::from_str(&statement).unwrap());
+                            }
+                            None => {
+                                let statement = format!("if core::cmp::PartialEq::ne(&self.{field_name}, &other.{field_name}) {{ return false; }}", field_name = field_name);
 
-                            comparer_tokens.extend(TokenStream::from_str(&statement).unwrap());
+                                comparer_tokens.extend(TokenStream::from_str(&statement).unwrap());
+                            }
                         }
-                    },
+                    }
                 }
             }
         }

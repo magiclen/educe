@@ -1,6 +1,7 @@
 use super::super::super::create_path_string_from_lit_str;
 
 use crate::panic;
+use crate::quote::ToTokens;
 use crate::syn::{Attribute, Lit, Meta, NestedMeta};
 use crate::Trait;
 
@@ -36,6 +37,7 @@ pub struct FieldAttributeBuilder {
 }
 
 impl FieldAttributeBuilder {
+    #[allow(clippy::cognitive_complexity)]
     pub fn from_debug_meta(&self, meta: &Meta) -> FieldAttribute {
         let mut name = self.name.clone();
 
@@ -96,7 +98,7 @@ impl FieldAttributeBuilder {
                 for p in list.nested.iter() {
                     match p {
                         NestedMeta::Meta(meta) => {
-                            let meta_name = meta.name().to_string();
+                            let meta_name = meta.path().into_token_stream().to_string();
 
                             match meta_name.as_str() {
                                 "name" | "rename" => {
@@ -108,20 +110,23 @@ impl FieldAttributeBuilder {
                                         Meta::List(list) => {
                                             for p in list.nested.iter() {
                                                 match p {
-                                                    NestedMeta::Literal(lit) => match lit {
-                                                        Lit::Str(s) => {
-                                                            if name_is_set {
-                                                                panic::reset_parameter(
-                                                                    meta_name.as_str(),
-                                                                );
-                                                            }
+                                                    NestedMeta::Lit(lit) => {
+                                                        match lit {
+                                                            Lit::Str(s) => {
+                                                                if name_is_set {
+                                                                    panic::reset_parameter(
+                                                                        meta_name.as_str(),
+                                                                    );
+                                                                }
 
-                                                            name_is_set = true;
+                                                                name_is_set = true;
 
-                                                            let s =
-                                                                create_path_string_from_lit_str(s);
+                                                                let s =
+                                                                    create_path_string_from_lit_str(
+                                                                        s,
+                                                                    );
 
-                                                            name = match s {
+                                                                name = match s {
                                                                 Some(s) => {
                                                                     FieldAttributeName::Custom(s)
                                                                 }
@@ -130,31 +135,38 @@ impl FieldAttributeBuilder {
                                                                     )
                                                                 }
                                                             };
-                                                        }
-                                                        Lit::Bool(s) => {
-                                                            if name_is_set {
-                                                                panic::reset_parameter(
+                                                            }
+                                                            Lit::Bool(s) => {
+                                                                if name_is_set {
+                                                                    panic::reset_parameter(
+                                                                        meta_name.as_str(),
+                                                                    );
+                                                                }
+
+                                                                name_is_set = true;
+
+                                                                if s.value {
+                                                                    name =
+                                                                        FieldAttributeName::Default;
+                                                                } else {
+                                                                    panic::disable_named_field_name(
+                                                                    );
+                                                                }
+                                                            }
+                                                            _ => {
+                                                                panic::parameter_incorrect_format(
                                                                     meta_name.as_str(),
-                                                                );
-                                                            }
-
-                                                            name_is_set = true;
-
-                                                            if s.value {
-                                                                name = FieldAttributeName::Default;
-                                                            } else {
-                                                                panic::disable_named_field_name();
+                                                                    &correct_usage_for_name,
+                                                                )
                                                             }
                                                         }
-                                                        _ => panic::parameter_incorrect_format(
+                                                    }
+                                                    _ => {
+                                                        panic::parameter_incorrect_format(
                                                             meta_name.as_str(),
                                                             &correct_usage_for_name,
-                                                        ),
-                                                    },
-                                                    _ => panic::parameter_incorrect_format(
-                                                        meta_name.as_str(),
-                                                        &correct_usage_for_name,
-                                                    ),
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
@@ -189,16 +201,20 @@ impl FieldAttributeBuilder {
                                                         panic::disable_named_field_name();
                                                     }
                                                 }
-                                                _ => panic::parameter_incorrect_format(
-                                                    meta_name.as_str(),
-                                                    &correct_usage_for_name,
-                                                ),
+                                                _ => {
+                                                    panic::parameter_incorrect_format(
+                                                        meta_name.as_str(),
+                                                        &correct_usage_for_name,
+                                                    )
+                                                }
                                             }
                                         }
-                                        _ => panic::parameter_incorrect_format(
-                                            meta_name.as_str(),
-                                            &correct_usage_for_name,
-                                        ),
+                                        _ => {
+                                            panic::parameter_incorrect_format(
+                                                meta_name.as_str(),
+                                                &correct_usage_for_name,
+                                            )
+                                        }
                                     }
                                 }
                                 "ignore" => {
@@ -207,7 +223,7 @@ impl FieldAttributeBuilder {
                                     }
 
                                     match meta {
-                                        Meta::Word(_) => {
+                                        Meta::Path(_) => {
                                             if ignore_is_set {
                                                 panic::reset_parameter(meta_name.as_str());
                                             }
@@ -216,10 +232,12 @@ impl FieldAttributeBuilder {
 
                                             ignore = true;
                                         }
-                                        _ => panic::parameter_incorrect_format(
-                                            meta_name.as_str(),
-                                            &correct_usage_for_ignore,
-                                        ),
+                                        _ => {
+                                            panic::parameter_incorrect_format(
+                                                meta_name.as_str(),
+                                                &correct_usage_for_ignore,
+                                            )
+                                        }
                                     }
                                 }
                                 "method" => {
@@ -231,34 +249,42 @@ impl FieldAttributeBuilder {
                                         Meta::List(list) => {
                                             for p in list.nested.iter() {
                                                 match p {
-                                                    NestedMeta::Literal(lit) => match lit {
-                                                        Lit::Str(s) => {
-                                                            if format_method.is_some() {
-                                                                panic::reset_parameter(
-                                                                    meta_name.as_str(),
-                                                                );
+                                                    NestedMeta::Lit(lit) => {
+                                                        match lit {
+                                                            Lit::Str(s) => {
+                                                                if format_method.is_some() {
+                                                                    panic::reset_parameter(
+                                                                        meta_name.as_str(),
+                                                                    );
+                                                                }
+
+                                                                let s =
+                                                                    create_path_string_from_lit_str(
+                                                                        s,
+                                                                    );
+
+                                                                if let Some(s) = s {
+                                                                    format_method = Some(s);
+                                                                } else {
+                                                                    panic::empty_parameter(
+                                                                        meta_name.as_str(),
+                                                                    );
+                                                                }
                                                             }
-
-                                                            let s =
-                                                                create_path_string_from_lit_str(s);
-
-                                                            if let Some(s) = s {
-                                                                format_method = Some(s);
-                                                            } else {
-                                                                panic::empty_parameter(
+                                                            _ => {
+                                                                panic::parameter_incorrect_format(
                                                                     meta_name.as_str(),
-                                                                );
+                                                                    &correct_usage_for_impl,
+                                                                )
                                                             }
                                                         }
-                                                        _ => panic::parameter_incorrect_format(
+                                                    }
+                                                    _ => {
+                                                        panic::parameter_incorrect_format(
                                                             meta_name.as_str(),
                                                             &correct_usage_for_impl,
-                                                        ),
-                                                    },
-                                                    _ => panic::parameter_incorrect_format(
-                                                        meta_name.as_str(),
-                                                        &correct_usage_for_impl,
-                                                    ),
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
@@ -279,16 +305,20 @@ impl FieldAttributeBuilder {
                                                         panic::empty_parameter(meta_name.as_str());
                                                     }
                                                 }
-                                                _ => panic::parameter_incorrect_format(
-                                                    meta_name.as_str(),
-                                                    &correct_usage_for_impl,
-                                                ),
+                                                _ => {
+                                                    panic::parameter_incorrect_format(
+                                                        meta_name.as_str(),
+                                                        &correct_usage_for_impl,
+                                                    )
+                                                }
                                             }
                                         }
-                                        _ => panic::parameter_incorrect_format(
-                                            meta_name.as_str(),
-                                            &correct_usage_for_impl,
-                                        ),
+                                        _ => {
+                                            panic::parameter_incorrect_format(
+                                                meta_name.as_str(),
+                                                &correct_usage_for_impl,
+                                            )
+                                        }
                                     }
                                 }
                                 "trait" => {
@@ -300,34 +330,42 @@ impl FieldAttributeBuilder {
                                         Meta::List(list) => {
                                             for p in list.nested.iter() {
                                                 match p {
-                                                    NestedMeta::Literal(lit) => match lit {
-                                                        Lit::Str(s) => {
-                                                            if format_trait.is_some() {
-                                                                panic::reset_parameter(
-                                                                    meta_name.as_str(),
-                                                                );
+                                                    NestedMeta::Lit(lit) => {
+                                                        match lit {
+                                                            Lit::Str(s) => {
+                                                                if format_trait.is_some() {
+                                                                    panic::reset_parameter(
+                                                                        meta_name.as_str(),
+                                                                    );
+                                                                }
+
+                                                                let s =
+                                                                    create_path_string_from_lit_str(
+                                                                        s,
+                                                                    );
+
+                                                                if let Some(s) = s {
+                                                                    format_trait = Some(s);
+                                                                } else {
+                                                                    panic::empty_parameter(
+                                                                        meta_name.as_str(),
+                                                                    );
+                                                                }
                                                             }
-
-                                                            let s =
-                                                                create_path_string_from_lit_str(s);
-
-                                                            if let Some(s) = s {
-                                                                format_trait = Some(s);
-                                                            } else {
-                                                                panic::empty_parameter(
+                                                            _ => {
+                                                                panic::parameter_incorrect_format(
                                                                     meta_name.as_str(),
-                                                                );
+                                                                    &correct_usage_for_impl,
+                                                                )
                                                             }
                                                         }
-                                                        _ => panic::parameter_incorrect_format(
+                                                    }
+                                                    _ => {
+                                                        panic::parameter_incorrect_format(
                                                             meta_name.as_str(),
                                                             &correct_usage_for_impl,
-                                                        ),
-                                                    },
-                                                    _ => panic::parameter_incorrect_format(
-                                                        meta_name.as_str(),
-                                                        &correct_usage_for_impl,
-                                                    ),
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
@@ -348,64 +386,72 @@ impl FieldAttributeBuilder {
                                                         panic::empty_parameter(meta_name.as_str());
                                                     }
                                                 }
-                                                _ => panic::parameter_incorrect_format(
-                                                    meta_name.as_str(),
-                                                    &correct_usage_for_impl,
-                                                ),
+                                                _ => {
+                                                    panic::parameter_incorrect_format(
+                                                        meta_name.as_str(),
+                                                        &correct_usage_for_impl,
+                                                    )
+                                                }
                                             }
                                         }
-                                        _ => panic::parameter_incorrect_format(
-                                            meta_name.as_str(),
-                                            &correct_usage_for_impl,
-                                        ),
+                                        _ => {
+                                            panic::parameter_incorrect_format(
+                                                meta_name.as_str(),
+                                                &correct_usage_for_impl,
+                                            )
+                                        }
                                     }
                                 }
                                 _ => panic::unknown_parameter("Debug", meta_name.as_str()),
                             }
                         }
-                        NestedMeta::Literal(lit) => match lit {
-                            Lit::Str(s) => {
-                                if !self.enable_name {
+                        NestedMeta::Lit(lit) => {
+                            match lit {
+                                Lit::Str(s) => {
+                                    if !self.enable_name {
+                                        panic::attribute_incorrect_format(
+                                            "Debug",
+                                            &correct_usage_for_debug_attribute,
+                                        )
+                                    }
+
+                                    if name_is_set {
+                                        panic::reset_parameter("name");
+                                    }
+
+                                    name_is_set = true;
+
+                                    let s = create_path_string_from_lit_str(s);
+
+                                    name = match s {
+                                        Some(s) => FieldAttributeName::Custom(s),
+                                        None => panic::disable_named_field_name(),
+                                    };
+                                }
+                                Lit::Bool(b) => {
+                                    if !self.enable_ignore {
+                                        panic::attribute_incorrect_format(
+                                            "Debug",
+                                            &correct_usage_for_debug_attribute,
+                                        )
+                                    }
+
+                                    if ignore_is_set {
+                                        panic::reset_parameter("ignore");
+                                    }
+
+                                    ignore_is_set = true;
+
+                                    ignore = !b.value;
+                                }
+                                _ => {
                                     panic::attribute_incorrect_format(
                                         "Debug",
                                         &correct_usage_for_debug_attribute,
                                     )
                                 }
-
-                                if name_is_set {
-                                    panic::reset_parameter("name");
-                                }
-
-                                name_is_set = true;
-
-                                let s = create_path_string_from_lit_str(s);
-
-                                name = match s {
-                                    Some(s) => FieldAttributeName::Custom(s),
-                                    None => panic::disable_named_field_name(),
-                                };
                             }
-                            Lit::Bool(b) => {
-                                if !self.enable_ignore {
-                                    panic::attribute_incorrect_format(
-                                        "Debug",
-                                        &correct_usage_for_debug_attribute,
-                                    )
-                                }
-
-                                if ignore_is_set {
-                                    panic::reset_parameter("ignore");
-                                }
-
-                                ignore_is_set = true;
-
-                                ignore = !b.value;
-                            }
-                            _ => panic::attribute_incorrect_format(
-                                "Debug",
-                                &correct_usage_for_debug_attribute,
-                            ),
-                        },
+                        }
                     }
                 }
             }
@@ -438,19 +484,19 @@ impl FieldAttributeBuilder {
 
                         ignore = !b.value;
                     }
-                    _ => panic::attribute_incorrect_format(
-                        "Debug",
-                        &correct_usage_for_debug_attribute,
-                    ),
+                    _ => {
+                        panic::attribute_incorrect_format(
+                            "Debug",
+                            &correct_usage_for_debug_attribute,
+                        )
+                    }
                 }
             }
             _ => panic::attribute_incorrect_format("Debug", &correct_usage_for_debug_attribute),
         }
 
-        if format_trait.is_some() {
-            if format_method.is_none() {
-                format_method = Some("fmt".to_string());
-            }
+        if format_trait.is_some() && format_method.is_none() {
+            format_method = Some("fmt".to_string());
         }
 
         FieldAttribute {
@@ -461,25 +507,26 @@ impl FieldAttributeBuilder {
         }
     }
 
+    #[allow(clippy::wrong_self_convention)]
     pub fn from_attributes(self, attributes: &[Attribute], traits: &[Trait]) -> FieldAttribute {
         let mut result = None;
 
         for attribute in attributes.iter() {
             let meta = attribute.parse_meta().unwrap();
 
-            let meta_name = meta.name().to_string();
+            let meta_name = meta.path().into_token_stream().to_string();
 
-            match meta_name.as_str() {
-                "educe" => match meta {
+            if meta_name.as_str() == "educe" {
+                match meta {
                     Meta::List(list) => {
                         for p in list.nested.iter() {
                             match p {
                                 NestedMeta::Meta(meta) => {
-                                    let meta_name = meta.name().to_string();
+                                    let meta_name = meta.path().into_token_stream().to_string();
 
                                     let t = Trait::from_str(meta_name);
 
-                                    if let Err(_) = traits.binary_search(&t) {
+                                    if traits.binary_search(&t).is_err() {
                                         panic::trait_not_used(t.as_str());
                                     }
 
@@ -496,8 +543,7 @@ impl FieldAttributeBuilder {
                         }
                     }
                     _ => panic::educe_format_incorrect(),
-                },
-                _ => (),
+                }
             }
         }
 

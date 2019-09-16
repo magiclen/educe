@@ -21,7 +21,12 @@ fn name_1() {
         f1: u8,
     }
 
-    assert_eq!("Struct { f1: 1 }", format!("{:?}", Struct { f1: 1 }));
+    assert_eq!(
+        "Struct { f1: 1 }",
+        format!("{:?}", Struct {
+            f1: 1
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug)]
@@ -44,7 +49,12 @@ fn name_2() {
         f1: u8,
     }
 
-    assert_eq!("B { f1: 1 }", format!("{:?}", Struct { f1: 1 }));
+    assert_eq!(
+        "B { f1: 1 }",
+        format!("{:?}", Struct {
+            f1: 1
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug = "C")]
@@ -67,7 +77,12 @@ fn name_3() {
         f1: u8,
     }
 
-    assert_eq!("B { f1: 1 }", format!("{:?}", Struct { f1: 1 }));
+    assert_eq!(
+        "B { f1: 1 }",
+        format!("{:?}", Struct {
+            f1: 1
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug("C"))]
@@ -90,7 +105,12 @@ fn name_4() {
         f1: u8,
     }
 
-    assert_eq!("B { f1: 1 }", format!("{:?}", Struct { f1: 1 }));
+    assert_eq!(
+        "B { f1: 1 }",
+        format!("{:?}", Struct {
+            f1: 1
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug(name = "C"))]
@@ -113,7 +133,12 @@ fn name_5() {
         f1: u8,
     }
 
-    assert_eq!("B { f1: 1 }", format!("{:?}", Struct { f1: 1 }));
+    assert_eq!(
+        "B { f1: 1 }",
+        format!("{:?}", Struct {
+            f1: 1
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug(name("C")))]
@@ -130,7 +155,12 @@ fn unnamed_1() {
         f1: u8,
     }
 
-    assert_eq!("{f1: 1}", format!("{:?}", Struct { f1: 1 }));
+    assert_eq!(
+        "{f1: 1}",
+        format!("{:?}", Struct {
+            f1: 1
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug(name = false))]
@@ -147,7 +177,12 @@ fn unnamed_2() {
         f1: u8,
     }
 
-    assert_eq!("{f1: 1}", format!("{:?}", Struct { f1: 1 }));
+    assert_eq!(
+        "{f1: 1}",
+        format!("{:?}", Struct {
+            f1: 1
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug(name(false)))]
@@ -164,7 +199,12 @@ fn unnamed_3() {
         f1: u8,
     }
 
-    assert_eq!("{f1: 1}", format!("{:?}", Struct { f1: 1 }));
+    assert_eq!(
+        "{f1: 1}",
+        format!("{:?}", Struct {
+            f1: 1
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug = "")]
@@ -181,7 +221,12 @@ fn unnamed_4() {
         f1: u8,
     }
 
-    assert_eq!("{f1: 1}", format!("{:?}", Struct { f1: 1 }));
+    assert_eq!(
+        "{f1: 1}",
+        format!("{:?}", Struct {
+            f1: 1
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug(""))]
@@ -198,7 +243,12 @@ fn unnamed_5() {
         f1: u8,
     }
 
-    assert_eq!("{f1: 1}", format!("{:?}", Struct { f1: 1 }));
+    assert_eq!(
+        "{f1: 1}",
+        format!("{:?}", Struct {
+            f1: 1
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug(name = ""))]
@@ -215,7 +265,12 @@ fn unnamed_6() {
         f1: u8,
     }
 
-    assert_eq!("{f1: 1}", format!("{:?}", Struct { f1: 1 }));
+    assert_eq!(
+        "{f1: 1}",
+        format!("{:?}", Struct {
+            f1: 1
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug(name("")))]
@@ -232,7 +287,12 @@ fn named_field_1() {
         f1: u8,
     }
 
-    assert_eq!("Struct(1)", format!("{:?}", Struct { f1: 1 }));
+    assert_eq!(
+        "Struct(1)",
+        format!("{:?}", Struct {
+            f1: 1
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug(named_field = true))]
@@ -249,7 +309,12 @@ fn named_field_2() {
         f1: u8,
     }
 
-    assert_eq!("Struct(1)", format!("{:?}", Struct { f1: 1 }));
+    assert_eq!(
+        "Struct(1)",
+        format!("{:?}", Struct {
+            f1: 1
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug(named_field(true)))]
@@ -267,7 +332,12 @@ fn rename_field_1() {
         f1: u8,
     }
 
-    assert_eq!("Struct { f: 1 }", format!("{:?}", Struct { f1: 1 }));
+    assert_eq!(
+        "Struct { f: 1 }",
+        format!("{:?}", Struct {
+            f1: 1
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug(named_field(true)))]
@@ -285,7 +355,12 @@ fn rename_field_2() {
         f1: u8,
     }
 
-    assert_eq!("Struct { f: 1 }", format!("{:?}", Struct { f1: 1 }));
+    assert_eq!(
+        "Struct { f: 1 }",
+        format!("{:?}", Struct {
+            f1: 1
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug(named_field(true)))]
@@ -303,7 +378,12 @@ fn rename_field_3() {
         f1: u8,
     }
 
-    assert_eq!("Struct { f: 1 }", format!("{:?}", Struct { f1: 1 }));
+    assert_eq!(
+        "Struct { f: 1 }",
+        format!("{:?}", Struct {
+            f1: 1
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug(named_field(true)))]
@@ -321,7 +401,12 @@ fn rename_field_4() {
         f1: u8,
     }
 
-    assert_eq!("Struct { f: 1 }", format!("{:?}", Struct { f1: 1 }));
+    assert_eq!(
+        "Struct { f: 1 }",
+        format!("{:?}", Struct {
+            f1: 1
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug(named_field(true)))]
@@ -341,7 +426,13 @@ fn ignore_1() {
         f2: u8,
     }
 
-    assert_eq!("Struct { f2: 2 }", format!("{:?}", Struct { f1: 1, f2: 2 }));
+    assert_eq!(
+        "Struct { f2: 2 }",
+        format!("{:?}", Struct {
+            f1: 1,
+            f2: 2
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug)]
@@ -361,7 +452,13 @@ fn ignore_2() {
         f2: u8,
     }
 
-    assert_eq!("Struct { f2: 2 }", format!("{:?}", Struct { f1: 1, f2: 2 }));
+    assert_eq!(
+        "Struct { f2: 2 }",
+        format!("{:?}", Struct {
+            f1: 1,
+            f2: 2
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug)]
@@ -381,7 +478,13 @@ fn ignore_3() {
         f2: u8,
     }
 
-    assert_eq!("Struct { f2: 2 }", format!("{:?}", Struct { f1: 1, f2: 2 }));
+    assert_eq!(
+        "Struct { f2: 2 }",
+        format!("{:?}", Struct {
+            f1: 1,
+            f2: 2
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug)]
@@ -405,7 +508,12 @@ fn format_without_trait_1() {
         f1: u8,
     }
 
-    assert_eq!("Struct { f1: Hi }", format!("{:?}", Struct { f1: 1 }));
+    assert_eq!(
+        "Struct { f1: Hi }",
+        format!("{:?}", Struct {
+            f1: 1
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug)]
@@ -429,7 +537,12 @@ fn format_without_trait_2() {
         f1: u8,
     }
 
-    assert_eq!("Struct { f1: Hi }", format!("{:?}", Struct { f1: 1 }));
+    assert_eq!(
+        "Struct { f1: Hi }",
+        format!("{:?}", Struct {
+            f1: 1
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug)]
@@ -457,7 +570,12 @@ fn format_with_trait_1() {
         f1: T,
     }
 
-    assert_eq!("Struct { f1: Hi }", format!("{:?}", Struct { f1: 1 }));
+    assert_eq!(
+        "Struct { f1: Hi }",
+        format!("{:?}", Struct {
+            f1: 1
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug)]
@@ -485,7 +603,12 @@ fn format_with_trait_2() {
         f1: T,
     }
 
-    assert_eq!("Struct { f1: Hi }", format!("{:?}", Struct { f1: 1 }));
+    assert_eq!(
+        "Struct { f1: Hi }",
+        format!("{:?}", Struct {
+            f1: 1
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug)]
@@ -513,7 +636,12 @@ fn format_with_trait_3() {
         f1: T,
     }
 
-    assert_eq!("Struct { f1: Hi }", format!("{:?}", Struct { f1: 1 }));
+    assert_eq!(
+        "Struct { f1: Hi }",
+        format!("{:?}", Struct {
+            f1: 1
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug)]
@@ -541,7 +669,12 @@ fn format_with_trait_4() {
         f1: T,
     }
 
-    assert_eq!("Struct { f1: Hi }", format!("{:?}", Struct { f1: 1 }));
+    assert_eq!(
+        "Struct { f1: Hi }",
+        format!("{:?}", Struct {
+            f1: 1
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug)]
@@ -558,7 +691,12 @@ fn bound_1() {
         f1: T,
     }
 
-    assert_eq!("Struct { f1: 1 }", format!("{:?}", Struct { f1: 1 }));
+    assert_eq!(
+        "Struct { f1: 1 }",
+        format!("{:?}", Struct {
+            f1: 1
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug(bound))]
@@ -575,7 +713,12 @@ fn bound_2() {
         f1: T,
     }
 
-    assert_eq!("Struct { f1: 1 }", format!("{:?}", Struct { f1: 1 }));
+    assert_eq!(
+        "Struct { f1: 1 }",
+        format!("{:?}", Struct {
+            f1: 1
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug(bound = "T: core::fmt::Debug"))]
@@ -592,7 +735,12 @@ fn bound_3() {
         f1: T,
     }
 
-    assert_eq!("Struct { f1: 1 }", format!("{:?}", Struct { f1: 1 }));
+    assert_eq!(
+        "Struct { f1: 1 }",
+        format!("{:?}", Struct {
+            f1: 1
+        })
+    );
 
     #[derive(Educe)]
     #[educe(Debug(bound("T: core::fmt::Debug")))]

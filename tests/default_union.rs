@@ -90,9 +90,7 @@ fn field_default_1() {
         f6: char,
     }
 
-    assert_eq!(11111111111111111111111111111, unsafe {
-        Union2::default().f2
-    });
+    assert_eq!(11111111111111111111111111111, unsafe { Union2::default().f2 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -180,9 +178,7 @@ fn field_default_2() {
         f6: char,
     }
 
-    assert_eq!(11111111111111111111111111111, unsafe {
-        Union2::default().f2
-    });
+    assert_eq!(11111111111111111111111111111, unsafe { Union2::default().f2 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -270,9 +266,7 @@ fn field_default_3() {
         f6: char,
     }
 
-    assert_eq!(11111111111111111111111111111, unsafe {
-        Union2::default().f2
-    });
+    assert_eq!(11111111111111111111111111111, unsafe { Union2::default().f2 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -360,9 +354,7 @@ fn field_default_4() {
         f6: char,
     }
 
-    assert_eq!(11111111111111111111111111111, unsafe {
-        Union2::default().f2
-    });
+    assert_eq!(11111111111111111111111111111, unsafe { Union2::default().f2 });
 
     #[derive(Educe)]
     #[educe(Default)]

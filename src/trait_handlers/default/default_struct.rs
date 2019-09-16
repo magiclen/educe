@@ -49,7 +49,7 @@ impl TraitHandler for DefaultStructHandler {
                 None => {
                     let (is_unit, is_tuple) = {
                         if let Some(field) = data.fields.iter().next() {
-                            if let Some(_) = field.ident {
+                            if field.ident.is_some() {
                                 (false, false)
                             } else {
                                 (false, true)
@@ -78,20 +78,23 @@ impl TraitHandler for DefaultStructHandler {
                                 .from_attributes(&field.attrs, traits);
 
                                 match field_attribute.literal {
-                                    Some(value) => match &value {
-                                        Lit::Str(s) => {
-                                            struct_tokens
-                                                .write_fmt(format_args!(
-                                                    "core::convert::Into::into({s})",
-                                                    s = s.into_token_stream().to_string()
-                                                ))
-                                                .unwrap();
+                                    Some(value) => {
+                                        match &value {
+                                            Lit::Str(s) => {
+                                                struct_tokens
+                                                    .write_fmt(format_args!(
+                                                        "core::convert::Into::into({s})",
+                                                        s = s.into_token_stream().to_string()
+                                                    ))
+                                                    .unwrap();
+                                            }
+                                            _ => {
+                                                struct_tokens.push_str(
+                                                    &value.into_token_stream().to_string(),
+                                                );
+                                            }
                                         }
-                                        _ => {
-                                            struct_tokens
-                                                .push_str(&value.into_token_stream().to_string());
-                                        }
-                                    },
+                                    }
                                     None => {
                                         match field_attribute.expression {
                                             Some(expression) => {
@@ -135,20 +138,23 @@ impl TraitHandler for DefaultStructHandler {
                                     .unwrap();
 
                                 match field_attribute.literal {
-                                    Some(value) => match &value {
-                                        Lit::Str(s) => {
-                                            struct_tokens
-                                                .write_fmt(format_args!(
-                                                    "core::convert::Into::into({s})",
-                                                    s = s.into_token_stream().to_string()
-                                                ))
-                                                .unwrap();
+                                    Some(value) => {
+                                        match &value {
+                                            Lit::Str(s) => {
+                                                struct_tokens
+                                                    .write_fmt(format_args!(
+                                                        "core::convert::Into::into({s})",
+                                                        s = s.into_token_stream().to_string()
+                                                    ))
+                                                    .unwrap();
+                                            }
+                                            _ => {
+                                                struct_tokens.push_str(
+                                                    &value.into_token_stream().to_string(),
+                                                );
+                                            }
                                         }
-                                        _ => {
-                                            struct_tokens
-                                                .push_str(&value.into_token_stream().to_string());
-                                        }
-                                    },
+                                    }
                                     None => {
                                         match field_attribute.expression {
                                             Some(expression) => {

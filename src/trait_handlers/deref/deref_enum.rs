@@ -19,7 +19,10 @@ impl TraitHandler for DerefEnumHandler {
         traits: &[Trait],
         meta: &Meta,
     ) {
-        let _ = TypeAttributeBuilder { enable_flag: true }.from_deref_meta(meta);
+        let _ = TypeAttributeBuilder {
+            enable_flag: true,
+        }
+        .from_deref_meta(meta);
 
         let enum_name = ast.ident.to_string();
 
@@ -30,8 +33,10 @@ impl TraitHandler for DerefEnumHandler {
 
         if let Data::Enum(data) = &ast.data {
             for variant in data.variants.iter() {
-                let _ = TypeAttributeBuilder { enable_flag: false }
-                    .from_attributes(&variant.attrs, traits);
+                let _ = TypeAttributeBuilder {
+                    enable_flag: false,
+                }
+                .from_attributes(&variant.attrs, traits);
 
                 let variant_ident = variant.ident.to_string();
 
@@ -50,8 +55,10 @@ impl TraitHandler for DerefEnumHandler {
                         let mut counter = 0;
 
                         for field in fields.named.iter() {
-                            let field_attribute = FieldAttributeBuilder { enable_flag: true }
-                                .from_attributes(&field.attrs, traits);
+                            let field_attribute = FieldAttributeBuilder {
+                                enable_flag: true,
+                            }
+                            .from_attributes(&field.attrs, traits);
 
                             if field_attribute.flag {
                                 if !ty.is_empty() {
@@ -124,8 +131,10 @@ impl TraitHandler for DerefEnumHandler {
                         let mut counter = 0;
 
                         for (index, field) in fields.unnamed.iter().enumerate() {
-                            let field_attribute = FieldAttributeBuilder { enable_flag: true }
-                                .from_attributes(&field.attrs, traits);
+                            let field_attribute = FieldAttributeBuilder {
+                                enable_flag: true,
+                            }
+                            .from_attributes(&field.attrs, traits);
 
                             if field_attribute.flag {
                                 if !ty.is_empty() {

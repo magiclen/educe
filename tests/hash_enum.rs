@@ -14,7 +14,9 @@ fn basic_1() {
     enum Enum {
         Unit,
         Unit2,
-        Struct { f1: u8 },
+        Struct {
+            f1: u8,
+        },
         Tuple(u8),
     }
 
@@ -37,7 +39,10 @@ fn basic_1() {
     let struct_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Enum::Struct { f1: 1 }.hash(&mut hasher);
+        Enum::Struct {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };
@@ -119,7 +124,10 @@ fn ignore() {
     let struct_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Enum::Struct { f1: 1 }.hash(&mut hasher);
+        Enum::Struct {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };
@@ -166,7 +174,10 @@ fn hash_without_trait_1() {
     let struct_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Enum::Struct { f1: 1 }.hash(&mut hasher);
+        Enum::Struct {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };
@@ -213,7 +224,10 @@ fn hash_without_trait_2() {
     let struct_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Enum::Struct { f1: 1 }.hash(&mut hasher);
+        Enum::Struct {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };
@@ -264,7 +278,10 @@ fn hash_with_trait_1() {
     let struct_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Enum::Struct { f1: 1 }.hash(&mut hasher);
+        Enum::Struct {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };
@@ -315,7 +332,10 @@ fn hash_with_trait_2() {
     let struct_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Enum::Struct { f1: 1 }.hash(&mut hasher);
+        Enum::Struct {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };
@@ -366,7 +386,10 @@ fn hash_with_trait_3() {
     let struct_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Enum::Struct { f1: 1 }.hash(&mut hasher);
+        Enum::Struct {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };
@@ -417,7 +440,10 @@ fn hash_with_trait_4() {
     let struct_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Enum::Struct { f1: 1 }.hash(&mut hasher);
+        Enum::Struct {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };
@@ -440,7 +466,9 @@ fn bound_1() {
     #[educe(Hash(bound))]
     enum Enum<T> {
         Unit,
-        Struct { f1: T },
+        Struct {
+            f1: T,
+        },
         Tuple(T),
     }
 
@@ -455,7 +483,10 @@ fn bound_1() {
     let struct_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Enum::Struct { f1: 1 }.hash(&mut hasher);
+        Enum::Struct {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };
@@ -478,7 +509,9 @@ fn bound_2() {
     #[educe(Hash(bound = "T: core::hash::Hash"))]
     enum Enum<T> {
         Unit,
-        Struct { f1: T },
+        Struct {
+            f1: T,
+        },
         Tuple(T),
     }
 
@@ -493,7 +526,10 @@ fn bound_2() {
     let struct_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Enum::Struct { f1: 1 }.hash(&mut hasher);
+        Enum::Struct {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };
@@ -516,7 +552,9 @@ fn bound_3() {
     #[educe(Hash(bound("T: core::hash::Hash")))]
     enum Enum<T> {
         Unit,
-        Struct { f1: T },
+        Struct {
+            f1: T,
+        },
         Tuple(T),
     }
 
@@ -531,7 +569,10 @@ fn bound_3() {
     let struct_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Enum::Struct { f1: 1 }.hash(&mut hasher);
+        Enum::Struct {
+            f1: 1,
+        }
+        .hash(&mut hasher);
 
         hasher.finish()
     };

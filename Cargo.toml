@@ -1,6 +1,6 @@
 [package]
 name = "educe"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Magic Len <len@magiclen.org>"]
 edition = "2018"
 repository = "https://github.com/magiclen/educe"
@@ -19,9 +19,9 @@ branch = "master"
 proc-macro = true
 
 [dependencies]
-proc-macro2 = "0.4"
-syn = { version = "0.15", features = ["full"] }
-quote = "0.6"
+proc-macro2 = "1"
+syn = { version = "1", features = ["full"] }
+quote = "1"
 
 [features]
 default = ["Debug", "PartialEq", "Eq", "PartialOrd", "Ord", "Hash", "Default", "Clone", "Copy", "Deref", "DerefMut"]

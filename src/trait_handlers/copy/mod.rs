@@ -17,7 +17,10 @@ impl TraitHandler for CopyHandler {
         _traits: &[Trait],
         meta: &Meta,
     ) {
-        let type_attribute = TypeAttributeBuilder { enable_bound: true }.from_copy_meta(meta);
+        let type_attribute = TypeAttributeBuilder {
+            enable_bound: true,
+        }
+        .from_copy_meta(meta);
 
         let bound = type_attribute
             .bound

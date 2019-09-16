@@ -22,10 +22,17 @@ fn basic() {
     struct Tuple(u8);
 
     let u = Unit.clone();
-    let s = Struct { f1: 1 }.clone();
+    let s = Struct {
+        f1: 1,
+    }
+    .clone();
     let t = Tuple(1).clone();
 
-    assert!(if let Unit = u { true } else { false });
+    assert!(if let Unit = u {
+        true
+    } else {
+        false
+    });
 
     assert_eq!(1, s.f1);
     assert_eq!(1, t.0);
@@ -48,7 +55,10 @@ fn clone_without_trait_1() {
     #[educe(Clone)]
     struct Tuple(#[educe(Clone(method = "clone"))] u8);
 
-    let s = Struct { f1: 1 }.clone();
+    let s = Struct {
+        f1: 1,
+    }
+    .clone();
     let t = Tuple(1).clone();
 
     assert_eq!(101, s.f1);
@@ -72,7 +82,10 @@ fn clone_without_trait_2() {
     #[educe(Clone)]
     struct Tuple(#[educe(Clone(method("clone")))] u8);
 
-    let s = Struct { f1: 1 }.clone();
+    let s = Struct {
+        f1: 1,
+    }
+    .clone();
     let t = Tuple(1).clone();
 
     assert_eq!(101, s.f1);
@@ -102,7 +115,10 @@ fn clone_with_trait_1() {
     #[educe(Clone)]
     struct Tuple(#[educe(Clone(trait = "A"))] u8);
 
-    let s = Struct { f1: 1 }.clone();
+    let s = Struct {
+        f1: 1,
+    }
+    .clone();
     let t = Tuple(1).clone();
 
     assert_eq!(101, s.f1);
@@ -132,7 +148,10 @@ fn clone_with_trait_2() {
     #[educe(Clone)]
     struct Tuple(#[educe(Clone(trait("A")))] u8);
 
-    let s = Struct { f1: 1 }.clone();
+    let s = Struct {
+        f1: 1,
+    }
+    .clone();
     let t = Tuple(1).clone();
 
     assert_eq!(101, s.f1);
@@ -162,7 +181,10 @@ fn clone_with_trait_3() {
     #[educe(Clone)]
     struct Tuple(#[educe(Clone(trait = "A", method = "cloner"))] u8);
 
-    let s = Struct { f1: 1 }.clone();
+    let s = Struct {
+        f1: 1,
+    }
+    .clone();
     let t = Tuple(1).clone();
 
     assert_eq!(101, s.f1);
@@ -192,7 +214,10 @@ fn clone_with_trait_4() {
     #[educe(Clone)]
     struct Tuple(#[educe(Clone(trait("A"), method("cloner")))] u8);
 
-    let s = Struct { f1: 1 }.clone();
+    let s = Struct {
+        f1: 1,
+    }
+    .clone();
     let t = Tuple(1).clone();
 
     assert_eq!(101, s.f1);
@@ -211,7 +236,10 @@ fn bound_1() {
     #[educe(Clone(bound))]
     struct Tuple<T>(T);
 
-    let s = Struct { f1: 1 }.clone();
+    let s = Struct {
+        f1: 1,
+    }
+    .clone();
     let t = Tuple(1).clone();
 
     assert_eq!(1, s.f1);
@@ -230,7 +258,10 @@ fn bound_2() {
     #[educe(Clone(bound = "T: core::clone::Clone"))]
     struct Tuple<T>(T);
 
-    let s = Struct { f1: 1 }.clone();
+    let s = Struct {
+        f1: 1,
+    }
+    .clone();
     let t = Tuple(1).clone();
 
     assert_eq!(1, s.f1);
@@ -249,7 +280,10 @@ fn bound_3() {
     #[educe(Clone(bound("T: core::clone::Clone")))]
     struct Tuple<T>(T);
 
-    let s = Struct { f1: 1 }.clone();
+    let s = Struct {
+        f1: 1,
+    }
+    .clone();
     let t = Tuple(1).clone();
 
     assert_eq!(1, s.f1);

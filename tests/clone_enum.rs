@@ -10,17 +10,29 @@ fn basic() {
     #[educe(Clone)]
     enum Enum {
         Unit,
-        Struct { f1: u8 },
+        Struct {
+            f1: u8,
+        },
         Tuple(u8),
     }
 
     let u = Enum::Unit.clone();
-    let s = Enum::Struct { f1: 1 }.clone();
+    let s = Enum::Struct {
+        f1: 1,
+    }
+    .clone();
     let t = Enum::Tuple(1).clone();
 
-    assert!(if let Enum::Unit = u { true } else { false });
+    assert!(if let Enum::Unit = u {
+        true
+    } else {
+        false
+    });
 
-    if let Enum::Struct { f1 } = s {
+    if let Enum::Struct {
+        f1,
+    } = s
+    {
         assert_eq!(1, f1);
     } else {
         panic!();
@@ -49,10 +61,16 @@ fn clone_without_trait_1() {
         Tuple(#[educe(Clone(method = "clone"))] u8),
     }
 
-    let s = Enum::Struct { f1: 1 }.clone();
+    let s = Enum::Struct {
+        f1: 1,
+    }
+    .clone();
     let t = Enum::Tuple(1).clone();
 
-    if let Enum::Struct { f1 } = s {
+    if let Enum::Struct {
+        f1,
+    } = s
+    {
         assert_eq!(101, f1);
     } else {
         panic!();
@@ -81,10 +99,16 @@ fn clone_without_trait_2() {
         Tuple(#[educe(Clone(method("clone")))] u8),
     }
 
-    let s = Enum::Struct { f1: 1 }.clone();
+    let s = Enum::Struct {
+        f1: 1,
+    }
+    .clone();
     let t = Enum::Tuple(1).clone();
 
-    if let Enum::Struct { f1 } = s {
+    if let Enum::Struct {
+        f1,
+    } = s
+    {
         assert_eq!(101, f1);
     } else {
         panic!();
@@ -119,10 +143,16 @@ fn clone_with_trait_1() {
         Tuple(#[educe(Clone(trait = "A"))] u8),
     }
 
-    let s = Enum::Struct { f1: 1 }.clone();
+    let s = Enum::Struct {
+        f1: 1,
+    }
+    .clone();
     let t = Enum::Tuple(1).clone();
 
-    if let Enum::Struct { f1 } = s {
+    if let Enum::Struct {
+        f1,
+    } = s
+    {
         assert_eq!(101, f1);
     } else {
         panic!();
@@ -157,10 +187,16 @@ fn clone_with_trait_2() {
         Tuple(#[educe(Clone(trait("A")))] u8),
     }
 
-    let s = Enum::Struct { f1: 1 }.clone();
+    let s = Enum::Struct {
+        f1: 1,
+    }
+    .clone();
     let t = Enum::Tuple(1).clone();
 
-    if let Enum::Struct { f1 } = s {
+    if let Enum::Struct {
+        f1,
+    } = s
+    {
         assert_eq!(101, f1);
     } else {
         panic!();
@@ -195,10 +231,16 @@ fn clone_with_trait_3() {
         Tuple(#[educe(Clone(trait = "A", method = "cloner"))] u8),
     }
 
-    let s = Enum::Struct { f1: 1 }.clone();
+    let s = Enum::Struct {
+        f1: 1,
+    }
+    .clone();
     let t = Enum::Tuple(1).clone();
 
-    if let Enum::Struct { f1 } = s {
+    if let Enum::Struct {
+        f1,
+    } = s
+    {
         assert_eq!(101, f1);
     } else {
         panic!();
@@ -233,10 +275,16 @@ fn clone_with_trait_4() {
         Tuple(#[educe(Clone(trait("A"), method("cloner")))] u8),
     }
 
-    let s = Enum::Struct { f1: 1 }.clone();
+    let s = Enum::Struct {
+        f1: 1,
+    }
+    .clone();
     let t = Enum::Tuple(1).clone();
 
-    if let Enum::Struct { f1 } = s {
+    if let Enum::Struct {
+        f1,
+    } = s
+    {
         assert_eq!(101, f1);
     } else {
         panic!();
@@ -254,14 +302,22 @@ fn bound_1() {
     #[derive(Educe)]
     #[educe(Clone(bound))]
     enum Enum<T> {
-        Struct { f1: T },
+        Struct {
+            f1: T,
+        },
         Tuple(T),
     }
 
-    let s = Enum::Struct { f1: 1 }.clone();
+    let s = Enum::Struct {
+        f1: 1,
+    }
+    .clone();
     let t = Enum::Tuple(1).clone();
 
-    if let Enum::Struct { f1 } = s {
+    if let Enum::Struct {
+        f1,
+    } = s
+    {
         assert_eq!(1, f1);
     } else {
         panic!();
@@ -279,14 +335,22 @@ fn bound_2() {
     #[derive(Educe)]
     #[educe(Clone(bound = "T: core::clone::Clone"))]
     enum Enum<T> {
-        Struct { f1: T },
+        Struct {
+            f1: T,
+        },
         Tuple(T),
     }
 
-    let s = Enum::Struct { f1: 1 }.clone();
+    let s = Enum::Struct {
+        f1: 1,
+    }
+    .clone();
     let t = Enum::Tuple(1).clone();
 
-    if let Enum::Struct { f1 } = s {
+    if let Enum::Struct {
+        f1,
+    } = s
+    {
         assert_eq!(1, f1);
     } else {
         panic!();
@@ -304,14 +368,22 @@ fn bound_3() {
     #[derive(Educe)]
     #[educe(Clone(bound("T: core::clone::Clone")))]
     enum Enum<T> {
-        Struct { f1: T },
+        Struct {
+            f1: T,
+        },
         Tuple(T),
     }
 
-    let s = Enum::Struct { f1: 1 }.clone();
+    let s = Enum::Struct {
+        f1: 1,
+    }
+    .clone();
     let t = Enum::Tuple(1).clone();
 
-    if let Enum::Struct { f1 } = s {
+    if let Enum::Struct {
+        f1,
+    } = s
+    {
         assert_eq!(1, f1);
     } else {
         panic!();

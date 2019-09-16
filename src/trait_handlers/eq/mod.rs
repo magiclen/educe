@@ -17,7 +17,10 @@ impl TraitHandler for EqHandler {
         _traits: &[Trait],
         meta: &Meta,
     ) {
-        let type_attribute = TypeAttributeBuilder { enable_bound: true }.from_eq_meta(meta);
+        let type_attribute = TypeAttributeBuilder {
+            enable_bound: true,
+        }
+        .from_eq_meta(meta);
 
         let bound = type_attribute
             .bound

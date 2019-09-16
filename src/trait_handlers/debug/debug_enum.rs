@@ -15,6 +15,7 @@ use crate::Trait;
 pub struct DebugEnumHandler;
 
 impl TraitHandler for DebugEnumHandler {
+    #[allow(clippy::cognitive_complexity)]
     fn trait_meta_handler(
         ast: &DeriveInput,
         tokens: &mut TokenStream,
@@ -134,7 +135,7 @@ impl TraitHandler for DebugEnumHandler {
                                 let format_trait = field_attribute.format_trait;
                                 let format_method = field_attribute.format_method;
 
-                                let key = rename.unwrap_or(field_name.clone());
+                                let key = rename.unwrap_or_else(|| field_name.clone());
 
                                 pattern_tokens
                                     .write_fmt(format_args!(
@@ -172,12 +173,16 @@ impl TraitHandler for DebugEnumHandler {
 
                                         block_tokens.push_str(&statement);
                                     }
-                                    None => match format_method {
-                                        Some(format_method) => {
-                                            let ty =
-                                                field.ty.clone().into_token_stream().to_string();
+                                    None => {
+                                        match format_method {
+                                            Some(format_method) => {
+                                                let ty = field
+                                                    .ty
+                                                    .clone()
+                                                    .into_token_stream()
+                                                    .to_string();
 
-                                            block_tokens.write_fmt(format_args!("
+                                                block_tokens.write_fmt(format_args!("
                                                     let arg = {{
                                                         struct MyDebug<'a>(&'a {ty});
 
@@ -191,31 +196,35 @@ impl TraitHandler for DebugEnumHandler {
                                                     }};
                                                 ", ty = ty, format_method = format_method, field_name = field_name)).unwrap();
 
-                                            let statement = if name.is_empty() {
-                                                format!(
-                                                    "builder.entry(&RawString({key:?}), &arg);",
-                                                    key = key
-                                                )
-                                            } else {
-                                                format!("builder.field({key:?}, &arg);", key = key)
-                                            };
+                                                let statement = if name.is_empty() {
+                                                    format!(
+                                                        "builder.entry(&RawString({key:?}), &arg);",
+                                                        key = key
+                                                    )
+                                                } else {
+                                                    format!(
+                                                        "builder.field({key:?}, &arg);",
+                                                        key = key
+                                                    )
+                                                };
 
-                                            block_tokens.push_str(&statement);
-                                        }
-                                        None => {
-                                            let statement = if name.is_empty() {
-                                                format!("builder.entry(&RawString({key:?}), {field_name});", key = key, field_name = field_name)
-                                            } else {
-                                                format!(
-                                                    "builder.field({key:?}, {field_name});",
-                                                    key = key,
-                                                    field_name = field_name
-                                                )
-                                            };
+                                                block_tokens.push_str(&statement);
+                                            }
+                                            None => {
+                                                let statement = if name.is_empty() {
+                                                    format!("builder.entry(&RawString({key:?}), {field_name});", key = key, field_name = field_name)
+                                                } else {
+                                                    format!(
+                                                        "builder.field({key:?}, {field_name});",
+                                                        key = key,
+                                                        field_name = field_name
+                                                    )
+                                                };
 
-                                            block_tokens.push_str(&statement);
+                                                block_tokens.push_str(&statement);
+                                            }
                                         }
-                                    },
+                                    }
                                 }
 
                                 has_fields = true;
@@ -279,12 +288,16 @@ impl TraitHandler for DebugEnumHandler {
 
                                         block_tokens.push_str("builder.field(&arg);");
                                     }
-                                    None => match format_method {
-                                        Some(format_method) => {
-                                            let ty =
-                                                field.ty.clone().into_token_stream().to_string();
+                                    None => {
+                                        match format_method {
+                                            Some(format_method) => {
+                                                let ty = field
+                                                    .ty
+                                                    .clone()
+                                                    .into_token_stream()
+                                                    .to_string();
 
-                                            block_tokens.write_fmt(format_args!("
+                                                block_tokens.write_fmt(format_args!("
                                                     let arg = {{
                                                         struct MyDebug<'a>(&'a {ty});
 
@@ -298,17 +311,18 @@ impl TraitHandler for DebugEnumHandler {
                                                     }};
                                                 ", ty = ty, format_method = format_method, field_name = field_name)).unwrap();
 
-                                            block_tokens.push_str("builder.field(&arg);");
-                                        }
-                                        None => {
-                                            let statement = format!(
-                                                "builder.field({field_name});",
-                                                field_name = field_name
-                                            );
+                                                block_tokens.push_str("builder.field(&arg);");
+                                            }
+                                            None => {
+                                                let statement = format!(
+                                                    "builder.field({field_name});",
+                                                    field_name = field_name
+                                                );
 
-                                            block_tokens.push_str(&statement);
+                                                block_tokens.push_str(&statement);
+                                            }
                                         }
-                                    },
+                                    }
                                 }
 
                                 has_fields = true;
@@ -414,12 +428,16 @@ impl TraitHandler for DebugEnumHandler {
 
                                         block_tokens.push_str(&statement);
                                     }
-                                    None => match format_method {
-                                        Some(format_method) => {
-                                            let ty =
-                                                field.ty.clone().into_token_stream().to_string();
+                                    None => {
+                                        match format_method {
+                                            Some(format_method) => {
+                                                let ty = field
+                                                    .ty
+                                                    .clone()
+                                                    .into_token_stream()
+                                                    .to_string();
 
-                                            block_tokens.write_fmt(format_args!("
+                                                block_tokens.write_fmt(format_args!("
                                                     let arg = {{
                                                         struct MyDebug<'a>(&'a {ty});
 
@@ -433,31 +451,35 @@ impl TraitHandler for DebugEnumHandler {
                                                     }};
                                                 ", ty = ty, format_method = format_method, field_name = field_name)).unwrap();
 
-                                            let statement = if name.is_empty() {
-                                                format!(
-                                                    "builder.entry(&RawString({key:?}), &arg);",
-                                                    key = key
-                                                )
-                                            } else {
-                                                format!("builder.field({key:?}, &arg);", key = key)
-                                            };
+                                                let statement = if name.is_empty() {
+                                                    format!(
+                                                        "builder.entry(&RawString({key:?}), &arg);",
+                                                        key = key
+                                                    )
+                                                } else {
+                                                    format!(
+                                                        "builder.field({key:?}, &arg);",
+                                                        key = key
+                                                    )
+                                                };
 
-                                            block_tokens.push_str(&statement);
-                                        }
-                                        None => {
-                                            let statement = if name.is_empty() {
-                                                format!("builder.entry(&RawString({key:?}), {field_name});", key = key, field_name = field_name)
-                                            } else {
-                                                format!(
-                                                    "builder.field({key:?}, _{field_name});",
-                                                    key = key,
-                                                    field_name = field_name
-                                                )
-                                            };
+                                                block_tokens.push_str(&statement);
+                                            }
+                                            None => {
+                                                let statement = if name.is_empty() {
+                                                    format!("builder.entry(&RawString({key:?}), {field_name});", key = key, field_name = field_name)
+                                                } else {
+                                                    format!(
+                                                        "builder.field({key:?}, _{field_name});",
+                                                        key = key,
+                                                        field_name = field_name
+                                                    )
+                                                };
 
-                                            block_tokens.push_str(&statement);
+                                                block_tokens.push_str(&statement);
+                                            }
                                         }
-                                    },
+                                    }
                                 }
 
                                 has_fields = true;
@@ -516,12 +538,16 @@ impl TraitHandler for DebugEnumHandler {
 
                                         block_tokens.push_str("builder.field(&arg);");
                                     }
-                                    None => match format_method {
-                                        Some(format_method) => {
-                                            let ty =
-                                                field.ty.clone().into_token_stream().to_string();
+                                    None => {
+                                        match format_method {
+                                            Some(format_method) => {
+                                                let ty = field
+                                                    .ty
+                                                    .clone()
+                                                    .into_token_stream()
+                                                    .to_string();
 
-                                            block_tokens.write_fmt(format_args!("
+                                                block_tokens.write_fmt(format_args!("
                                                     let arg = {{
                                                         struct MyDebug<'a>(&'a {ty});
 
@@ -535,17 +561,18 @@ impl TraitHandler for DebugEnumHandler {
                                                     }};
                                                 ", ty = ty, format_method = format_method, field_name = field_name)).unwrap();
 
-                                            block_tokens.push_str("builder.field(&arg);");
-                                        }
-                                        None => {
-                                            let statement = format!(
-                                                "builder.field(_{field_name});",
-                                                field_name = field_name
-                                            );
+                                                block_tokens.push_str("builder.field(&arg);");
+                                            }
+                                            None => {
+                                                let statement = format!(
+                                                    "builder.field(_{field_name});",
+                                                    field_name = field_name
+                                                );
 
-                                            block_tokens.push_str(&statement);
+                                                block_tokens.push_str(&statement);
+                                            }
                                         }
-                                    },
+                                    }
                                 }
 
                                 has_fields = true;
