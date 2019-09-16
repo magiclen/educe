@@ -1,3 +1,4 @@
+#![allow(clippy::unreadable_literal)]
 #![cfg(feature = "Default")]
 #![no_std]
 
@@ -5,6 +6,9 @@ extern crate alloc;
 
 #[macro_use]
 extern crate educe;
+
+#[macro_use]
+extern crate assert_approx_eq;
 
 use alloc::string::String;
 
@@ -127,7 +131,7 @@ fn field_default_1() {
 
     assert_eq!(1, s.f1);
     assert_eq!(11111111111111111111111111111, s.f2);
-    assert_eq!(1.1, s.f3);
+    assert_approx_eq!(1.1, s.f3);
     assert_eq!(true, s.f4);
     assert_eq!("Hi", s.f5);
     assert_eq!("Hello", s.f6);
@@ -135,7 +139,7 @@ fn field_default_1() {
 
     assert_eq!(1, t.0);
     assert_eq!(11111111111111111111111111111, t.1);
-    assert_eq!(1.1, t.2);
+    assert_approx_eq!(1.1, t.2);
     assert_eq!(true, t.3);
     assert_eq!("Hi", t.4);
     assert_eq!("Hello", t.5);
@@ -180,7 +184,7 @@ fn field_default_2() {
 
     assert_eq!(1, s.f1);
     assert_eq!(11111111111111111111111111111, s.f2);
-    assert_eq!(1.1, s.f3);
+    assert_approx_eq!(1.1, s.f3);
     assert_eq!(true, s.f4);
     assert_eq!("Hi", s.f5);
     assert_eq!("Hello", s.f6);
@@ -188,7 +192,7 @@ fn field_default_2() {
 
     assert_eq!(1, t.0);
     assert_eq!(11111111111111111111111111111, t.1);
-    assert_eq!(1.1, t.2);
+    assert_approx_eq!(1.1, t.2);
     assert_eq!(true, t.3);
     assert_eq!("Hi", t.4);
     assert_eq!("Hello", t.5);
@@ -233,7 +237,7 @@ fn field_default_3() {
 
     assert_eq!(1, s.f1);
     assert_eq!(11111111111111111111111111111, s.f2);
-    assert_eq!(1.1, s.f3);
+    assert_approx_eq!(1.1, s.f3);
     assert_eq!(true, s.f4);
     assert_eq!("Hi", s.f5);
     assert_eq!("Hello", s.f6);
@@ -241,7 +245,7 @@ fn field_default_3() {
 
     assert_eq!(1, t.0);
     assert_eq!(11111111111111111111111111111, t.1);
-    assert_eq!(1.1, t.2);
+    assert_approx_eq!(1.1, t.2);
     assert_eq!(true, t.3);
     assert_eq!("Hi", t.4);
     assert_eq!("Hello", t.5);
@@ -286,7 +290,7 @@ fn field_default_4() {
 
     assert_eq!(1, s.f1);
     assert_eq!(11111111111111111111111111111, s.f2);
-    assert_eq!(1.1, s.f3);
+    assert_approx_eq!(1.1, s.f3);
     assert_eq!(true, s.f4);
     assert_eq!("Hi", s.f5);
     assert_eq!("Hello", s.f6);
@@ -294,7 +298,7 @@ fn field_default_4() {
 
     assert_eq!(1, t.0);
     assert_eq!(11111111111111111111111111111, t.1);
-    assert_eq!(1.1, t.2);
+    assert_approx_eq!(1.1, t.2);
     assert_eq!(true, t.3);
     assert_eq!("Hi", t.4);
     assert_eq!("Hello", t.5);

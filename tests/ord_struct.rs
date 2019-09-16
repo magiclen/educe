@@ -1,3 +1,4 @@
+#![allow(clippy::eq_op, clippy::trivially_copy_pass_by_ref)]
 #![cfg(all(feature = "PartialEq", feature = "Eq", feature = "PartialOrd", feature = "Ord"))]
 #![no_std]
 

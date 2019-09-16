@@ -234,6 +234,7 @@ impl TraitHandler for HashEnumHandler {
         let hash_impl = quote! {
             impl #impl_generics core::hash::Hash for #ident #ty_generics #where_clause {
                 #[inline]
+                #[allow(clippy::unneeded_field_pattern)]
                 fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
                     #hasher_tokens
                 }

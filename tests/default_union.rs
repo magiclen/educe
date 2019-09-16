@@ -1,8 +1,12 @@
+#![allow(clippy::unreadable_literal)]
 #![cfg(feature = "Default")]
 #![no_std]
 
 #[macro_use]
 extern crate educe;
+
+#[macro_use]
+extern crate assert_approx_eq;
 
 #[test]
 #[allow(dead_code)]
@@ -32,7 +36,7 @@ fn basic() {
         f2: f64,
     }
 
-    assert_eq!(0.0, unsafe { Union3::default().f2 });
+    assert_approx_eq!(0.0, unsafe { Union3::default().f2 });
 }
 
 #[test]
@@ -104,7 +108,7 @@ fn field_default_1() {
         f6: char,
     }
 
-    assert_eq!(1.1, unsafe { Union3::default().f3 });
+    assert_approx_eq!(1.1, unsafe { Union3::default().f3 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -192,7 +196,7 @@ fn field_default_2() {
         f6: char,
     }
 
-    assert_eq!(1.1, unsafe { Union3::default().f3 });
+    assert_approx_eq!(1.1, unsafe { Union3::default().f3 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -280,7 +284,7 @@ fn field_default_3() {
         f6: char,
     }
 
-    assert_eq!(1.1, unsafe { Union3::default().f3 });
+    assert_approx_eq!(1.1, unsafe { Union3::default().f3 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -368,7 +372,7 @@ fn field_default_4() {
         f6: char,
     }
 
-    assert_eq!(1.1, unsafe { Union3::default().f3 });
+    assert_approx_eq!(1.1, unsafe { Union3::default().f3 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -432,7 +436,7 @@ fn bound_1() {
         f2: K,
     }
 
-    assert_eq!(0.0, unsafe { Union2::<u8, f64>::default().f2 });
+    assert_approx_eq!(0.0, unsafe { Union2::<u8, f64>::default().f2 });
 }
 
 #[test]
@@ -454,7 +458,7 @@ fn bound_2() {
         f2: K,
     }
 
-    assert_eq!(0.0, unsafe { Union2::<u8, f64>::default().f2 });
+    assert_approx_eq!(0.0, unsafe { Union2::<u8, f64>::default().f2 });
 }
 
 #[test]
@@ -476,7 +480,7 @@ fn bound_3() {
         f2: K,
     }
 
-    assert_eq!(0.0, unsafe { Union2::<u8, f64>::default().f2 });
+    assert_approx_eq!(0.0, unsafe { Union2::<u8, f64>::default().f2 });
 }
 
 #[test]
@@ -498,5 +502,5 @@ fn new() {
         f2: f64,
     }
 
-    assert_eq!(0.0, unsafe { Union2::new().f2 });
+    assert_approx_eq!(0.0, unsafe { Union2::new().f2 });
 }

@@ -337,7 +337,7 @@ impl TraitHandler for OrdEnumHandler {
         let compare_impl = quote! {
             impl #impl_generics core::cmp::Ord for #ident #ty_generics #where_clause {
                 #[inline]
-                #[allow(unreachable_code)]
+                #[allow(unreachable_code, clippy::unneeded_field_pattern)]
                 fn cmp(&self, other: &Self) -> core::cmp::Ordering {
                     #comparer_tokens
                 }

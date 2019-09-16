@@ -337,7 +337,7 @@ impl TraitHandler for PartialOrdEnumHandler {
         let compare_impl = quote! {
             impl #impl_generics core::cmp::PartialOrd for #ident #ty_generics #where_clause {
                 #[inline]
-                #[allow(unreachable_code)]
+                #[allow(unreachable_code, clippy::unneeded_field_pattern)]
                 fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
                     #comparer_tokens
                 }

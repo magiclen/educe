@@ -1,3 +1,4 @@
+#![allow(clippy::eq_op)]
 #![cfg(all(feature = "PartialEq", feature = "Eq"))]
 #![no_std]
 
