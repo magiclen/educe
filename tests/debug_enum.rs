@@ -1,3 +1,4 @@
+#![allow(clippy::trivially_copy_pass_by_ref)]
 #![cfg(feature = "Debug")]
 #![no_std]
 
