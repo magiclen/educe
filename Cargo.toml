@@ -1,6 +1,6 @@
 [package]
 name = "educe"
-version = "0.4.2"
+version = "0.4.3"
 authors = ["Magic Len <len@magiclen.org>"]
 edition = "2018"
 repository = "https://github.com/magiclen/educe"
