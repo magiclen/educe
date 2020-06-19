@@ -45,7 +45,7 @@ impl TypeAttributeBound {
             TypeAttributeBound::Auto => {
                 create_where_predicates_from_generic_parameters(
                     params,
-                    &syn::parse(quote!(core::fmt::Debug).into()).unwrap(),
+                    &syn::parse2(quote!(core::fmt::Debug)).unwrap(),
                 )
             }
             TypeAttributeBound::Custom(where_predicates) => where_predicates,

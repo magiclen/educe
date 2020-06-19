@@ -1584,39 +1584,39 @@ fn derive_input_handler(ast: DeriveInput) -> TokenStream {
     let mut metas = Vec::new();
 
     for attr in ast.attrs.iter() {
-        let attr_meta = attr.parse_meta().unwrap();
+        if let Some(attr_meta_name) = attr.path.get_ident() {
+            if attr_meta_name == "educe" {
+                let attr_meta = attr.parse_meta().unwrap();
 
-        let attr_meta_name = attr_meta.path().into_token_stream().to_string();
+                match attr_meta {
+                    Meta::List(list) => {
+                        for p in list.nested {
+                            match p {
+                                NestedMeta::Meta(meta) => {
+                                    let meta_name = meta.path().into_token_stream().to_string();
 
-        if attr_meta_name.as_str() == "educe" {
-            match attr_meta {
-                Meta::List(list) => {
-                    for p in list.nested {
-                        match p {
-                            NestedMeta::Meta(meta) => {
-                                let meta_name = meta.path().into_token_stream().to_string();
+                                    let t = Trait::from_str(meta_name);
 
-                                let t = Trait::from_str(meta_name);
+                                    if traits.contains(&t) {
+                                        panic::reuse_a_trait(t.as_str());
+                                    }
 
-                                if traits.contains(&t) {
-                                    panic::reuse_a_trait(t.as_str());
+                                    traits.push(t);
+                                    metas.push(meta);
                                 }
-
-                                traits.push(t);
-                                metas.push(meta);
-                            }
-                            NestedMeta::Lit(_) => {
-                                panic::attribute_incorrect_format("educe", &[
-                                    stringify!(#[educe(Trait1, Trait2, ..., TraitN)]),
-                                ])
+                                NestedMeta::Lit(_) => {
+                                    panic::attribute_incorrect_format("educe", &[
+                                        stringify!(#[educe(Trait1, Trait2, ..., TraitN)]),
+                                    ])
+                                }
                             }
                         }
                     }
-                }
-                _ => {
-                    panic::attribute_incorrect_format("educe", &[
-                        stringify!(#[educe(Trait1, Trait2, ..., TraitN)]),
-                    ])
+                    _ => {
+                        panic::attribute_incorrect_format("educe", &[
+                            stringify!(#[educe(Trait1, Trait2, ..., TraitN)]),
+                        ])
+                    }
                 }
             }
         }

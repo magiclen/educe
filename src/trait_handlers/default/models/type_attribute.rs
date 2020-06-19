@@ -28,7 +28,7 @@ impl TypeAttributeBound {
             TypeAttributeBound::Auto => {
                 create_where_predicates_from_generic_parameters(
                     params,
-                    &syn::parse(quote!(core::default::Default).into()).unwrap(),
+                    &syn::parse2(quote!(core::default::Default)).unwrap(),
                 )
             }
             TypeAttributeBound::Custom(where_predicates) => where_predicates,

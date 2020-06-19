@@ -76,7 +76,7 @@ pub fn create_path_from_lit_str(s: &LitStr) -> Option<Path> {
     } else {
         let tokens = TokenStream::from_str(s).unwrap();
 
-        Some(syn::parse(tokens.into()).unwrap())
+        Some(syn::parse2(tokens).unwrap())
     }
 }
 
@@ -96,7 +96,7 @@ pub fn create_expr_from_lit_str(s: &LitStr) -> Option<Expr> {
     } else {
         let tokens = TokenStream::from_str(s).unwrap();
 
-        Some(syn::parse(tokens.into()).unwrap())
+        Some(syn::parse2(tokens).unwrap())
     }
 }
 
@@ -120,7 +120,7 @@ pub fn create_where_predicates_from_lit_str(
 
         let tokens = TokenStream::from_str(&s).unwrap();
 
-        let where_clause: WhereClause = syn::parse(tokens.into()).unwrap();
+        let where_clause: WhereClause = syn::parse2(tokens).unwrap();
 
         Some(where_clause.predicates)
     }
@@ -137,7 +137,7 @@ pub fn create_where_predicates_from_generic_parameters(
         if let GenericParam::Type(typ) = param {
             let ident = &typ.ident;
 
-            where_predicates.push(syn::parse(quote! { #ident: #bound_trait }.into()).unwrap());
+            where_predicates.push(syn::parse2(quote! { #ident: #bound_trait }).unwrap());
         }
     }
 
