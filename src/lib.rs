@@ -1622,7 +1622,7 @@ fn derive_input_handler(ast: DeriveInput) -> TokenStream {
         }
     }
 
-    traits.sort();
+    traits.sort_unstable();
 
     #[cfg(feature = "Debug")]
     {
