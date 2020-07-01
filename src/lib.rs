@@ -1522,6 +1522,8 @@ mod panic;
 mod support_traits;
 mod trait_handlers;
 
+use std::collections::BTreeMap;
+
 use proc_macro2::TokenStream;
 use quote::ToTokens;
 use syn::{DeriveInput, Meta, NestedMeta};
@@ -1580,8 +1582,7 @@ use trait_handlers::DerefMutHandler;
 
 fn derive_input_handler(ast: DeriveInput) -> TokenStream {
     let mut tokens = TokenStream::new();
-    let mut traits = Vec::new();
-    let mut metas = Vec::new();
+    let mut trait_meta_map: BTreeMap<Trait, Meta> = BTreeMap::new();
 
     for attr in ast.attrs.iter() {
         if let Some(attr_meta_name) = attr.path.get_ident() {
@@ -1597,12 +1598,11 @@ fn derive_input_handler(ast: DeriveInput) -> TokenStream {
 
                                     let t = Trait::from_str(meta_name);
 
-                                    if traits.contains(&t) {
+                                    if trait_meta_map.contains_key(&t) {
                                         panic::reuse_a_trait(t.as_str());
                                     }
 
-                                    traits.push(t);
-                                    metas.push(meta);
+                                    trait_meta_map.insert(t, meta);
                                 }
                                 NestedMeta::Lit(_) => {
                                     panic::attribute_incorrect_format("educe", &[
@@ -1622,82 +1622,82 @@ fn derive_input_handler(ast: DeriveInput) -> TokenStream {
         }
     }
 
-    traits.sort_unstable();
+    let traits: Vec<Trait> = trait_meta_map.keys().copied().collect();
 
     #[cfg(feature = "Debug")]
     {
-        if let Ok(index) = traits.binary_search(&Trait::Debug) {
-            DebugHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
+        if let Some(meta) = trait_meta_map.get(&Trait::Debug) {
+            DebugHandler::trait_meta_handler(&ast, &mut tokens, &traits, meta);
         }
     }
 
     #[cfg(feature = "PartialEq")]
     {
-        if let Ok(index) = traits.binary_search(&Trait::PartialEq) {
-            PartialEqHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
+        if let Some(meta) = trait_meta_map.get(&Trait::PartialEq) {
+            PartialEqHandler::trait_meta_handler(&ast, &mut tokens, &traits, meta);
         }
     }
 
     #[cfg(feature = "Eq")]
     {
-        if let Ok(index) = traits.binary_search(&Trait::Eq) {
-            EqHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
+        if let Some(meta) = trait_meta_map.get(&Trait::Eq) {
+            EqHandler::trait_meta_handler(&ast, &mut tokens, &traits, meta);
         }
     }
 
     #[cfg(feature = "PartialOrd")]
     {
-        if let Ok(index) = traits.binary_search(&Trait::PartialOrd) {
-            PartialOrdHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
+        if let Some(meta) = trait_meta_map.get(&Trait::PartialOrd) {
+            PartialOrdHandler::trait_meta_handler(&ast, &mut tokens, &traits, meta);
         }
     }
 
     #[cfg(feature = "Ord")]
     {
-        if let Ok(index) = traits.binary_search(&Trait::Ord) {
-            OrdHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
+        if let Some(meta) = trait_meta_map.get(&Trait::Ord) {
+            OrdHandler::trait_meta_handler(&ast, &mut tokens, &traits, meta);
         }
     }
 
     #[cfg(feature = "Hash")]
     {
-        if let Ok(index) = traits.binary_search(&Trait::Hash) {
-            HashHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
+        if let Some(meta) = trait_meta_map.get(&Trait::Hash) {
+            HashHandler::trait_meta_handler(&ast, &mut tokens, &traits, meta);
         }
     }
 
     #[cfg(feature = "Default")]
     {
-        if let Ok(index) = traits.binary_search(&Trait::Default) {
-            DefaultHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
+        if let Some(meta) = trait_meta_map.get(&Trait::Default) {
+            DefaultHandler::trait_meta_handler(&ast, &mut tokens, &traits, meta);
         }
     }
 
     #[cfg(feature = "Clone")]
     {
-        if let Ok(index) = traits.binary_search(&Trait::Clone) {
-            CloneHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
+        if let Some(meta) = trait_meta_map.get(&Trait::Clone) {
+            CloneHandler::trait_meta_handler(&ast, &mut tokens, &traits, meta);
         }
     }
 
     #[cfg(feature = "Copy")]
     {
-        if let Ok(index) = traits.binary_search(&Trait::Copy) {
-            CopyHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
+        if let Some(meta) = trait_meta_map.get(&Trait::Copy) {
+            CopyHandler::trait_meta_handler(&ast, &mut tokens, &traits, meta);
         }
     }
 
     #[cfg(feature = "Deref")]
     {
-        if let Ok(index) = traits.binary_search(&Trait::Deref) {
-            DerefHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
+        if let Some(meta) = trait_meta_map.get(&Trait::Deref) {
+            DerefHandler::trait_meta_handler(&ast, &mut tokens, &traits, meta);
         }
     }
 
     #[cfg(feature = "DerefMut")]
     {
-        if let Ok(index) = traits.binary_search(&Trait::DerefMut) {
-            DerefMutHandler::trait_meta_handler(&ast, &mut tokens, &traits, &metas[index]);
+        if let Some(meta) = trait_meta_map.get(&Trait::DerefMut) {
+            DerefMutHandler::trait_meta_handler(&ast, &mut tokens, &traits, meta);
         }
     }
 
