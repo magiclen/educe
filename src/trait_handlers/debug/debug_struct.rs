@@ -8,7 +8,7 @@ use super::models::{
 use crate::panic;
 use crate::proc_macro2::TokenStream;
 use crate::quote::ToTokens;
-use crate::syn::{Data, DeriveInput, Generics, Meta};
+use crate::syn::{Data, DeriveInput, Fields, Generics, Meta};
 use crate::Trait;
 
 pub struct DebugStructHandler;
@@ -22,10 +22,10 @@ impl TraitHandler for DebugStructHandler {
     ) {
         let is_tuple = {
             if let Data::Struct(data) = &ast.data {
-                if let Some(field) = data.fields.iter().next() {
-                    field.ident.is_none()
-                } else {
+                if let Fields::Unnamed(_) = data.fields {
                     true
+                } else {
+                    false
                 }
             } else {
                 true

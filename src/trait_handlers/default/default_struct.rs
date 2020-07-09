@@ -6,7 +6,7 @@ use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
 
 use crate::proc_macro2::TokenStream;
 use crate::quote::ToTokens;
-use crate::syn::{Data, DeriveInput, Generics, Lit, Meta};
+use crate::syn::{Data, DeriveInput, Fields, Generics, Lit, Meta};
 use crate::Trait;
 
 pub struct DefaultStructHandler;
@@ -47,26 +47,15 @@ impl TraitHandler for DefaultStructHandler {
                     builder_tokens.extend(quote!(#expression));
                 }
                 None => {
-                    let (is_unit, is_tuple) = {
-                        if let Some(field) = data.fields.iter().next() {
-                            if field.ident.is_some() {
-                                (false, false)
-                            } else {
-                                (false, true)
-                            }
-                        } else {
-                            (true, true)
+                    match &data.fields {
+                        Fields::Unit => {
+                            let ident = &ast.ident;
+
+                            builder_tokens.extend(quote!(#ident));
                         }
-                    };
+                        Fields::Unnamed(_) => {
+                            let mut struct_tokens = ast.ident.to_string();
 
-                    if is_unit {
-                        let ident = &ast.ident;
-
-                        builder_tokens.extend(quote!(#ident));
-                    } else {
-                        let mut struct_tokens = ast.ident.to_string();
-
-                        if is_tuple {
                             struct_tokens.push('(');
 
                             for field in data.fields.iter() {
@@ -117,7 +106,12 @@ impl TraitHandler for DefaultStructHandler {
                             }
 
                             struct_tokens.push(')');
-                        } else {
+
+                            builder_tokens.extend(TokenStream::from_str(&struct_tokens).unwrap());
+                        }
+                        Fields::Named(_) => {
+                            let mut struct_tokens = ast.ident.to_string();
+
                             struct_tokens.push('{');
 
                             for field in data.fields.iter() {
@@ -177,9 +171,9 @@ impl TraitHandler for DefaultStructHandler {
                             }
 
                             struct_tokens.push('}');
-                        }
 
-                        builder_tokens.extend(TokenStream::from_str(&struct_tokens).unwrap());
+                            builder_tokens.extend(TokenStream::from_str(&struct_tokens).unwrap());
+                        }
                     }
                 }
             }

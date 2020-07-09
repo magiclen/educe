@@ -5,7 +5,7 @@ use super::super::TraitHandler;
 use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
 
 use crate::proc_macro2::TokenStream;
-use crate::syn::{punctuated::Punctuated, Data, DeriveInput, Generics, Meta};
+use crate::syn::{punctuated::Punctuated, Data, DeriveInput, Fields, Generics, Meta};
 use crate::Trait;
 
 pub struct CloneStructHandler;
@@ -74,27 +74,16 @@ impl TraitHandler for CloneStructHandler {
                     .bound
                     .into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
 
-                let (is_unit, is_tuple) = {
-                    if let Some(field) = data.fields.iter().next() {
-                        if field.ident.is_some() {
-                            (false, false)
-                        } else {
-                            (false, true)
-                        }
-                    } else {
-                        (true, true)
+                match &data.fields {
+                    Fields::Unit => {
+                        let ident = &ast.ident;
+
+                        clone_tokens.extend(quote!(#ident));
                     }
-                };
+                    Fields::Unnamed(_) => {
+                        let mut clone = ast.ident.to_string();
+                        let mut clone_from = String::new();
 
-                if is_unit {
-                    let ident = &ast.ident;
-
-                    clone_tokens.extend(quote!(#ident));
-                } else {
-                    let mut clone = ast.ident.to_string();
-                    let mut clone_from = String::new();
-
-                    if is_tuple {
                         clone.push('(');
 
                         for (index, field_attribute) in field_attributes.into_iter().enumerate() {
@@ -139,7 +128,14 @@ impl TraitHandler for CloneStructHandler {
                         }
 
                         clone.push(')');
-                    } else {
+
+                        clone_tokens.extend(TokenStream::from_str(&clone).unwrap());
+                        clone_from_tokens.extend(TokenStream::from_str(&clone_from).unwrap());
+                    }
+                    Fields::Named(_) => {
+                        let mut clone = ast.ident.to_string();
+                        let mut clone_from = String::new();
+
                         clone.push('{');
 
                         for (index, field_attribute) in field_attributes.into_iter().enumerate() {
@@ -171,10 +167,10 @@ impl TraitHandler for CloneStructHandler {
                         }
 
                         clone.push('}');
-                    }
 
-                    clone_tokens.extend(TokenStream::from_str(&clone).unwrap());
-                    clone_from_tokens.extend(TokenStream::from_str(&clone_from).unwrap());
+                        clone_tokens.extend(TokenStream::from_str(&clone).unwrap());
+                        clone_from_tokens.extend(TokenStream::from_str(&clone_from).unwrap());
+                    }
                 }
             }
         }
