@@ -1605,17 +1605,13 @@ fn derive_input_handler(ast: DeriveInput) -> TokenStream {
                                     trait_meta_map.insert(t, meta);
                                 }
                                 NestedMeta::Lit(_) => {
-                                    panic::attribute_incorrect_format("educe", &[
-                                        stringify!(#[educe(Trait1, Trait2, ..., TraitN)]),
-                                    ])
+                                    panic::educe_format_incorrect();
                                 }
                             }
                         }
                     }
                     _ => {
-                        panic::attribute_incorrect_format("educe", &[
-                            stringify!(#[educe(Trait1, Trait2, ..., TraitN)]),
-                        ])
+                        panic::educe_format_incorrect();
                     }
                 }
             }
