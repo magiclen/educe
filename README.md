@@ -1404,7 +1404,7 @@ impl A for u64 {
 enum Enum<T, K> {
     V1,
     V2 {
-        #[educe(Copy(trait = "A"))]
+        #[educe(Clone(trait = "A"))]
         f1: K,
     },
     V3(
