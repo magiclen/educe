@@ -1,18 +1,20 @@
 #![cfg_attr(not(feature = "default"), allow(dead_code))]
 
+use crate::Trait;
+
 #[inline]
-pub fn reuse_a_trait(trait_name: &str) -> ! {
-    panic!("The trait `{}` is repeatedly used.", trait_name)
+pub fn reuse_a_trait(t: Trait) -> ! {
+    panic!("The trait `{:?}` is repeatedly used.", t)
 }
 
 #[inline]
-pub fn trait_not_used(trait_name: &str) -> ! {
-    panic!("The `{}` trait is not used.", trait_name)
+pub fn trait_not_used(t: Trait) -> ! {
+    panic!("The `{:?}` trait is not used.", t)
 }
 
 #[inline]
-pub fn trait_not_support_union(trait_name: &str) -> ! {
-    panic!("The `{}` trait does not support to a union.", trait_name)
+pub fn trait_not_support_union(t: Trait) -> ! {
+    panic!("The `{:?}` trait does not support to a union.", t)
 }
 
 #[inline]

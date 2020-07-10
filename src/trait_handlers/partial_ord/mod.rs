@@ -29,7 +29,7 @@ impl TraitHandler for PartialOrdHandler {
             Data::Enum(_) => {
                 PartialOrdEnumHandler::trait_meta_handler(ast, tokens, traits, meta);
             }
-            Data::Union(_) => panic::trait_not_support_union("PartialOrd"),
+            Data::Union(_) => panic::trait_not_support_union(Trait::PartialOrd),
         }
     }
 }

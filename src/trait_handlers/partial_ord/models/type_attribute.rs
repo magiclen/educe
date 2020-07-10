@@ -319,12 +319,12 @@ impl TypeAttributeBuilder {
                                         let t = Trait::from_str(meta_name);
 
                                         if traits.binary_search(&t).is_err() {
-                                            panic::trait_not_used(t.as_str());
+                                            panic::trait_not_used(t);
                                         }
 
                                         if t == Trait::PartialOrd {
                                             if result.is_some() {
-                                                panic::reuse_a_trait(t.as_str());
+                                                panic::reuse_a_trait(t);
                                             }
 
                                             result = Some(self.from_partial_ord_meta(&meta));

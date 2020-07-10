@@ -29,7 +29,7 @@ impl TraitHandler for DerefHandler {
             Data::Enum(_) => {
                 DerefEnumHandler::trait_meta_handler(ast, tokens, traits, meta);
             }
-            Data::Union(_) => panic::trait_not_support_union("Deref"),
+            Data::Union(_) => panic::trait_not_support_union(Trait::Deref),
         }
     }
 }

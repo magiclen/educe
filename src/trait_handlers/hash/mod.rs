@@ -29,7 +29,7 @@ impl TraitHandler for HashHandler {
             Data::Enum(_) => {
                 HashEnumHandler::trait_meta_handler(ast, tokens, traits, meta);
             }
-            Data::Union(_) => panic::trait_not_support_union("Hash"),
+            Data::Union(_) => panic::trait_not_support_union(Trait::Hash),
         }
     }
 }

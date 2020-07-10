@@ -1585,7 +1585,7 @@ fn derive_input_handler(ast: DeriveInput) -> TokenStream {
                                     let t = Trait::from_str(meta_name);
 
                                     if trait_meta_map.contains_key(&t) {
-                                        panic::reuse_a_trait(t.as_str());
+                                        panic::reuse_a_trait(t);
                                     }
 
                                     trait_meta_map.insert(t, meta);
