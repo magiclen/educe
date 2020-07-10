@@ -1,3 +1,18 @@
+#[cfg(not(any(
+    feature = "Debug",
+    feature = "PartialEq",
+    feature = "Eq",
+    feature = "PartialOrd",
+    feature = "Ord",
+    feature = "Hash",
+    feature = "Default",
+    feature = "Clone",
+    feature = "Copy",
+    feature = "Deref",
+    feature = "DerefMut"
+)))]
+compile_error!("at least one of the trait features must be enabled");
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(not(feature = "default"), allow(dead_code))]
 pub enum Trait {

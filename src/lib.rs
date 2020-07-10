@@ -1530,22 +1530,8 @@ use syn::{DeriveInput, Meta, NestedMeta};
 
 use support_traits::Trait;
 
+#[allow(unused_imports)]
 use trait_handlers::TraitHandler;
-
-#[cfg(not(any(
-    feature = "Debug",
-    feature = "PartialEq",
-    feature = "Eq",
-    feature = "PartialOrd",
-    feature = "Ord",
-    feature = "Hash",
-    feature = "Default",
-    feature = "Clone",
-    feature = "Copy",
-    feature = "Deref",
-    feature = "DerefMut"
-)))]
-compile_error!("at least one of the trait features must be enabled");
 
 #[cfg(feature = "Debug")]
 use trait_handlers::DebugHandler;
