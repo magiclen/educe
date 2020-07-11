@@ -1518,6 +1518,9 @@ extern crate syn;
 #[macro_use]
 extern crate quote;
 
+#[macro_use]
+extern crate enum_ordinalize;
+
 mod panic;
 mod support_traits;
 mod trait_handlers;
@@ -1529,42 +1532,7 @@ use quote::ToTokens;
 use syn::{DeriveInput, Meta, NestedMeta};
 
 use support_traits::Trait;
-
-#[allow(unused_imports)]
 use trait_handlers::TraitHandler;
-
-#[cfg(feature = "Debug")]
-use trait_handlers::DebugHandler;
-
-#[cfg(feature = "PartialEq")]
-use trait_handlers::PartialEqHandler;
-
-#[cfg(feature = "Eq")]
-use trait_handlers::EqHandler;
-
-#[cfg(feature = "PartialOrd")]
-use trait_handlers::PartialOrdHandler;
-
-#[cfg(feature = "Ord")]
-use trait_handlers::OrdHandler;
-
-#[cfg(feature = "Hash")]
-use trait_handlers::HashHandler;
-
-#[cfg(feature = "Default")]
-use trait_handlers::DefaultHandler;
-
-#[cfg(feature = "Clone")]
-use trait_handlers::CloneHandler;
-
-#[cfg(feature = "Copy")]
-use trait_handlers::CopyHandler;
-
-#[cfg(feature = "Deref")]
-use trait_handlers::DerefHandler;
-
-#[cfg(feature = "DerefMut")]
-use trait_handlers::DerefMutHandler;
 
 fn derive_input_handler(ast: DeriveInput) -> TokenStream {
     let mut tokens = TokenStream::new();
@@ -1609,77 +1577,112 @@ fn derive_input_handler(ast: DeriveInput) -> TokenStream {
     #[cfg(feature = "Debug")]
     {
         if let Some(meta) = trait_meta_map.get(&Trait::Debug) {
-            DebugHandler::trait_meta_handler(&ast, &mut tokens, &traits, meta);
+            trait_handlers::debug::DebugHandler::trait_meta_handler(
+                &ast,
+                &mut tokens,
+                &traits,
+                meta,
+            );
         }
     }
 
     #[cfg(feature = "PartialEq")]
     {
         if let Some(meta) = trait_meta_map.get(&Trait::PartialEq) {
-            PartialEqHandler::trait_meta_handler(&ast, &mut tokens, &traits, meta);
+            trait_handlers::partial_eq::PartialEqHandler::trait_meta_handler(
+                &ast,
+                &mut tokens,
+                &traits,
+                meta,
+            );
         }
     }
 
     #[cfg(feature = "Eq")]
     {
         if let Some(meta) = trait_meta_map.get(&Trait::Eq) {
-            EqHandler::trait_meta_handler(&ast, &mut tokens, &traits, meta);
+            trait_handlers::eq::EqHandler::trait_meta_handler(&ast, &mut tokens, &traits, meta);
         }
     }
 
     #[cfg(feature = "PartialOrd")]
     {
         if let Some(meta) = trait_meta_map.get(&Trait::PartialOrd) {
-            PartialOrdHandler::trait_meta_handler(&ast, &mut tokens, &traits, meta);
+            trait_handlers::partial_ord::PartialOrdHandler::trait_meta_handler(
+                &ast,
+                &mut tokens,
+                &traits,
+                meta,
+            );
         }
     }
 
     #[cfg(feature = "Ord")]
     {
         if let Some(meta) = trait_meta_map.get(&Trait::Ord) {
-            OrdHandler::trait_meta_handler(&ast, &mut tokens, &traits, meta);
+            trait_handlers::ord::OrdHandler::trait_meta_handler(&ast, &mut tokens, &traits, meta);
         }
     }
 
     #[cfg(feature = "Hash")]
     {
         if let Some(meta) = trait_meta_map.get(&Trait::Hash) {
-            HashHandler::trait_meta_handler(&ast, &mut tokens, &traits, meta);
+            trait_handlers::hash::HashHandler::trait_meta_handler(&ast, &mut tokens, &traits, meta);
         }
     }
 
     #[cfg(feature = "Default")]
     {
         if let Some(meta) = trait_meta_map.get(&Trait::Default) {
-            DefaultHandler::trait_meta_handler(&ast, &mut tokens, &traits, meta);
+            trait_handlers::default::DefaultHandler::trait_meta_handler(
+                &ast,
+                &mut tokens,
+                &traits,
+                meta,
+            );
         }
     }
 
     #[cfg(feature = "Clone")]
     {
         if let Some(meta) = trait_meta_map.get(&Trait::Clone) {
-            CloneHandler::trait_meta_handler(&ast, &mut tokens, &traits, meta);
+            trait_handlers::clone::CloneHandler::trait_meta_handler(
+                &ast,
+                &mut tokens,
+                &traits,
+                meta,
+            );
         }
     }
 
     #[cfg(feature = "Copy")]
     {
         if let Some(meta) = trait_meta_map.get(&Trait::Copy) {
-            CopyHandler::trait_meta_handler(&ast, &mut tokens, &traits, meta);
+            trait_handlers::copy::CopyHandler::trait_meta_handler(&ast, &mut tokens, &traits, meta);
         }
     }
 
     #[cfg(feature = "Deref")]
     {
         if let Some(meta) = trait_meta_map.get(&Trait::Deref) {
-            DerefHandler::trait_meta_handler(&ast, &mut tokens, &traits, meta);
+            trait_handlers::deref::DerefHandler::trait_meta_handler(
+                &ast,
+                &mut tokens,
+                &traits,
+                meta,
+            );
         }
     }
 
     #[cfg(feature = "DerefMut")]
     {
         if let Some(meta) = trait_meta_map.get(&Trait::DerefMut) {
-            DerefMutHandler::trait_meta_handler(&ast, &mut tokens, &traits, meta);
+            trait_handlers::deref_mut::DerefMutHandler::trait_meta_handler(
+                &ast,
+                &mut tokens,
+                &traits,
+                meta,
+            );
         }
     }
 

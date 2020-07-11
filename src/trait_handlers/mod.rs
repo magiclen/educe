@@ -1,27 +1,27 @@
 #![cfg_attr(not(feature = "default"), allow(dead_code))]
 
 #[cfg(feature = "Clone")]
-mod clone;
+pub mod clone;
 #[cfg(feature = "Copy")]
-mod copy;
+pub mod copy;
 #[cfg(feature = "Debug")]
-mod debug;
+pub mod debug;
 #[cfg(feature = "Default")]
-mod default;
+pub mod default;
 #[cfg(feature = "Deref")]
-mod deref;
+pub mod deref;
 #[cfg(feature = "DerefMut")]
-mod deref_mut;
+pub mod deref_mut;
 #[cfg(feature = "Eq")]
-mod eq;
+pub mod eq;
 #[cfg(feature = "Hash")]
-mod hash;
+pub mod hash;
 #[cfg(feature = "Ord")]
-mod ord;
+pub mod ord;
 #[cfg(feature = "PartialEq")]
-mod partial_eq;
+pub mod partial_eq;
 #[cfg(feature = "PartialOrd")]
-mod partial_ord;
+pub mod partial_ord;
 
 use std::str::FromStr;
 
@@ -32,29 +32,6 @@ use crate::syn::{
     Path, WhereClause, WherePredicate,
 };
 use crate::Trait;
-
-#[cfg(feature = "Clone")]
-pub use clone::CloneHandler;
-#[cfg(feature = "Copy")]
-pub use copy::CopyHandler;
-#[cfg(feature = "Debug")]
-pub use debug::DebugHandler;
-#[cfg(feature = "Default")]
-pub use default::DefaultHandler;
-#[cfg(feature = "Deref")]
-pub use deref::DerefHandler;
-#[cfg(feature = "DerefMut")]
-pub use deref_mut::DerefMutHandler;
-#[cfg(feature = "Eq")]
-pub use eq::EqHandler;
-#[cfg(feature = "Hash")]
-pub use hash::HashHandler;
-#[cfg(feature = "Ord")]
-pub use ord::OrdHandler;
-#[cfg(feature = "PartialEq")]
-pub use partial_eq::PartialEqHandler;
-#[cfg(feature = "PartialOrd")]
-pub use partial_ord::PartialOrdHandler;
 
 pub trait TraitHandler {
     fn trait_meta_handler(

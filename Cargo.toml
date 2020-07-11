@@ -1,6 +1,6 @@
 [package]
 name = "educe"
-version = "0.4.10"
+version = "0.4.11"
 authors = ["Magic Len <len@magiclen.org>"]
 edition = "2018"
 repository = "https://github.com/magiclen/educe"
@@ -23,6 +23,8 @@ proc-macro = true
 proc-macro2 = "1"
 syn = { version = "1", features = ["full"] }
 quote = "1"
+
+enum-ordinalize = "3.1"
 
 [dev-dependencies]
 assert_approx_eq = "1.1"
