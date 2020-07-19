@@ -33,6 +33,8 @@ impl TraitHandler for CloneEnumHandler {
             let mut variant_idents = Vec::new();
             let mut field_attributes_names: Vec<(bool, Vec<FieldAttribute>, Vec<String>)> =
                 Vec::new();
+
+            #[cfg(feature = "Copy")]
             let mut has_custom_clone_method = false;
 
             for variant in data.variants.iter() {
@@ -60,6 +62,7 @@ impl TraitHandler for CloneEnumHandler {
 
                             let field_name = field.ident.as_ref().unwrap().to_string();
 
+                            #[cfg(feature = "Copy")]
                             if field_attribute.clone_method.is_some() {
                                 has_custom_clone_method = true;
                             }
@@ -78,6 +81,7 @@ impl TraitHandler for CloneEnumHandler {
 
                             let field_name = format!("_{}", index);
 
+                            #[cfg(feature = "Copy")]
                             if field_attribute.clone_method.is_some() {
                                 has_custom_clone_method = true;
                             }
@@ -94,7 +98,13 @@ impl TraitHandler for CloneEnumHandler {
 
             let enum_name = ast.ident.to_string();
 
-            if cfg!(feature = "Copy") && !has_custom_clone_method && traits.contains(&Trait::Copy) {
+            #[cfg(feature = "Copy")]
+            let contains_copy = !has_custom_clone_method && traits.contains(&Trait::Copy);
+
+            #[cfg(not(feature = "Copy"))]
+            let contains_copy = false;
+
+            if contains_copy {
                 bound = type_attribute
                     .bound
                     .into_punctuated_where_predicates_by_generic_parameters_with_copy(

@@ -31,6 +31,8 @@ impl TraitHandler for CloneStructHandler {
         if let Data::Struct(data) = &ast.data {
             let mut field_attributes = Vec::new();
             let mut field_names = Vec::new();
+
+            #[cfg(feature = "Copy")]
             let mut has_custom_clone_method = false;
 
             for (index, field) in data.fields.iter().enumerate() {
@@ -45,6 +47,7 @@ impl TraitHandler for CloneStructHandler {
                     format!("{}", index)
                 };
 
+                #[cfg(feature = "Copy")]
                 if field_attribute.clone_method.is_some() {
                     has_custom_clone_method = true;
                 }
@@ -53,7 +56,13 @@ impl TraitHandler for CloneStructHandler {
                 field_names.push(field_name);
             }
 
-            if cfg!(feature = "Copy") && !has_custom_clone_method && traits.contains(&Trait::Copy) {
+            #[cfg(feature = "Copy")]
+            let contains_copy = !has_custom_clone_method && traits.contains(&Trait::Copy);
+
+            #[cfg(not(feature = "Copy"))]
+            let contains_copy = false;
+
+            if contains_copy {
                 bound = type_attribute
                     .bound
                     .into_punctuated_where_predicates_by_generic_parameters_with_copy(
