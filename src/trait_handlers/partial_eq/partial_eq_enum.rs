@@ -121,7 +121,7 @@ impl TraitHandler for PartialEqEnumHandler {
                             }
                         }
 
-                        match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident}{{ {pattern_tokens} }} => {{ if let {enum_name}::{variant_ident} {{ {pattern_2_tokens} }} = other {{ {block_tokens} }} }}", enum_name = enum_name, variant_ident = variant_ident, pattern_tokens = pattern_tokens, pattern_2_tokens = pattern_2_tokens, block_tokens = block_tokens)).unwrap();
+                        match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident}{{ {pattern_tokens} }} => {{ if let {enum_name}::{variant_ident} {{ {pattern_2_tokens} }} = other {{ {block_tokens} }} else {{ return false; }} }}", enum_name = enum_name, variant_ident = variant_ident, pattern_tokens = pattern_tokens, pattern_2_tokens = pattern_2_tokens, block_tokens = block_tokens)).unwrap();
                     }
                     Fields::Unnamed(fields) => {
                         // TODO Tuple
@@ -183,7 +183,7 @@ impl TraitHandler for PartialEqEnumHandler {
                             }
                         }
 
-                        match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident}( {pattern_tokens} ) => {{ if let {enum_name}::{variant_ident} ( {pattern_2_tokens} ) = other {{ {block_tokens} }} }}", enum_name = enum_name, variant_ident = variant_ident, pattern_tokens = pattern_tokens, pattern_2_tokens = pattern_2_tokens, block_tokens = block_tokens)).unwrap();
+                        match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident}( {pattern_tokens} ) => {{ if let {enum_name}::{variant_ident} ( {pattern_2_tokens} ) = other {{ {block_tokens} }} else {{ return false; }} }}", enum_name = enum_name, variant_ident = variant_ident, pattern_tokens = pattern_tokens, pattern_2_tokens = pattern_2_tokens, block_tokens = block_tokens)).unwrap();
                     }
                 }
             }
