@@ -51,11 +51,7 @@ impl TraitHandler for DebugEnumHandler {
                     enable_flag: false,
                     name: TypeAttributeName::Default,
                     enable_name: true,
-                    named_field: if let Fields::Named(_) = &variant.fields {
-                        true
-                    } else {
-                        false
-                    },
+                    named_field: matches!(&variant.fields, Fields::Named(_)),
                     enable_named_field: true,
                     enable_bound: false,
                 }

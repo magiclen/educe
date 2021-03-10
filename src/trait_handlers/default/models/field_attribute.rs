@@ -66,34 +66,21 @@ impl FieldAttributeBuilder {
                                         Meta::List(list) => {
                                             for p in list.nested.iter() {
                                                 match p {
-                                                    NestedMeta::Lit(lit) => {
-                                                        match lit {
-                                                            Lit::Str(s) => {
-                                                                if expression.is_some() {
-                                                                    panic::reset_parameter(
-                                                                        meta_name.as_str(),
-                                                                    );
-                                                                }
+                                                    NestedMeta::Lit(Lit::Str(s)) => {
+                                                        if expression.is_some() {
+                                                            panic::reset_parameter(
+                                                                meta_name.as_str(),
+                                                            );
+                                                        }
 
-                                                                let s =
-                                                                    create_expr_string_from_lit_str(
-                                                                        s,
-                                                                    );
+                                                        let s = create_expr_string_from_lit_str(s);
 
-                                                                if s.is_some() {
-                                                                    expression = s;
-                                                                } else {
-                                                                    panic::empty_parameter(
-                                                                        meta_name.as_str(),
-                                                                    )
-                                                                }
-                                                            }
-                                                            _ => {
-                                                                panic::parameter_incorrect_format(
-                                                                    meta_name.as_str(),
-                                                                    &correct_usage_for_expression,
-                                                                )
-                                                            }
+                                                        if s.is_some() {
+                                                            expression = s;
+                                                        } else {
+                                                            panic::empty_parameter(
+                                                                meta_name.as_str(),
+                                                            )
                                                         }
                                                     }
                                                     _ => {

@@ -82,39 +82,30 @@ impl TypeAttributeBuilder {
                                         Meta::List(list) => {
                                             for p in list.nested.iter() {
                                                 match p {
-                                                    NestedMeta::Lit(lit) => {
-                                                        match lit {
-                                                            Lit::Str(s) => {
-                                                                if bound_is_set {
-                                                                    panic::reset_parameter(
-                                                                        meta_name.as_str(),
-                                                                    );
-                                                                }
+                                                    NestedMeta::Lit(Lit::Str(s)) => {
+                                                        if bound_is_set {
+                                                            panic::reset_parameter(
+                                                                meta_name.as_str(),
+                                                            );
+                                                        }
 
-                                                                bound_is_set = true;
+                                                        bound_is_set = true;
 
-                                                                let where_predicates = create_where_predicates_from_lit_str(s);
+                                                        let where_predicates =
+                                                            create_where_predicates_from_lit_str(s);
 
-                                                                bound = match where_predicates {
-                                                                    Some(where_predicates) => {
-                                                                        TypeAttributeBound::Custom(
-                                                                            where_predicates,
-                                                                        )
-                                                                    }
-                                                                    None => {
-                                                                        panic::empty_parameter(
-                                                                            meta_name.as_str(),
-                                                                        )
-                                                                    }
-                                                                };
-                                                            }
-                                                            _ => {
-                                                                panic::parameter_incorrect_format(
-                                                                    meta_name.as_str(),
-                                                                    &correct_usage_for_bound,
+                                                        bound = match where_predicates {
+                                                            Some(where_predicates) => {
+                                                                TypeAttributeBound::Custom(
+                                                                    where_predicates,
                                                                 )
                                                             }
-                                                        }
+                                                            None => {
+                                                                panic::empty_parameter(
+                                                                    meta_name.as_str(),
+                                                                )
+                                                            }
+                                                        };
                                                     }
                                                     _ => {
                                                         panic::parameter_incorrect_format(

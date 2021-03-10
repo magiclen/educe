@@ -22,11 +22,7 @@ impl TraitHandler for DebugStructHandler {
     ) {
         let is_tuple = {
             if let Data::Struct(data) = &ast.data {
-                if let Fields::Unnamed(_) = data.fields {
-                    true
-                } else {
-                    false
-                }
+                matches!(data.fields, Fields::Unnamed(_))
             } else {
                 true
             }

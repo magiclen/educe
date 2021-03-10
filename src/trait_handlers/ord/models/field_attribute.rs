@@ -114,34 +114,21 @@ impl FieldAttributeBuilder {
                                         Meta::List(list) => {
                                             for p in list.nested.iter() {
                                                 match p {
-                                                    NestedMeta::Lit(lit) => {
-                                                        match lit {
-                                                            Lit::Str(s) => {
-                                                                if compare_method.is_some() {
-                                                                    panic::reset_parameter(
-                                                                        meta_name.as_str(),
-                                                                    );
-                                                                }
+                                                    NestedMeta::Lit(Lit::Str(s)) => {
+                                                        if compare_method.is_some() {
+                                                            panic::reset_parameter(
+                                                                meta_name.as_str(),
+                                                            );
+                                                        }
 
-                                                                let s =
-                                                                    create_path_string_from_lit_str(
-                                                                        s,
-                                                                    );
+                                                        let s = create_path_string_from_lit_str(s);
 
-                                                                if let Some(s) = s {
-                                                                    compare_method = Some(s);
-                                                                } else {
-                                                                    panic::empty_parameter(
-                                                                        meta_name.as_str(),
-                                                                    );
-                                                                }
-                                                            }
-                                                            _ => {
-                                                                panic::parameter_incorrect_format(
-                                                                    meta_name.as_str(),
-                                                                    &correct_usage_for_impl,
-                                                                )
-                                                            }
+                                                        if let Some(s) = s {
+                                                            compare_method = Some(s);
+                                                        } else {
+                                                            panic::empty_parameter(
+                                                                meta_name.as_str(),
+                                                            );
                                                         }
                                                     }
                                                     _ => {
@@ -195,34 +182,21 @@ impl FieldAttributeBuilder {
                                         Meta::List(list) => {
                                             for p in list.nested.iter() {
                                                 match p {
-                                                    NestedMeta::Lit(lit) => {
-                                                        match lit {
-                                                            Lit::Str(s) => {
-                                                                if compare_trait.is_some() {
-                                                                    panic::reset_parameter(
-                                                                        meta_name.as_str(),
-                                                                    );
-                                                                }
+                                                    NestedMeta::Lit(Lit::Str(s)) => {
+                                                        if compare_trait.is_some() {
+                                                            panic::reset_parameter(
+                                                                meta_name.as_str(),
+                                                            );
+                                                        }
 
-                                                                let s =
-                                                                    create_path_string_from_lit_str(
-                                                                        s,
-                                                                    );
+                                                        let s = create_path_string_from_lit_str(s);
 
-                                                                if let Some(s) = s {
-                                                                    compare_trait = Some(s);
-                                                                } else {
-                                                                    panic::empty_parameter(
-                                                                        meta_name.as_str(),
-                                                                    );
-                                                                }
-                                                            }
-                                                            _ => {
-                                                                panic::parameter_incorrect_format(
-                                                                    meta_name.as_str(),
-                                                                    &correct_usage_for_impl,
-                                                                )
-                                                            }
+                                                        if let Some(s) = s {
+                                                            compare_trait = Some(s);
+                                                        } else {
+                                                            panic::empty_parameter(
+                                                                meta_name.as_str(),
+                                                            );
                                                         }
                                                     }
                                                     _ => {
@@ -276,26 +250,16 @@ impl FieldAttributeBuilder {
                                         Meta::List(list) => {
                                             for p in list.nested.iter() {
                                                 match p {
-                                                    NestedMeta::Lit(lit) => {
-                                                        match lit {
-                                                            Lit::Int(i) => {
-                                                                if rank_is_set {
-                                                                    panic::reset_parameter(
-                                                                        meta_name.as_str(),
-                                                                    );
-                                                                }
-
-                                                                rank_is_set = true;
-
-                                                                rank = i.base10_parse().unwrap();
-                                                            }
-                                                            _ => {
-                                                                panic::parameter_incorrect_format(
-                                                                    meta_name.as_str(),
-                                                                    &correct_usage_for_rank,
-                                                                )
-                                                            }
+                                                    NestedMeta::Lit(Lit::Int(i)) => {
+                                                        if rank_is_set {
+                                                            panic::reset_parameter(
+                                                                meta_name.as_str(),
+                                                            );
                                                         }
+
+                                                        rank_is_set = true;
+
+                                                        rank = i.base10_parse().unwrap();
                                                     }
                                                     _ => {
                                                         panic::parameter_incorrect_format(

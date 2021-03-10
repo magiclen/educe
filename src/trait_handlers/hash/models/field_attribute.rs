@@ -98,34 +98,21 @@ impl FieldAttributeBuilder {
                                         Meta::List(list) => {
                                             for p in list.nested.iter() {
                                                 match p {
-                                                    NestedMeta::Lit(lit) => {
-                                                        match lit {
-                                                            Lit::Str(s) => {
-                                                                if hash_method.is_some() {
-                                                                    panic::reset_parameter(
-                                                                        meta_name.as_str(),
-                                                                    );
-                                                                }
+                                                    NestedMeta::Lit(Lit::Str(s)) => {
+                                                        if hash_method.is_some() {
+                                                            panic::reset_parameter(
+                                                                meta_name.as_str(),
+                                                            );
+                                                        }
 
-                                                                let s =
-                                                                    create_path_string_from_lit_str(
-                                                                        s,
-                                                                    );
+                                                        let s = create_path_string_from_lit_str(s);
 
-                                                                if let Some(s) = s {
-                                                                    hash_method = Some(s);
-                                                                } else {
-                                                                    panic::empty_parameter(
-                                                                        meta_name.as_str(),
-                                                                    );
-                                                                }
-                                                            }
-                                                            _ => {
-                                                                panic::parameter_incorrect_format(
-                                                                    meta_name.as_str(),
-                                                                    &correct_usage_for_impl,
-                                                                )
-                                                            }
+                                                        if let Some(s) = s {
+                                                            hash_method = Some(s);
+                                                        } else {
+                                                            panic::empty_parameter(
+                                                                meta_name.as_str(),
+                                                            );
                                                         }
                                                     }
                                                     _ => {
@@ -179,34 +166,21 @@ impl FieldAttributeBuilder {
                                         Meta::List(list) => {
                                             for p in list.nested.iter() {
                                                 match p {
-                                                    NestedMeta::Lit(lit) => {
-                                                        match lit {
-                                                            Lit::Str(s) => {
-                                                                if hash_trait.is_some() {
-                                                                    panic::reset_parameter(
-                                                                        meta_name.as_str(),
-                                                                    );
-                                                                }
+                                                    NestedMeta::Lit(Lit::Str(s)) => {
+                                                        if hash_trait.is_some() {
+                                                            panic::reset_parameter(
+                                                                meta_name.as_str(),
+                                                            );
+                                                        }
 
-                                                                let s =
-                                                                    create_path_string_from_lit_str(
-                                                                        s,
-                                                                    );
+                                                        let s = create_path_string_from_lit_str(s);
 
-                                                                if let Some(s) = s {
-                                                                    hash_trait = Some(s);
-                                                                } else {
-                                                                    panic::empty_parameter(
-                                                                        meta_name.as_str(),
-                                                                    );
-                                                                }
-                                                            }
-                                                            _ => {
-                                                                panic::parameter_incorrect_format(
-                                                                    meta_name.as_str(),
-                                                                    &correct_usage_for_impl,
-                                                                )
-                                                            }
+                                                        if let Some(s) = s {
+                                                            hash_trait = Some(s);
+                                                        } else {
+                                                            panic::empty_parameter(
+                                                                meta_name.as_str(),
+                                                            );
                                                         }
                                                     }
                                                     _ => {
