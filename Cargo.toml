@@ -1,6 +1,6 @@
 [package]
 name = "educe"
-version = "0.4.14"
+version = "0.4.15"
 authors = ["Magic Len <len@magiclen.org>"]
 edition = "2018"
 repository = "https://github.com/magiclen/educe"
@@ -11,10 +11,6 @@ description = "This crate provides procedural macros to help you implement Rust-
 readme = "README.md"
 license = "MIT"
 include = ["src/**/*", "Cargo.toml", "README.md", "LICENSE"]
-
-[badges.travis-ci]
-repository = "magiclen/educe"
-branch = "master"
 
 [lib]
 proc-macro = true

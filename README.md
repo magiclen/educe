@@ -1,7 +1,7 @@
 Educe
 ====================
 
-[![Build Status](https://travis-ci.org/magiclen/educe.svg?branch=master)](https://travis-ci.org/magiclen/educe)
+[![CI](https://github.com/magiclen/educe/actions/workflows/ci.yml/badge.svg)](https://github.com/magiclen/educe/actions/workflows/ci.yml)
 
 This crate provides procedural macros to help you implement Rust-built-in traits quickly.
 

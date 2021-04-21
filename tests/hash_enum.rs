@@ -254,7 +254,7 @@ fn hash_with_trait_1() {
         }
     }
 
-    impl A for u8 {};
+    impl A for u8 {}
 
     #[derive(Educe)]
     #[educe(Hash)]
@@ -308,7 +308,7 @@ fn hash_with_trait_2() {
         }
     }
 
-    impl A for u8 {};
+    impl A for u8 {}
 
     #[derive(Educe)]
     #[educe(Hash)]
@@ -362,7 +362,7 @@ fn hash_with_trait_3() {
         }
     }
 
-    impl A for u8 {};
+    impl A for u8 {}
 
     #[derive(Educe)]
     #[educe(Hash)]
@@ -416,7 +416,7 @@ fn hash_with_trait_4() {
         }
     }
 
-    impl A for u8 {};
+    impl A for u8 {}
 
     #[derive(Educe)]
     #[educe(Hash)]
