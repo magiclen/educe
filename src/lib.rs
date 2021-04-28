@@ -171,7 +171,7 @@ enum Enum<T: A> {
 
 #### Generic Parameters Bound to the `Debug` Trait or Others
 
-The `#[educe(Debug(bound))]` attribute can be used to add the `Debug` trait bound to all generaic parameters for the `Debug` implementation.
+The `#[educe(Debug(bound))]` attribute can be used to add the `Debug` trait bound to all generic parameters for the `Debug` implementation.
 
 ```rust
 #[macro_use] extern crate educe;
