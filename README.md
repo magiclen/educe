@@ -173,7 +173,7 @@ enum Enum<T: A> {
 
 #### Generic Parameters Bound to the `Debug` Trait or Others
 
-The `#[educe(Debug(bound))]` attribute can be used to add the `Debug` trait bound to all generaic parameters for the `Debug` implementation.
+The `#[educe(Debug(bound))]` attribute can be used to add the `Debug` trait bound to all generic parameters for the `Debug` implementation.
 
 ```rust
 #[macro_use] extern crate educe;
@@ -339,7 +339,7 @@ enum Enum<T: A> {
 
 #### Generic Parameters Bound to the `PartialEq` Trait or Others
 
-The `#[educe(PartialEq(bound))]` attribute can be used to add the `PartialEq` trait bound to all generaic parameters for the `PartialEq` implementation.
+The `#[educe(PartialEq(bound))]` attribute can be used to add the `PartialEq` trait bound to all generic parameters for the `PartialEq` implementation.
 
 ```rust
 #[macro_use] extern crate educe;
@@ -420,7 +420,7 @@ enum Enum {
 
 #### Generic Parameters Bound to the `Eq` Trait or Others
 
-The `#[educe(Eq(bound))]` attribute can be used to add the `Eq` trait bound to all generaic parameters for the `Eq` implementation.
+The `#[educe(Eq(bound))]` attribute can be used to add the `Eq` trait bound to all generic parameters for the `Eq` implementation.
 
 ```rust
 #[macro_use] extern crate educe;
@@ -580,7 +580,7 @@ enum Enum<T: std::cmp::PartialEq + A> {
 
 #### Generic Parameters Bound to the `PartialOrd` Trait or Others
 
-The `#[educe(PartialOrd(bound))]` attribute can be used to add the `PartialOrd` trait bound to all generaic parameters for the `PartialOrd` implementation.
+The `#[educe(PartialOrd(bound))]` attribute can be used to add the `PartialOrd` trait bound to all generic parameters for the `PartialOrd` implementation.
 
 ```rust
 #[macro_use] extern crate educe;
@@ -774,7 +774,7 @@ enum Enum<T: std::cmp::PartialOrd + A> {
 
 #### Generic Parameters Bound to the `Ord` Trait or Others
 
-The `#[educe(Ord(bound))]` attribute can be used to add the `Ord` trait bound to all generaic parameters for the `Ord` implementation.
+The `#[educe(Ord(bound))]` attribute can be used to add the `Ord` trait bound to all generic parameters for the `Ord` implementation.
 
 ```rust
 #[macro_use] extern crate educe;
@@ -955,7 +955,7 @@ enum Enum<T: A> {
 
 #### Generic Parameters Bound to the `Hash` Trait or Others
 
-The `#[educe(Hash(bound))]` attribute can be used to add the `Hash` trait bound to all generaic parameters for the `Hash` implementation.
+The `#[educe(Hash(bound))]` attribute can be used to add the `Hash` trait bound to all generic parameters for the `Hash` implementation.
 
 ```rust
 #[macro_use] extern crate educe;
@@ -1139,7 +1139,7 @@ union Union {
 
 #### Generic Parameters Bound to the `Default` Trait or Others
 
-The `#[educe(Default(bound))]` attribute can be used to add the `Default` trait bound to all generaic parameters for the `Default` implementation.
+The `#[educe(Default(bound))]` attribute can be used to add the `Default` trait bound to all generic parameters for the `Default` implementation.
 
 ```rust
 #[macro_use] extern crate educe;
@@ -1257,7 +1257,7 @@ enum Enum<T: A> {
 
 #### Generic Parameters Bound to the `Clone` Trait or Others
 
-The `#[educe(Clone(bound))]` attribute can be used to add the `Clone` trait bound or the `Copy` trait bound (if the `#[educe(Copy)]` attribute exists) to all generaic parameters for the `Clone` implementation.
+The `#[educe(Clone(bound))]` attribute can be used to add the `Clone` trait bound or the `Copy` trait bound (if the `#[educe(Copy)]` attribute exists) to all generic parameters for the `Clone` implementation.
 
 ```rust
 #[macro_use] extern crate educe;
@@ -1356,7 +1356,7 @@ enum Enum {
 
 #### Generic Parameters Bound to the `Copy` Trait or Others
 
-The `#[educe(Copy(bound))]` attribute can be used to add the `Copy` trait bound to all generaic parameters for the `Copy` implementation.
+The `#[educe(Copy(bound))]` attribute can be used to add the `Copy` trait bound to all generic parameters for the `Copy` implementation.
 
 ```rust
 #[macro_use] extern crate educe;
