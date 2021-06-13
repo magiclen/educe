@@ -1,4 +1,3 @@
-#![allow(clippy::unreadable_literal)]
 #![cfg(feature = "Default")]
 #![no_std]
 

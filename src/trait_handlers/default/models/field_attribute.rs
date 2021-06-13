@@ -208,7 +208,7 @@ impl FieldAttributeBuilder {
                                             panic::reuse_a_trait(t);
                                         }
 
-                                        result = Some(self.from_default_meta(&meta));
+                                        result = Some(self.from_default_meta(meta));
                                     }
                                 }
                                 _ => panic::educe_format_incorrect(),

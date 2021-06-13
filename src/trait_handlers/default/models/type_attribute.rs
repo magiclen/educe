@@ -53,7 +53,6 @@ pub struct TypeAttributeBuilder {
 }
 
 impl TypeAttributeBuilder {
-    #[allow(clippy::cognitive_complexity)]
     pub fn from_default_meta(&self, meta: &Meta) -> TypeAttribute {
         let mut flag = false;
         let mut new = false;
@@ -359,7 +358,7 @@ impl TypeAttributeBuilder {
                                                 panic::reuse_a_trait(t);
                                             }
 
-                                            result = Some(self.from_default_meta(&meta));
+                                            result = Some(self.from_default_meta(meta));
                                         }
                                     }
                                     _ => panic::educe_format_incorrect(),

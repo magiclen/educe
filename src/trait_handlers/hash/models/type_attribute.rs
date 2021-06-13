@@ -228,7 +228,7 @@ impl TypeAttributeBuilder {
                                                 panic::reuse_a_trait(t);
                                             }
 
-                                            result = Some(self.from_hash_meta(&meta));
+                                            result = Some(self.from_hash_meta(meta));
                                         }
                                     }
                                     _ => panic::educe_format_incorrect(),

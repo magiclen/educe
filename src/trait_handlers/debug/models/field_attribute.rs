@@ -37,7 +37,6 @@ pub struct FieldAttributeBuilder {
 }
 
 impl FieldAttributeBuilder {
-    #[allow(clippy::cognitive_complexity)]
     pub fn from_debug_meta(&self, meta: &Meta) -> FieldAttribute {
         let mut name = self.name.clone();
 
@@ -509,7 +508,7 @@ impl FieldAttributeBuilder {
                                             panic::reuse_a_trait(t);
                                         }
 
-                                        result = Some(self.from_debug_meta(&meta));
+                                        result = Some(self.from_debug_meta(meta));
                                     }
                                 }
                                 _ => panic::educe_format_incorrect(),

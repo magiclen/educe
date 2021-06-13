@@ -15,7 +15,6 @@ use crate::Trait;
 pub struct DebugEnumHandler;
 
 impl TraitHandler for DebugEnumHandler {
-    #[allow(clippy::cognitive_complexity)]
     fn trait_meta_handler(
         ast: &DeriveInput,
         tokens: &mut TokenStream,

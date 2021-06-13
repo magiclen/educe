@@ -22,7 +22,6 @@ pub struct FieldAttributeBuilder {
 }
 
 impl FieldAttributeBuilder {
-    #[allow(clippy::cognitive_complexity)]
     pub fn from_ord_meta(&self, meta: &Meta) -> FieldAttribute {
         let mut ignore = false;
 
@@ -358,7 +357,7 @@ impl FieldAttributeBuilder {
                                             panic::reuse_a_trait(t);
                                         }
 
-                                        result = Some(self.from_ord_meta(&meta));
+                                        result = Some(self.from_ord_meta(meta));
                                     }
                                 }
                                 _ => panic::educe_format_incorrect(),
