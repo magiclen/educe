@@ -11,7 +11,6 @@ use crate::Trait;
 pub struct CloneEnumHandler;
 
 impl TraitHandler for CloneEnumHandler {
-    #[allow(clippy::cognitive_complexity)]
     fn trait_meta_handler(
         ast: &DeriveInput,
         tokens: &mut TokenStream,
