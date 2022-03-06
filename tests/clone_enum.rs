@@ -24,11 +24,7 @@ fn basic() {
     .clone();
     let t = Enum::Tuple(1).clone();
 
-    assert!(if let Enum::Unit = u {
-        true
-    } else {
-        false
-    });
+    assert!(matches!(u, Enum::Unit));
 
     if let Enum::Struct {
         f1,

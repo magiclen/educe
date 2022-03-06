@@ -7,10 +7,11 @@ use super::models::{
 };
 
 use crate::panic;
-use crate::proc_macro2::TokenStream;
-use crate::quote::ToTokens;
-use crate::syn::{Data, DeriveInput, Fields, Generics, Meta};
 use crate::Trait;
+
+use proc_macro2::TokenStream;
+use quote::{quote, ToTokens};
+use syn::{Data, DeriveInput, Fields, Generics, Meta};
 
 pub struct DebugEnumHandler;
 

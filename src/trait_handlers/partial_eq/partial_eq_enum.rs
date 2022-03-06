@@ -4,9 +4,11 @@ use std::str::FromStr;
 use super::super::TraitHandler;
 use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
 
-use crate::proc_macro2::TokenStream;
-use crate::syn::{Data, DeriveInput, Fields, Generics, Meta};
 use crate::Trait;
+
+use proc_macro2::TokenStream;
+use quote::quote;
+use syn::{Data, DeriveInput, Fields, Generics, Meta};
 
 pub struct PartialEqEnumHandler;
 

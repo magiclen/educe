@@ -1,9 +1,10 @@
 use super::super::super::create_expr_string_from_lit_str;
 
 use crate::panic;
-use crate::quote::ToTokens;
-use crate::syn::{Attribute, Lit, Meta, NestedMeta};
 use crate::Trait;
+
+use quote::ToTokens;
+use syn::{Attribute, Lit, Meta, NestedMeta};
 
 #[derive(Clone)]
 pub struct FieldAttribute {
@@ -20,6 +21,7 @@ pub struct FieldAttributeBuilder {
 }
 
 impl FieldAttributeBuilder {
+    #[allow(clippy::wrong_self_convention)]
     pub fn from_default_meta(&self, meta: &Meta) -> FieldAttribute {
         let mut flag = false;
         let mut value: Option<Lit> = None;

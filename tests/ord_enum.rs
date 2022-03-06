@@ -156,13 +156,7 @@ fn ignore() {
 #[test]
 fn compare_without_trait_1() {
     fn cmp(a: &u8, b: &u8) -> Ordering {
-        if a > b {
-            Ordering::Less
-        } else if a < b {
-            Ordering::Greater
-        } else {
-            Ordering::Equal
-        }
+        b.cmp(a)
     }
 
     #[derive(Educe)]
@@ -220,13 +214,7 @@ fn compare_without_trait_1() {
 #[test]
 fn compare_without_trait_2() {
     fn cmp(a: &u8, b: &u8) -> Ordering {
-        if a > b {
-            Ordering::Less
-        } else if a < b {
-            Ordering::Greater
-        } else {
-            Ordering::Equal
-        }
+        b.cmp(a)
     }
 
     #[derive(Educe)]
@@ -289,6 +277,7 @@ fn compare_with_trait_1() {
 
     impl A for u8 {
         fn cmp(&self, b: &u8) -> Ordering {
+            #[allow(clippy::comparison_chain)]
             if self > b {
                 Ordering::Less
             } else if self < b {
@@ -359,6 +348,7 @@ fn compare_with_trait_2() {
 
     impl A for u8 {
         fn cmp(&self, b: &u8) -> Ordering {
+            #[allow(clippy::comparison_chain)]
             if self > b {
                 Ordering::Less
             } else if self < b {
@@ -429,13 +419,7 @@ fn compare_with_trait_3() {
 
     impl A for u8 {
         fn compare(&self, b: &u8) -> Ordering {
-            if self > b {
-                Ordering::Less
-            } else if self < b {
-                Ordering::Greater
-            } else {
-                Ordering::Equal
-            }
+            b.cmp(self)
         }
     }
 
@@ -499,13 +483,7 @@ fn compare_with_trait_4() {
 
     impl A for u8 {
         fn compare(&self, b: &u8) -> Ordering {
-            if self > b {
-                Ordering::Less
-            } else if self < b {
-                Ordering::Greater
-            } else {
-                Ordering::Equal
-            }
+            b.cmp(self)
         }
     }
 

@@ -1,9 +1,10 @@
 use super::super::super::create_path_string_from_lit_str;
 
 use crate::panic;
-use crate::quote::ToTokens;
-use crate::syn::{Attribute, Lit, Meta, NestedMeta};
 use crate::Trait;
+
+use quote::ToTokens;
+use syn::{Attribute, Lit, Meta, NestedMeta};
 
 #[derive(Debug, Clone)]
 pub struct FieldAttribute {
@@ -19,6 +20,7 @@ pub struct FieldAttributeBuilder {
 }
 
 impl FieldAttributeBuilder {
+    #[allow(clippy::wrong_self_convention)]
     pub fn from_hash_meta(&self, meta: &Meta) -> FieldAttribute {
         let mut ignore = false;
 

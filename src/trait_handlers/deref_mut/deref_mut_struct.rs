@@ -4,9 +4,11 @@ use super::super::TraitHandler;
 use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
 
 use crate::panic;
-use crate::proc_macro2::TokenStream;
-use crate::syn::{Data, DeriveInput, Meta};
 use crate::Trait;
+
+use proc_macro2::TokenStream;
+use quote::quote;
+use syn::{Data, DeriveInput, Meta};
 
 pub struct DerefMutStructHandler;
 

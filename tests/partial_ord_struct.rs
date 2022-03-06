@@ -141,13 +141,7 @@ fn ignore() {
 #[test]
 fn compare_without_trait_1() {
     fn partial_cmp(a: &u8, b: &u8) -> Option<Ordering> {
-        if a > b {
-            Some(Ordering::Less)
-        } else if a < b {
-            Some(Ordering::Greater)
-        } else {
-            Some(Ordering::Equal)
-        }
+        b.partial_cmp(a)
     }
 
     #[derive(Educe)]
@@ -206,13 +200,7 @@ fn compare_without_trait_1() {
 #[test]
 fn compare_without_trait_2() {
     fn partial_cmp(a: &u8, b: &u8) -> Option<Ordering> {
-        if a > b {
-            Some(Ordering::Less)
-        } else if a < b {
-            Some(Ordering::Greater)
-        } else {
-            Some(Ordering::Equal)
-        }
+        b.partial_cmp(a)
     }
 
     #[derive(Educe)]
@@ -276,6 +264,7 @@ fn compare_with_trait_1() {
 
     impl A for u8 {
         fn partial_cmp(&self, b: &u8) -> Option<Ordering> {
+            #[allow(clippy::comparison_chain)]
             if self > b {
                 Some(Ordering::Less)
             } else if self < b {
@@ -347,6 +336,7 @@ fn compare_with_trait_2() {
 
     impl A for u8 {
         fn partial_cmp(&self, b: &u8) -> Option<Ordering> {
+            #[allow(clippy::comparison_chain)]
             if self > b {
                 Some(Ordering::Less)
             } else if self < b {
@@ -418,13 +408,7 @@ fn compare_with_trait_3() {
 
     impl A for u8 {
         fn compare(&self, b: &u8) -> Option<Ordering> {
-            if self > b {
-                Some(Ordering::Less)
-            } else if self < b {
-                Some(Ordering::Greater)
-            } else {
-                Some(Ordering::Equal)
-            }
+            b.partial_cmp(self)
         }
     }
 
@@ -489,13 +473,7 @@ fn compare_with_trait_4() {
 
     impl A for u8 {
         fn compare(&self, b: &u8) -> Option<Ordering> {
-            if self > b {
-                Some(Ordering::Less)
-            } else if self < b {
-                Some(Ordering::Greater)
-            } else {
-                Some(Ordering::Equal)
-            }
+            b.partial_cmp(self)
         }
     }
 

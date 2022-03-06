@@ -3,9 +3,11 @@ use super::models::{
     FieldAttributeBuilder, FieldAttributeName, TypeAttributeBuilder, TypeAttributeName,
 };
 
-use crate::proc_macro2::TokenStream;
-use crate::syn::{Data, DeriveInput, Generics, Meta};
 use crate::Trait;
+
+use proc_macro2::TokenStream;
+use quote::quote;
+use syn::{Data, DeriveInput, Generics, Meta};
 
 pub struct DebugUnionHandler;
 

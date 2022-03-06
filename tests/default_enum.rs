@@ -6,10 +6,9 @@ extern crate alloc;
 #[macro_use]
 extern crate educe;
 
-#[macro_use]
-extern crate assert_approx_eq;
-
 use alloc::string::String;
+
+use assert_approx_eq::assert_approx_eq;
 
 #[test]
 #[allow(irrefutable_let_patterns, dead_code)]
@@ -20,11 +19,7 @@ fn basic() {
         Unit,
     }
 
-    assert!(if let Enum::Unit = Enum::default() {
-        true
-    } else {
-        false
-    });
+    assert!(matches!(Enum::default(), Enum::Unit));
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -33,11 +28,7 @@ fn basic() {
         Unit,
     }
 
-    assert!(if let Enum2::Unit = Enum2::default() {
-        true
-    } else {
-        false
-    });
+    assert!(matches!(Enum2::default(), Enum2::Unit));
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -47,11 +38,7 @@ fn basic() {
         Unit2,
     }
 
-    assert!(if let Enum3::Unit2 = Enum3::default() {
-        true
-    } else {
-        false
-    });
+    assert!(matches!(Enum3::default(), Enum3::Unit2));
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -64,14 +51,9 @@ fn basic() {
         Tuple(u8),
     }
 
-    assert!(if let Enum4::Struct {
+    assert!(matches!(Enum4::default(), Enum4::Struct {
         f1: 0,
-    } = Enum4::default()
-    {
-        true
-    } else {
-        false
-    });
+    }));
 }
 
 #[test]
@@ -180,7 +162,7 @@ fn field_default_1() {
         assert_eq!(1, f1);
         assert_eq!(11111111111111111111111111111, f2);
         assert_approx_eq!(1.1, f3);
-        assert_eq!(true, f4);
+        assert!(f4);
         assert_eq!("Hi", f5);
         assert_eq!("Hello", f6);
         assert_eq!('M', f7);
@@ -192,7 +174,7 @@ fn field_default_1() {
         assert_eq!(1, f1);
         assert_eq!(11111111111111111111111111111, f2);
         assert_approx_eq!(1.1, f3);
-        assert_eq!(true, f4);
+        assert!(f4);
         assert_eq!("Hi", f5);
         assert_eq!("Hello", f6);
         assert_eq!('M', f7);
@@ -257,7 +239,7 @@ fn field_default_2() {
         assert_eq!(1, f1);
         assert_eq!(11111111111111111111111111111, f2);
         assert_approx_eq!(1.1, f3);
-        assert_eq!(true, f4);
+        assert!(f4);
         assert_eq!("Hi", f5);
         assert_eq!("Hello", f6);
         assert_eq!('M', f7);
@@ -269,7 +251,7 @@ fn field_default_2() {
         assert_eq!(1, f1);
         assert_eq!(11111111111111111111111111111, f2);
         assert_approx_eq!(1.1, f3);
-        assert_eq!(true, f4);
+        assert!(f4);
         assert_eq!("Hi", f5);
         assert_eq!("Hello", f6);
         assert_eq!('M', f7);
@@ -334,7 +316,7 @@ fn field_default_3() {
         assert_eq!(1, f1);
         assert_eq!(11111111111111111111111111111, f2);
         assert_approx_eq!(1.1, f3);
-        assert_eq!(true, f4);
+        assert!(f4);
         assert_eq!("Hi", f5);
         assert_eq!("Hello", f6);
         assert_eq!('M', f7);
@@ -346,7 +328,7 @@ fn field_default_3() {
         assert_eq!(1, f1);
         assert_eq!(11111111111111111111111111111, f2);
         assert_approx_eq!(1.1, f3);
-        assert_eq!(true, f4);
+        assert!(f4);
         assert_eq!("Hi", f5);
         assert_eq!("Hello", f6);
         assert_eq!('M', f7);
@@ -411,7 +393,7 @@ fn field_default_4() {
         assert_eq!(1, f1);
         assert_eq!(11111111111111111111111111111, f2);
         assert_approx_eq!(1.1, f3);
-        assert_eq!(true, f4);
+        assert!(f4);
         assert_eq!("Hi", f5);
         assert_eq!("Hello", f6);
         assert_eq!('M', f7);
@@ -423,7 +405,7 @@ fn field_default_4() {
         assert_eq!(1, f1);
         assert_eq!(11111111111111111111111111111, f2);
         assert_approx_eq!(1.1, f3);
-        assert_eq!(true, f4);
+        assert!(f4);
         assert_eq!("Hi", f5);
         assert_eq!("Hello", f6);
         assert_eq!('M', f7);
@@ -446,14 +428,9 @@ fn bound_1() {
         Tuple(T),
     }
 
-    assert!(if let Enum::Struct {
+    assert!(matches!(Enum::default(), Enum::Struct {
         f1: 0,
-    } = Enum::default()
-    {
-        true
-    } else {
-        false
-    });
+    }));
 }
 
 #[test]
@@ -470,14 +447,9 @@ fn bound_2() {
         Tuple(T),
     }
 
-    assert!(if let Enum::Struct {
+    assert!(matches!(Enum::default(), Enum::Struct {
         f1: 0,
-    } = Enum::default()
-    {
-        true
-    } else {
-        false
-    });
+    }));
 }
 
 #[test]
@@ -494,14 +466,9 @@ fn bound_3() {
         Tuple(T),
     }
 
-    assert!(if let Enum::Struct {
+    assert!(matches!(Enum::default(), Enum::Struct {
         f1: 0,
-    } = Enum::default()
-    {
-        true
-    } else {
-        false
-    });
+    }));
 }
 
 #[test]
@@ -518,12 +485,7 @@ fn new() {
         Tuple(u8),
     }
 
-    assert!(if let Enum::Struct {
+    assert!(matches!(Enum::new(), Enum::Struct {
         f1: 0,
-    } = Enum::new()
-    {
-        true
-    } else {
-        false
-    });
+    }));
 }

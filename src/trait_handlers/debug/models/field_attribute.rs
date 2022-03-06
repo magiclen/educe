@@ -1,9 +1,10 @@
 use super::super::super::create_path_string_from_lit_str;
 
 use crate::panic;
-use crate::quote::ToTokens;
-use crate::syn::{Attribute, Lit, Meta, NestedMeta};
 use crate::Trait;
+
+use quote::ToTokens;
+use syn::{Attribute, Lit, Meta, NestedMeta};
 
 #[derive(Debug, Clone)]
 pub enum FieldAttributeName {
@@ -37,6 +38,7 @@ pub struct FieldAttributeBuilder {
 }
 
 impl FieldAttributeBuilder {
+    #[allow(clippy::wrong_self_convention)]
     pub fn from_debug_meta(&self, meta: &Meta) -> FieldAttribute {
         let mut name = self.name.clone();
 

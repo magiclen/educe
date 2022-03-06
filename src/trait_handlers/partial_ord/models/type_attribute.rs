@@ -3,12 +3,13 @@ use super::super::super::{
 };
 
 use crate::panic;
-use crate::quote::ToTokens;
-use crate::syn::{
+use crate::Trait;
+
+use quote::{quote, ToTokens};
+use syn::{
     punctuated::Punctuated, token::Comma, Attribute, GenericParam, Lit, Meta, NestedMeta,
     WherePredicate,
 };
-use crate::Trait;
 
 #[derive(Clone)]
 pub enum TypeAttributeBound {
@@ -51,6 +52,7 @@ pub struct TypeAttributeBuilder {
 }
 
 impl TypeAttributeBuilder {
+    #[allow(clippy::wrong_self_convention)]
     pub fn from_partial_ord_meta(&self, meta: &Meta) -> TypeAttribute {
         let mut flag = false;
         let mut bound = TypeAttributeBound::None;

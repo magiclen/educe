@@ -3,8 +3,9 @@ use super::super::super::{
 };
 
 use crate::panic;
-use crate::quote::ToTokens;
-use crate::syn::{
+
+use quote::{quote, ToTokens};
+use syn::{
     punctuated::Punctuated, token::Comma, GenericParam, Lit, Meta, NestedMeta, WherePredicate,
 };
 
@@ -44,6 +45,7 @@ pub struct TypeAttributeBuilder {
 }
 
 impl TypeAttributeBuilder {
+    #[allow(clippy::wrong_self_convention)]
     pub fn from_eq_meta(&self, meta: &Meta) -> TypeAttribute {
         let mut bound = TypeAttributeBound::None;
 

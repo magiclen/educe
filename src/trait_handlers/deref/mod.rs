@@ -6,9 +6,10 @@ mod deref_struct;
 use super::TraitHandler;
 
 use crate::panic;
-use crate::proc_macro2::TokenStream;
-use crate::syn::{Data, DeriveInput, Meta};
 use crate::Trait;
+
+use proc_macro2::TokenStream;
+use syn::{Data, DeriveInput, Meta};
 
 use deref_enum::DerefEnumHandler;
 use deref_struct::DerefStructHandler;

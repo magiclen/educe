@@ -6,10 +6,9 @@ extern crate alloc;
 #[macro_use]
 extern crate educe;
 
-#[macro_use]
-extern crate assert_approx_eq;
-
 use alloc::string::String;
+
+use assert_approx_eq::assert_approx_eq;
 
 #[test]
 #[allow(irrefutable_let_patterns)]
@@ -28,11 +27,7 @@ fn basic() {
     #[educe(Default)]
     struct Tuple(u8);
 
-    assert!(if let Unit = Unit::default() {
-        true
-    } else {
-        false
-    });
+    assert!(matches!(Unit::default(), Unit));
 
     assert_eq!(0, Struct::default().f1);
     assert_eq!(0, Tuple::default().0);
@@ -55,11 +50,7 @@ fn type_default_1() {
     #[educe(Default(expression = "Tuple(1)"))]
     struct Tuple(u8);
 
-    assert!(if let Unit = Unit::default() {
-        true
-    } else {
-        false
-    });
+    assert!(matches!(Unit::default(), Unit));
 
     assert_eq!(1, Struct::default().f1);
     assert_eq!(1, Tuple::default().0);
@@ -82,11 +73,7 @@ fn type_default_2() {
     #[educe(Default(expression("Tuple(1)")))]
     struct Tuple(u8);
 
-    assert!(if let Unit = Unit::default() {
-        true
-    } else {
-        false
-    });
+    assert!(matches!(Unit::default(), Unit));
 
     assert_eq!(1, Struct::default().f1);
     assert_eq!(1, Tuple::default().0);
@@ -131,7 +118,7 @@ fn field_default_1() {
     assert_eq!(1, s.f1);
     assert_eq!(11111111111111111111111111111, s.f2);
     assert_approx_eq!(1.1, s.f3);
-    assert_eq!(true, s.f4);
+    assert!(s.f4);
     assert_eq!("Hi", s.f5);
     assert_eq!("Hello", s.f6);
     assert_eq!('M', s.f7);
@@ -139,7 +126,7 @@ fn field_default_1() {
     assert_eq!(1, t.0);
     assert_eq!(11111111111111111111111111111, t.1);
     assert_approx_eq!(1.1, t.2);
-    assert_eq!(true, t.3);
+    assert!(t.3);
     assert_eq!("Hi", t.4);
     assert_eq!("Hello", t.5);
     assert_eq!('M', t.6);
@@ -184,7 +171,7 @@ fn field_default_2() {
     assert_eq!(1, s.f1);
     assert_eq!(11111111111111111111111111111, s.f2);
     assert_approx_eq!(1.1, s.f3);
-    assert_eq!(true, s.f4);
+    assert!(s.f4);
     assert_eq!("Hi", s.f5);
     assert_eq!("Hello", s.f6);
     assert_eq!('M', s.f7);
@@ -192,7 +179,7 @@ fn field_default_2() {
     assert_eq!(1, t.0);
     assert_eq!(11111111111111111111111111111, t.1);
     assert_approx_eq!(1.1, t.2);
-    assert_eq!(true, t.3);
+    assert!(t.3);
     assert_eq!("Hi", t.4);
     assert_eq!("Hello", t.5);
     assert_eq!('M', t.6);
@@ -237,7 +224,7 @@ fn field_default_3() {
     assert_eq!(1, s.f1);
     assert_eq!(11111111111111111111111111111, s.f2);
     assert_approx_eq!(1.1, s.f3);
-    assert_eq!(true, s.f4);
+    assert!(s.f4);
     assert_eq!("Hi", s.f5);
     assert_eq!("Hello", s.f6);
     assert_eq!('M', s.f7);
@@ -245,7 +232,7 @@ fn field_default_3() {
     assert_eq!(1, t.0);
     assert_eq!(11111111111111111111111111111, t.1);
     assert_approx_eq!(1.1, t.2);
-    assert_eq!(true, t.3);
+    assert!(t.3);
     assert_eq!("Hi", t.4);
     assert_eq!("Hello", t.5);
     assert_eq!('M', t.6);
@@ -290,7 +277,7 @@ fn field_default_4() {
     assert_eq!(1, s.f1);
     assert_eq!(11111111111111111111111111111, s.f2);
     assert_approx_eq!(1.1, s.f3);
-    assert_eq!(true, s.f4);
+    assert!(s.f4);
     assert_eq!("Hi", s.f5);
     assert_eq!("Hello", s.f6);
     assert_eq!('M', s.f7);
@@ -298,7 +285,7 @@ fn field_default_4() {
     assert_eq!(1, t.0);
     assert_eq!(11111111111111111111111111111, t.1);
     assert_approx_eq!(1.1, t.2);
-    assert_eq!(true, t.3);
+    assert!(t.3);
     assert_eq!("Hi", t.4);
     assert_eq!("Hello", t.5);
     assert_eq!('M', t.6);
@@ -369,11 +356,7 @@ fn new() {
     #[educe(Default(new))]
     struct Tuple(u8);
 
-    assert!(if let Unit = Unit::new() {
-        true
-    } else {
-        false
-    });
+    assert!(matches!(Unit::new(), Unit));
 
     assert_eq!(0, Struct::new().f1);
     assert_eq!(0, Tuple::new().0);

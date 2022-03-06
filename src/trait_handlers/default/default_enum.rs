@@ -5,10 +5,11 @@ use super::super::TraitHandler;
 use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
 
 use crate::panic;
-use crate::proc_macro2::TokenStream;
-use crate::quote::ToTokens;
-use crate::syn::{Data, DeriveInput, Fields, Generics, Lit, Meta};
 use crate::Trait;
+
+use proc_macro2::TokenStream;
+use quote::{quote, ToTokens};
+use syn::{Data, DeriveInput, Fields, Generics, Lit, Meta};
 
 pub struct DefaultEnumHandler;
 
@@ -158,7 +159,7 @@ impl TraitHandler for DefaultEnumHandler {
                                                 enum_tokens
                                                     .write_fmt(format_args!(
                                                         "core::convert::Into::into({s})",
-                                                        s = s.into_token_stream().to_string()
+                                                        s = s.into_token_stream()
                                                     ))
                                                     .unwrap();
                                             }
@@ -211,7 +212,7 @@ impl TraitHandler for DefaultEnumHandler {
                                                 enum_tokens
                                                     .write_fmt(format_args!(
                                                         "core::convert::Into::into({s})",
-                                                        s = s.into_token_stream().to_string()
+                                                        s = s.into_token_stream()
                                                     ))
                                                     .unwrap();
                                             }

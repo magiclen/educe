@@ -2,9 +2,11 @@ mod models;
 
 use super::TraitHandler;
 
-use crate::proc_macro2::TokenStream;
-use crate::syn::{DeriveInput, Generics, Meta};
 use crate::Trait;
+
+use proc_macro2::TokenStream;
+use quote::quote;
+use syn::{DeriveInput, Generics, Meta};
 
 use models::TypeAttributeBuilder;
 

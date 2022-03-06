@@ -25,13 +25,14 @@ pub mod partial_ord;
 
 use std::str::FromStr;
 
-use crate::proc_macro2::TokenStream;
-use crate::quote::ToTokens;
-use crate::syn::{
+use crate::Trait;
+
+use proc_macro2::TokenStream;
+use quote::{quote, ToTokens};
+use syn::{
     self, punctuated::Punctuated, token::Comma, DeriveInput, Expr, GenericParam, LitStr, Meta,
     Path, WhereClause, WherePredicate,
 };
-use crate::Trait;
 
 pub trait TraitHandler {
     fn trait_meta_handler(
@@ -59,7 +60,7 @@ pub fn create_path_from_lit_str(s: &LitStr) -> Option<Path> {
 
 #[inline]
 pub fn create_path_string_from_lit_str(s: &LitStr) -> Option<String> {
-    create_path_from_lit_str(s).map(|path| path.into_token_stream().to_string().replace(" ", ""))
+    create_path_from_lit_str(s).map(|path| path.into_token_stream().to_string().replace(' ', ""))
 }
 
 #[inline]
@@ -79,7 +80,7 @@ pub fn create_expr_from_lit_str(s: &LitStr) -> Option<Expr> {
 
 #[inline]
 pub fn create_expr_string_from_lit_str(s: &LitStr) -> Option<String> {
-    create_expr_from_lit_str(s).map(|expr| expr.into_token_stream().to_string().replace(" ", ""))
+    create_expr_from_lit_str(s).map(|expr| expr.into_token_stream().to_string().replace(' ', ""))
 }
 
 #[inline]

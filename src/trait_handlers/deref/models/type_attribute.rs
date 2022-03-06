@@ -1,7 +1,8 @@
 use crate::panic;
-use crate::quote::ToTokens;
-use crate::syn::{Attribute, Meta, NestedMeta};
 use crate::Trait;
+
+use quote::ToTokens;
+use syn::{Attribute, Meta, NestedMeta};
 
 #[derive(Clone)]
 pub struct TypeAttribute {
@@ -14,6 +15,7 @@ pub struct TypeAttributeBuilder {
 }
 
 impl TypeAttributeBuilder {
+    #[allow(clippy::wrong_self_convention)]
     pub fn from_deref_meta(&self, meta: &Meta) -> TypeAttribute {
         let flag;
 

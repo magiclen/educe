@@ -4,9 +4,11 @@ use std::str::FromStr;
 use super::super::TraitHandler;
 use super::models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder};
 
-use crate::proc_macro2::TokenStream;
-use crate::syn::{punctuated::Punctuated, Data, DeriveInput, Fields, Generics, Meta};
 use crate::Trait;
+
+use proc_macro2::TokenStream;
+use quote::quote;
+use syn::{punctuated::Punctuated, Data, DeriveInput, Fields, Generics, Meta};
 
 pub struct CloneEnumHandler;
 

@@ -4,8 +4,7 @@
 #[macro_use]
 extern crate educe;
 
-#[macro_use]
-extern crate assert_approx_eq;
+use assert_approx_eq::assert_approx_eq;
 
 #[test]
 #[allow(dead_code)]
@@ -121,7 +120,7 @@ fn field_default_1() {
         f6: char,
     }
 
-    assert_eq!(true, unsafe { Union4::default().f4 });
+    assert!(unsafe { Union4::default().f4 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -209,7 +208,7 @@ fn field_default_2() {
         f6: char,
     }
 
-    assert_eq!(true, unsafe { Union4::default().f4 });
+    assert!(unsafe { Union4::default().f4 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -297,7 +296,7 @@ fn field_default_3() {
         f6: char,
     }
 
-    assert_eq!(true, unsafe { Union4::default().f4 });
+    assert!(unsafe { Union4::default().f4 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -385,7 +384,7 @@ fn field_default_4() {
         f6: char,
     }
 
-    assert_eq!(true, unsafe { Union4::default().f4 });
+    assert!(unsafe { Union4::default().f4 });
 
     #[derive(Educe)]
     #[educe(Default)]

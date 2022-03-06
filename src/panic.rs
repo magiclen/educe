@@ -205,20 +205,20 @@ fn concat_string_slice_array(array: &[&str]) -> String {
         let first = iter.next().unwrap();
 
         string.push('`');
-        string.push_str(&first.replace("\n", ""));
+        string.push_str(&first.replace('\n', ""));
         string.push('`');
 
         if len > 2 {
             for s in iter.take(len - 2) {
                 string.push_str(", `");
-                string.push_str(&s.replace("\n", ""));
+                string.push_str(&s.replace('\n', ""));
                 string.push('`');
             }
         }
 
         if len > 1 {
             string.push_str(", or `");
-            string.push_str(&array[len - 1].replace("\n", ""));
+            string.push_str(&array[len - 1].replace('\n', ""));
             string.push('`');
         }
 

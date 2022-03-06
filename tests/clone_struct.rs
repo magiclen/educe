@@ -29,11 +29,7 @@ fn basic() {
     .clone();
     let t = Tuple(1).clone();
 
-    assert!(if let Unit = u {
-        true
-    } else {
-        false
-    });
+    assert!(matches!(u, Unit));
 
     assert_eq!(1, s.f1);
     assert_eq!(1, t.0);
