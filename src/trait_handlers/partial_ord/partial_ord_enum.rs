@@ -55,7 +55,7 @@ impl TraitHandler for PartialOrdEnumHandler {
                 let variant_attribute = TypeAttributeBuilder {
                     enable_flag: false,
                     enable_bound: false,
-                    rank: isize::min_value() + index as isize,
+                    rank: isize::MIN + index as isize,
                     enable_rank: true,
                 }
                 .from_attributes(&variant.attrs, traits);
@@ -152,7 +152,7 @@ impl TraitHandler for PartialOrdEnumHandler {
                                 let field_attribute = FieldAttributeBuilder {
                                     enable_ignore: true,
                                     enable_impl: true,
-                                    rank: isize::min_value() + index as isize,
+                                    rank: isize::MIN + index as isize,
                                     enable_rank: true,
                                 }
                                 .from_attributes(&field.attrs, traits);
@@ -238,7 +238,7 @@ impl TraitHandler for PartialOrdEnumHandler {
                                 let field_attribute = FieldAttributeBuilder {
                                     enable_ignore: true,
                                     enable_impl: true,
-                                    rank: isize::min_value() + index as isize,
+                                    rank: isize::MIN + index as isize,
                                     enable_rank: true,
                                 }
                                 .from_attributes(&field.attrs, traits);
