@@ -16,8 +16,6 @@ pub struct TypeAttributeBuilder {
 impl TypeAttributeBuilder {
     #[allow(clippy::wrong_self_convention)]
     pub fn from_deref_mut_meta(&self, meta: &Meta) -> TypeAttribute {
-        let flag;
-
         let correct_usage_for_deref_mut_attribute = {
             let mut usage = vec![];
 
@@ -44,13 +42,11 @@ impl TypeAttributeBuilder {
                         &correct_usage_for_deref_mut_attribute,
                     );
                 }
-
-                flag = true;
             },
         }
 
         TypeAttribute {
-            flag,
+            flag: true
         }
     }
 

@@ -16,8 +16,6 @@ pub struct FieldAttributeBuilder {
 impl FieldAttributeBuilder {
     #[allow(clippy::wrong_self_convention)]
     pub fn from_deref_mut_meta(&self, meta: &Meta) -> FieldAttribute {
-        let flag;
-
         let correct_usage_for_deref_mut_attribute = {
             let mut usage = vec![];
 
@@ -45,12 +43,12 @@ impl FieldAttributeBuilder {
                     );
                 }
 
-                flag = true;
+                true
             },
-        }
+        };
 
         FieldAttribute {
-            flag,
+            flag: true
         }
     }
 
