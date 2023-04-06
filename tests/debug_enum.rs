@@ -15,9 +15,7 @@ fn name_1() {
     #[educe(Debug)]
     enum Enum {
         Unit,
-        Struct {
-            f1: u8,
-        },
+        Struct { f1: u8 },
         Tuple(u8),
     }
 
@@ -38,9 +36,7 @@ fn name_2() {
     #[educe(Debug = "Hi")]
     enum Enum {
         Unit,
-        Struct {
-            f1: u8,
-        },
+        Struct { f1: u8 },
         Tuple(u8),
     }
 
@@ -61,9 +57,7 @@ fn name_3() {
     #[educe(Debug("Hi"))]
     enum Enum {
         Unit,
-        Struct {
-            f1: u8,
-        },
+        Struct { f1: u8 },
         Tuple(u8),
     }
 
@@ -84,9 +78,7 @@ fn name_4() {
     #[educe(Debug(name = "Hi"))]
     enum Enum {
         Unit,
-        Struct {
-            f1: u8,
-        },
+        Struct { f1: u8 },
         Tuple(u8),
     }
 
@@ -107,9 +99,7 @@ fn name_5() {
     #[educe(Debug(name("Hi")))]
     enum Enum {
         Unit,
-        Struct {
-            f1: u8,
-        },
+        Struct { f1: u8 },
         Tuple(u8),
     }
 
@@ -130,9 +120,7 @@ fn name_7() {
     #[educe(Debug(name = true))]
     enum Enum {
         Unit,
-        Struct {
-            f1: u8,
-        },
+        Struct { f1: u8 },
         Tuple(u8),
     }
 
@@ -153,9 +141,7 @@ fn name_8() {
     #[educe(Debug(name(true)))]
     enum Enum {
         Unit,
-        Struct {
-            f1: u8,
-        },
+        Struct { f1: u8 },
         Tuple(u8),
     }
 
@@ -178,9 +164,7 @@ fn unnamed_variant_1() {
         #[educe(Debug(name = false))]
         Unit,
         #[educe(Debug(name = false))]
-        Struct {
-            f1: u8,
-        },
+        Struct { f1: u8 },
         #[educe(Debug(name = false))]
         Tuple(u8),
     }
@@ -204,9 +188,7 @@ fn unnamed_variant_2() {
         #[educe(Debug(name(false)))]
         Unit,
         #[educe(Debug(name(false)))]
-        Struct {
-            f1: u8,
-        },
+        Struct { f1: u8 },
         #[educe(Debug(name(false)))]
         Tuple(u8),
     }
@@ -230,9 +212,7 @@ fn unnamed_variant_3() {
         #[educe(Debug(name = ""))]
         Unit,
         #[educe(Debug(name = ""))]
-        Struct {
-            f1: u8,
-        },
+        Struct { f1: u8 },
         #[educe(Debug(name = ""))]
         Tuple(u8),
     }
@@ -256,9 +236,7 @@ fn unnamed_variant_4() {
         #[educe(Debug(name("")))]
         Unit,
         #[educe(Debug(name("")))]
-        Struct {
-            f1: u8,
-        },
+        Struct { f1: u8 },
         #[educe(Debug(name("")))]
         Tuple(u8),
     }
@@ -282,9 +260,7 @@ fn unnamed_variant_5() {
         #[educe(Debug = "")]
         Unit,
         #[educe(Debug = "")]
-        Struct {
-            f1: u8,
-        },
+        Struct { f1: u8 },
         #[educe(Debug = "")]
         Tuple(u8),
     }
@@ -308,9 +284,7 @@ fn unnamed_variant_6() {
         #[educe(Debug(""))]
         Unit,
         #[educe(Debug(""))]
-        Struct {
-            f1: u8,
-        },
+        Struct { f1: u8 },
         #[educe(Debug(""))]
         Tuple(u8),
     }
@@ -332,9 +306,7 @@ fn named_field_1() {
     #[educe(Debug)]
     enum Enum {
         #[educe(Debug(named_field = false))]
-        Struct {
-            f1: u8,
-        },
+        Struct { f1: u8 },
         #[educe(Debug(named_field = true))]
         Tuple(u8),
     }
@@ -355,9 +327,7 @@ fn named_field_2() {
     #[educe(Debug)]
     enum Enum {
         #[educe(Debug(named_field(false)))]
-        Struct {
-            f1: u8,
-        },
+        Struct { f1: u8 },
         #[educe(Debug(named_field(true)))]
         Tuple(u8),
     }
@@ -444,9 +414,7 @@ fn rename_variant_1() {
         #[educe(Debug = "Hi")]
         Unit,
         #[educe(Debug = "Hi")]
-        Struct {
-            f1: u8,
-        },
+        Struct { f1: u8 },
         #[educe(Debug = "Hi")]
         Tuple(u8),
     }
@@ -470,9 +438,7 @@ fn rename_variant_2() {
         #[educe(Debug("Hi"))]
         Unit,
         #[educe(Debug("Hi"))]
-        Struct {
-            f1: u8,
-        },
+        Struct { f1: u8 },
         #[educe(Debug("Hi"))]
         Tuple(u8),
     }
@@ -496,9 +462,7 @@ fn rename_variant_3() {
         #[educe(Debug(name = "Hi"))]
         Unit,
         #[educe(Debug(name = "Hi"))]
-        Struct {
-            f1: u8,
-        },
+        Struct { f1: u8 },
         #[educe(Debug(name = "Hi"))]
         Tuple(u8),
     }
@@ -522,9 +486,7 @@ fn rename_variant_4() {
         #[educe(Debug(name("Hi")))]
         Unit,
         #[educe(Debug(name("Hi")))]
-        Struct {
-            f1: u8,
-        },
+        Struct { f1: u8 },
         #[educe(Debug(name("Hi")))]
         Tuple(u8),
     }
@@ -548,9 +510,7 @@ fn rename_variant_5() {
         #[educe(Debug(name("Hi")))]
         Unit,
         #[educe(Debug(name("Hi")))]
-        Struct {
-            f1: u8,
-        },
+        Struct { f1: u8 },
         #[educe(Debug(name("Hi")))]
         Tuple(u8),
     }
@@ -574,9 +534,7 @@ fn rename_variant_6() {
         #[educe(Debug(name("::Hi")))]
         Unit,
         #[educe(Debug(name("::Hi")))]
-        Struct {
-            f1: u8,
-        },
+        Struct { f1: u8 },
         #[educe(Debug(name("::Hi")))]
         Tuple(u8),
     }
@@ -700,8 +658,7 @@ fn ignore_1() {
     assert_eq!(
         "Struct { f2: 2 }",
         format!("{:?}", Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         })
     );
     assert_eq!("Tuple(2)", format!("{:?}", Enum::Tuple(1, 2)));
@@ -724,8 +681,7 @@ fn ignore_2() {
     assert_eq!(
         "Struct { f2: 2 }",
         format!("{:?}", Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         })
     );
     assert_eq!("Tuple(2)", format!("{:?}", Enum::Tuple(1, 2)));
@@ -748,8 +704,7 @@ fn ignore_3() {
     assert_eq!(
         "Struct { f2: 2 }",
         format!("{:?}", Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         })
     );
     assert_eq!("Tuple(2)", format!("{:?}", Enum::Tuple(1, 2)));
@@ -946,9 +901,7 @@ fn bound_1() {
     #[educe(Debug(bound))]
     enum Enum<T> {
         Unit,
-        Struct {
-            f1: T,
-        },
+        Struct { f1: T },
         Tuple(T),
     }
 
@@ -969,9 +922,7 @@ fn bound_2() {
     #[educe(Debug(bound = "T: core::fmt::Debug"))]
     enum Enum<T> {
         Unit,
-        Struct {
-            f1: T,
-        },
+        Struct { f1: T },
         Tuple(T),
     }
 
@@ -992,9 +943,7 @@ fn bound_3() {
     #[educe(Debug(bound("T: core::fmt::Debug")))]
     enum Enum<T> {
         Unit,
-        Struct {
-            f1: T,
-        },
+        Struct { f1: T },
         Tuple(T),
     }
 

@@ -1521,9 +1521,8 @@ use std::collections::BTreeMap;
 
 use proc_macro2::TokenStream;
 use quote::ToTokens;
-use syn::{DeriveInput, Meta, NestedMeta};
-
 use support_traits::Trait;
+use syn::{DeriveInput, Meta, NestedMeta};
 use trait_handlers::TraitHandler;
 
 fn derive_input_handler(ast: DeriveInput) -> TokenStream {
@@ -1549,16 +1548,16 @@ fn derive_input_handler(ast: DeriveInput) -> TokenStream {
                                     }
 
                                     trait_meta_map.insert(t, meta);
-                                }
+                                },
                                 NestedMeta::Lit(_) => {
                                     panic::educe_format_incorrect();
-                                }
+                                },
                             }
                         }
-                    }
+                    },
                     _ => {
                         panic::educe_format_incorrect();
-                    }
+                    },
                 }
             }
         }

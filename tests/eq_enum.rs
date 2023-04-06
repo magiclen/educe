@@ -12,9 +12,7 @@ fn basic() {
     enum Enum {
         Unit,
         Unit2,
-        Struct {
-            f1: u8,
-        },
+        Struct { f1: u8 },
         Tuple(u8),
     }
 
@@ -47,9 +45,7 @@ fn bound_1() {
     #[educe(PartialEq(bound), Eq(bound))]
     enum Enum<T> {
         Unit,
-        Struct {
-            f1: T,
-        },
+        Struct { f1: T },
         Tuple(T),
     }
 
@@ -81,9 +77,7 @@ fn bound_2() {
     #[educe(PartialEq(bound), Eq(bound = "T: core::cmp::Eq"))]
     enum Enum<T> {
         Unit,
-        Struct {
-            f1: T,
-        },
+        Struct { f1: T },
         Tuple(T),
     }
 
@@ -115,9 +109,7 @@ fn bound_3() {
     #[educe(PartialEq(bound), Eq(bound("T: core::cmp::Eq")))]
     enum Enum<T> {
         Unit,
-        Struct {
-            f1: T,
-        },
+        Struct { f1: T },
         Tuple(T),
     }
 

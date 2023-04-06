@@ -1,17 +1,14 @@
-use std::fmt::Write;
-use std::str::FromStr;
-
-use super::super::TraitHandler;
-use super::models::{
-    FieldAttributeBuilder, FieldAttributeName, TypeAttributeBuilder, TypeAttributeName,
-};
-
-use crate::panic;
-use crate::Trait;
+use std::{fmt::Write, str::FromStr};
 
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::{Data, DeriveInput, Fields, Generics, Meta};
+
+use super::{
+    super::TraitHandler,
+    models::{FieldAttributeBuilder, FieldAttributeName, TypeAttributeBuilder, TypeAttributeName},
+};
+use crate::{panic, Trait};
 
 pub struct DebugEnumHandler;
 
@@ -23,12 +20,12 @@ impl TraitHandler for DebugEnumHandler {
         meta: &Meta,
     ) {
         let type_attribute = TypeAttributeBuilder {
-            enable_flag: true,
-            name: TypeAttributeName::Disable,
-            enable_name: true,
-            named_field: false,
+            enable_flag:        true,
+            name:               TypeAttributeName::Disable,
+            enable_name:        true,
+            named_field:        false,
             enable_named_field: false,
-            enable_bound: true,
+            enable_bound:       true,
         }
         .from_debug_meta(meta);
 
@@ -48,12 +45,12 @@ impl TraitHandler for DebugEnumHandler {
         if let Data::Enum(data) = &ast.data {
             for variant in data.variants.iter() {
                 let type_attribute = TypeAttributeBuilder {
-                    enable_flag: false,
-                    name: TypeAttributeName::Default,
-                    enable_name: true,
-                    named_field: matches!(&variant.fields, Fields::Named(_)),
+                    enable_flag:        false,
+                    name:               TypeAttributeName::Default,
+                    enable_name:        true,
+                    named_field:        matches!(&variant.fields, Fields::Named(_)),
                     enable_named_field: true,
-                    enable_bound: false,
+                    enable_bound:       false,
                 }
                 .from_attributes(&variant.attrs, traits);
 
@@ -72,10 +69,18 @@ impl TraitHandler for DebugEnumHandler {
                             panic::unit_variant_need_name();
                         }
 
-                        match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident} => {{ formatter.write_str({name:?}) }}", enum_name = enum_name, variant_ident = variant_ident, name = name)).unwrap();
+                        match_tokens
+                            .write_fmt(format_args!(
+                                "{enum_name}::{variant_ident} => {{ formatter.write_str({name:?}) \
+                                 }}",
+                                enum_name = enum_name,
+                                variant_ident = variant_ident,
+                                name = name
+                            ))
+                            .unwrap();
 
                         has_variants = true;
-                    }
+                    },
                     Fields::Named(fields) => {
                         // TODO Struct
                         let mut has_fields = false;
@@ -85,15 +90,18 @@ impl TraitHandler for DebugEnumHandler {
 
                         if named_field {
                             if name.is_empty() {
-                                block_tokens.push_str("
+                                block_tokens.push_str(
+                                    "
                                     struct RawString(&'static str);
 
                                     impl core::fmt::Debug for RawString {{
-                                        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {{
+                                        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> \
+                                     core::fmt::Result {{
                                             f.write_str(self.0)
                                         }}
                                     }}
-                                ");
+                                ",
+                                );
 
                                 block_tokens.push_str("let mut builder = formatter.debug_map();");
                             } else {
@@ -107,10 +115,10 @@ impl TraitHandler for DebugEnumHandler {
 
                             for field in fields.named.iter() {
                                 let field_attribute = FieldAttributeBuilder {
-                                    name: FieldAttributeName::Default,
-                                    enable_name: true,
+                                    name:          FieldAttributeName::Default,
+                                    enable_name:   true,
                                     enable_ignore: true,
-                                    enable_impl: true,
+                                    enable_impl:   true,
                                 }
                                 .from_attributes(&field.attrs, traits);
 
@@ -144,19 +152,29 @@ impl TraitHandler for DebugEnumHandler {
                                     Some(format_trait) => {
                                         let format_method = format_method.unwrap();
 
-                                        block_tokens.write_fmt(format_args!("
+                                        block_tokens
+                                            .write_fmt(format_args!(
+                                                "
                                             let arg = {{
                                                 struct MyDebug<'a, T: {format_trait}>(&'a T);
 
-                                                impl<'a, T: {format_trait}> core::fmt::Debug for MyDebug<'a, T> {{
-                                                    fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {{
-                                                        {format_trait}::{format_method}(self.0, formatter)
+                                                impl<'a, T: {format_trait}> core::fmt::Debug for \
+                                                 MyDebug<'a, T> {{
+                                                    fn fmt(&self, formatter: &mut \
+                                                 core::fmt::Formatter) -> core::fmt::Result {{
+                                                        {format_trait}::{format_method}(self.0, \
+                                                 formatter)
                                                     }}
                                                 }}
 
                                                 MyDebug({field_name})
                                             }};
-                                        ", format_trait = format_trait, format_method = format_method, field_name = field_name)).unwrap();
+                                        ",
+                                                format_trait = format_trait,
+                                                format_method = format_method,
+                                                field_name = field_name
+                                            ))
+                                            .unwrap();
 
                                         let statement = if name.is_empty() {
                                             format!(
@@ -168,59 +186,65 @@ impl TraitHandler for DebugEnumHandler {
                                         };
 
                                         block_tokens.push_str(&statement);
-                                    }
-                                    None => {
-                                        match format_method {
-                                            Some(format_method) => {
-                                                let ty = field
-                                                    .ty
-                                                    .clone()
-                                                    .into_token_stream()
-                                                    .to_string();
+                                    },
+                                    None => match format_method {
+                                        Some(format_method) => {
+                                            let ty =
+                                                field.ty.clone().into_token_stream().to_string();
 
-                                                block_tokens.write_fmt(format_args!("
+                                            block_tokens
+                                                .write_fmt(format_args!(
+                                                    "
                                                     let arg = {{
                                                         struct MyDebug<'a>(&'a {ty});
 
-                                                        impl<'a> core::fmt::Debug for MyDebug<'a> {{
-                                                            fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {{
+                                                        impl<'a> core::fmt::Debug for MyDebug<'a> \
+                                                     {{
+                                                            fn fmt(&self, formatter: &mut \
+                                                     core::fmt::Formatter) -> core::fmt::Result {{
                                                                 {format_method}(self.0, formatter)
                                                             }}
                                                         }}
 
                                                         MyDebug({field_name})
                                                     }};
-                                                ", ty = ty, format_method = format_method, field_name = field_name)).unwrap();
+                                                ",
+                                                    ty = ty,
+                                                    format_method = format_method,
+                                                    field_name = field_name
+                                                ))
+                                                .unwrap();
 
-                                                let statement = if name.is_empty() {
-                                                    format!(
-                                                        "builder.entry(&RawString({key:?}), &arg);",
-                                                        key = key
-                                                    )
-                                                } else {
-                                                    format!(
-                                                        "builder.field({key:?}, &arg);",
-                                                        key = key
-                                                    )
-                                                };
+                                            let statement = if name.is_empty() {
+                                                format!(
+                                                    "builder.entry(&RawString({key:?}), &arg);",
+                                                    key = key
+                                                )
+                                            } else {
+                                                format!("builder.field({key:?}, &arg);", key = key)
+                                            };
 
-                                                block_tokens.push_str(&statement);
-                                            }
-                                            None => {
-                                                let statement = if name.is_empty() {
-                                                    format!("builder.entry(&RawString({key:?}), {field_name});", key = key, field_name = field_name)
-                                                } else {
-                                                    format!(
-                                                        "builder.field({key:?}, {field_name});",
-                                                        key = key,
-                                                        field_name = field_name
-                                                    )
-                                                };
+                                            block_tokens.push_str(&statement);
+                                        },
+                                        None => {
+                                            let statement = if name.is_empty() {
+                                                format!(
+                                                    "builder.entry(&RawString({key:?}), \
+                                                     {field_name});",
+                                                    key = key,
+                                                    field_name = field_name
+                                                )
+                                            } else {
+                                                format!(
+                                                    "builder.field({key:?}, {field_name});",
+                                                    key = key,
+                                                    field_name = field_name
+                                                )
+                                            };
 
-                                                block_tokens.push_str(&statement);
-                                            }
-                                        }
-                                    }
+                                            block_tokens.push_str(&statement);
+                                        },
+                                    },
                                 }
 
                                 has_fields = true;
@@ -235,10 +259,10 @@ impl TraitHandler for DebugEnumHandler {
 
                             for field in fields.named.iter() {
                                 let field_attribute = FieldAttributeBuilder {
-                                    name: FieldAttributeName::Default,
-                                    enable_name: false,
+                                    name:          FieldAttributeName::Default,
+                                    enable_name:   false,
                                     enable_ignore: true,
-                                    enable_impl: true,
+                                    enable_impl:   true,
                                 }
                                 .from_attributes(&field.attrs, traits);
 
@@ -268,57 +292,71 @@ impl TraitHandler for DebugEnumHandler {
                                     Some(format_trait) => {
                                         let format_method = format_method.unwrap();
 
-                                        block_tokens.write_fmt(format_args!("
+                                        block_tokens
+                                            .write_fmt(format_args!(
+                                                "
                                             let arg = {{
                                                 struct MyDebug<'a, T: {format_trait}>(&'a T);
 
-                                                impl<'a, T: {format_trait}> core::fmt::Debug for MyDebug<'a, T> {{
-                                                    fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {{
-                                                        {format_trait}::{format_method}(self.0, formatter)
+                                                impl<'a, T: {format_trait}> core::fmt::Debug for \
+                                                 MyDebug<'a, T> {{
+                                                    fn fmt(&self, formatter: &mut \
+                                                 core::fmt::Formatter) -> core::fmt::Result {{
+                                                        {format_trait}::{format_method}(self.0, \
+                                                 formatter)
                                                     }}
                                                 }}
 
                                                 MyDebug({field_name})
                                             }};
-                                        ", format_trait = format_trait, format_method = format_method, field_name = field_name)).unwrap();
+                                        ",
+                                                format_trait = format_trait,
+                                                format_method = format_method,
+                                                field_name = field_name
+                                            ))
+                                            .unwrap();
 
                                         block_tokens.push_str("builder.field(&arg);");
-                                    }
-                                    None => {
-                                        match format_method {
-                                            Some(format_method) => {
-                                                let ty = field
-                                                    .ty
-                                                    .clone()
-                                                    .into_token_stream()
-                                                    .to_string();
+                                    },
+                                    None => match format_method {
+                                        Some(format_method) => {
+                                            let ty =
+                                                field.ty.clone().into_token_stream().to_string();
 
-                                                block_tokens.write_fmt(format_args!("
+                                            block_tokens
+                                                .write_fmt(format_args!(
+                                                    "
                                                     let arg = {{
                                                         struct MyDebug<'a>(&'a {ty});
 
-                                                        impl<'a> core::fmt::Debug for MyDebug<'a> {{
-                                                            fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {{
+                                                        impl<'a> core::fmt::Debug for MyDebug<'a> \
+                                                     {{
+                                                            fn fmt(&self, formatter: &mut \
+                                                     core::fmt::Formatter) -> core::fmt::Result {{
                                                                 {format_method}(self.0, formatter)
                                                             }}
                                                         }}
 
                                                         MyDebug({field_name})
                                                     }};
-                                                ", ty = ty, format_method = format_method, field_name = field_name)).unwrap();
-
-                                                block_tokens.push_str("builder.field(&arg);");
-                                            }
-                                            None => {
-                                                let statement = format!(
-                                                    "builder.field({field_name});",
+                                                ",
+                                                    ty = ty,
+                                                    format_method = format_method,
                                                     field_name = field_name
-                                                );
+                                                ))
+                                                .unwrap();
 
-                                                block_tokens.push_str(&statement);
-                                            }
-                                        }
-                                    }
+                                            block_tokens.push_str("builder.field(&arg);");
+                                        },
+                                        None => {
+                                            let statement = format!(
+                                                "builder.field({field_name});",
+                                                field_name = field_name
+                                            );
+
+                                            block_tokens.push_str(&statement);
+                                        },
+                                    },
                                 }
 
                                 has_fields = true;
@@ -331,10 +369,19 @@ impl TraitHandler for DebugEnumHandler {
 
                         block_tokens.push_str("return builder.finish();");
 
-                        match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident}{{ {pattern_tokens} }} => {{ {block_tokens} }}", enum_name = enum_name, variant_ident = variant_ident, pattern_tokens = pattern_tokens, block_tokens = block_tokens)).unwrap();
+                        match_tokens
+                            .write_fmt(format_args!(
+                                "{enum_name}::{variant_ident}{{ {pattern_tokens} }} => {{ \
+                                 {block_tokens} }}",
+                                enum_name = enum_name,
+                                variant_ident = variant_ident,
+                                pattern_tokens = pattern_tokens,
+                                block_tokens = block_tokens
+                            ))
+                            .unwrap();
 
                         has_variants = true;
-                    }
+                    },
                     Fields::Unnamed(fields) => {
                         // TODO Tuple
                         let mut has_fields = false;
@@ -344,15 +391,18 @@ impl TraitHandler for DebugEnumHandler {
 
                         if named_field {
                             if name.is_empty() {
-                                block_tokens.push_str("
+                                block_tokens.push_str(
+                                    "
                                     struct RawString(&'static str);
 
                                     impl core::fmt::Debug for RawString {{
-                                        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {{
+                                        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> \
+                                     core::fmt::Result {{
                                             f.write_str(self.0)
                                         }}
                                     }}
-                                ");
+                                ",
+                                );
 
                                 block_tokens.push_str("let mut builder = formatter.debug_map();");
                             } else {
@@ -366,10 +416,10 @@ impl TraitHandler for DebugEnumHandler {
 
                             for (index, field) in fields.unnamed.iter().enumerate() {
                                 let field_attribute = FieldAttributeBuilder {
-                                    name: FieldAttributeName::Default,
-                                    enable_name: true,
+                                    name:          FieldAttributeName::Default,
+                                    enable_name:   true,
                                     enable_ignore: true,
-                                    enable_impl: true,
+                                    enable_impl:   true,
                                 }
                                 .from_attributes(&field.attrs, traits);
 
@@ -399,19 +449,29 @@ impl TraitHandler for DebugEnumHandler {
                                     Some(format_trait) => {
                                         let format_method = format_method.unwrap();
 
-                                        block_tokens.write_fmt(format_args!("
+                                        block_tokens
+                                            .write_fmt(format_args!(
+                                                "
                                             let arg = {{
                                                 struct MyDebug<'a, T: {format_trait}>(&'a T);
 
-                                                impl<'a, T: {format_trait}> core::fmt::Debug for MyDebug<'a, T> {{
-                                                    fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {{
-                                                        {format_trait}::{format_method}(self.0, formatter)
+                                                impl<'a, T: {format_trait}> core::fmt::Debug for \
+                                                 MyDebug<'a, T> {{
+                                                    fn fmt(&self, formatter: &mut \
+                                                 core::fmt::Formatter) -> core::fmt::Result {{
+                                                        {format_trait}::{format_method}(self.0, \
+                                                 formatter)
                                                     }}
                                                 }}
 
                                                 MyDebug(_{field_name})
                                             }};
-                                        ", format_trait = format_trait, format_method = format_method, field_name = field_name)).unwrap();
+                                        ",
+                                                format_trait = format_trait,
+                                                format_method = format_method,
+                                                field_name = field_name
+                                            ))
+                                            .unwrap();
 
                                         let statement = if name.is_empty() {
                                             format!(
@@ -423,59 +483,65 @@ impl TraitHandler for DebugEnumHandler {
                                         };
 
                                         block_tokens.push_str(&statement);
-                                    }
-                                    None => {
-                                        match format_method {
-                                            Some(format_method) => {
-                                                let ty = field
-                                                    .ty
-                                                    .clone()
-                                                    .into_token_stream()
-                                                    .to_string();
+                                    },
+                                    None => match format_method {
+                                        Some(format_method) => {
+                                            let ty =
+                                                field.ty.clone().into_token_stream().to_string();
 
-                                                block_tokens.write_fmt(format_args!("
+                                            block_tokens
+                                                .write_fmt(format_args!(
+                                                    "
                                                     let arg = {{
                                                         struct MyDebug<'a>(&'a {ty});
 
-                                                        impl<'a> core::fmt::Debug for MyDebug<'a> {{
-                                                            fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {{
+                                                        impl<'a> core::fmt::Debug for MyDebug<'a> \
+                                                     {{
+                                                            fn fmt(&self, formatter: &mut \
+                                                     core::fmt::Formatter) -> core::fmt::Result {{
                                                                 {format_method}(self.0, formatter)
                                                             }}
                                                         }}
 
                                                         MyDebug(_{field_name})
                                                     }};
-                                                ", ty = ty, format_method = format_method, field_name = field_name)).unwrap();
+                                                ",
+                                                    ty = ty,
+                                                    format_method = format_method,
+                                                    field_name = field_name
+                                                ))
+                                                .unwrap();
 
-                                                let statement = if name.is_empty() {
-                                                    format!(
-                                                        "builder.entry(&RawString({key:?}), &arg);",
-                                                        key = key
-                                                    )
-                                                } else {
-                                                    format!(
-                                                        "builder.field({key:?}, &arg);",
-                                                        key = key
-                                                    )
-                                                };
+                                            let statement = if name.is_empty() {
+                                                format!(
+                                                    "builder.entry(&RawString({key:?}), &arg);",
+                                                    key = key
+                                                )
+                                            } else {
+                                                format!("builder.field({key:?}, &arg);", key = key)
+                                            };
 
-                                                block_tokens.push_str(&statement);
-                                            }
-                                            None => {
-                                                let statement = if name.is_empty() {
-                                                    format!("builder.entry(&RawString({key:?}), {field_name});", key = key, field_name = field_name)
-                                                } else {
-                                                    format!(
-                                                        "builder.field({key:?}, _{field_name});",
-                                                        key = key,
-                                                        field_name = field_name
-                                                    )
-                                                };
+                                            block_tokens.push_str(&statement);
+                                        },
+                                        None => {
+                                            let statement = if name.is_empty() {
+                                                format!(
+                                                    "builder.entry(&RawString({key:?}), \
+                                                     {field_name});",
+                                                    key = key,
+                                                    field_name = field_name
+                                                )
+                                            } else {
+                                                format!(
+                                                    "builder.field({key:?}, _{field_name});",
+                                                    key = key,
+                                                    field_name = field_name
+                                                )
+                                            };
 
-                                                block_tokens.push_str(&statement);
-                                            }
-                                        }
-                                    }
+                                            block_tokens.push_str(&statement);
+                                        },
+                                    },
                                 }
 
                                 has_fields = true;
@@ -490,10 +556,10 @@ impl TraitHandler for DebugEnumHandler {
 
                             for (index, field) in fields.unnamed.iter().enumerate() {
                                 let field_attribute = FieldAttributeBuilder {
-                                    name: FieldAttributeName::Default,
-                                    enable_name: false,
+                                    name:          FieldAttributeName::Default,
+                                    enable_name:   false,
                                     enable_ignore: true,
-                                    enable_impl: true,
+                                    enable_impl:   true,
                                 }
                                 .from_attributes(&field.attrs, traits);
 
@@ -518,57 +584,71 @@ impl TraitHandler for DebugEnumHandler {
                                     Some(format_trait) => {
                                         let format_method = format_method.unwrap();
 
-                                        block_tokens.write_fmt(format_args!("
+                                        block_tokens
+                                            .write_fmt(format_args!(
+                                                "
                                             let arg = {{
                                                 struct MyDebug<'a, T: {format_trait}>(&'a T);
 
-                                                impl<'a, T: {format_trait}> core::fmt::Debug for MyDebug<'a, T> {{
-                                                    fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {{
-                                                        {format_trait}::{format_method}(self.0, formatter)
+                                                impl<'a, T: {format_trait}> core::fmt::Debug for \
+                                                 MyDebug<'a, T> {{
+                                                    fn fmt(&self, formatter: &mut \
+                                                 core::fmt::Formatter) -> core::fmt::Result {{
+                                                        {format_trait}::{format_method}(self.0, \
+                                                 formatter)
                                                     }}
                                                 }}
 
                                                 MyDebug(_{field_name})
                                             }};
-                                        ", format_trait = format_trait, format_method = format_method, field_name = field_name)).unwrap();
+                                        ",
+                                                format_trait = format_trait,
+                                                format_method = format_method,
+                                                field_name = field_name
+                                            ))
+                                            .unwrap();
 
                                         block_tokens.push_str("builder.field(&arg);");
-                                    }
-                                    None => {
-                                        match format_method {
-                                            Some(format_method) => {
-                                                let ty = field
-                                                    .ty
-                                                    .clone()
-                                                    .into_token_stream()
-                                                    .to_string();
+                                    },
+                                    None => match format_method {
+                                        Some(format_method) => {
+                                            let ty =
+                                                field.ty.clone().into_token_stream().to_string();
 
-                                                block_tokens.write_fmt(format_args!("
+                                            block_tokens
+                                                .write_fmt(format_args!(
+                                                    "
                                                     let arg = {{
                                                         struct MyDebug<'a>(&'a {ty});
 
-                                                        impl<'a> core::fmt::Debug for MyDebug<'a> {{
-                                                            fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {{
+                                                        impl<'a> core::fmt::Debug for MyDebug<'a> \
+                                                     {{
+                                                            fn fmt(&self, formatter: &mut \
+                                                     core::fmt::Formatter) -> core::fmt::Result {{
                                                                 {format_method}(self.0, formatter)
                                                             }}
                                                         }}
 
                                                         MyDebug(_{field_name})
                                                     }};
-                                                ", ty = ty, format_method = format_method, field_name = field_name)).unwrap();
-
-                                                block_tokens.push_str("builder.field(&arg);");
-                                            }
-                                            None => {
-                                                let statement = format!(
-                                                    "builder.field(_{field_name});",
+                                                ",
+                                                    ty = ty,
+                                                    format_method = format_method,
                                                     field_name = field_name
-                                                );
+                                                ))
+                                                .unwrap();
 
-                                                block_tokens.push_str(&statement);
-                                            }
-                                        }
-                                    }
+                                            block_tokens.push_str("builder.field(&arg);");
+                                        },
+                                        None => {
+                                            let statement = format!(
+                                                "builder.field(_{field_name});",
+                                                field_name = field_name
+                                            );
+
+                                            block_tokens.push_str(&statement);
+                                        },
+                                    },
                                 }
 
                                 has_fields = true;
@@ -581,10 +661,19 @@ impl TraitHandler for DebugEnumHandler {
 
                         block_tokens.push_str("return builder.finish();");
 
-                        match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident}( {pattern_tokens} ) => {{ {block_tokens} }}", enum_name = enum_name, variant_ident = variant_ident, pattern_tokens = pattern_tokens, block_tokens = block_tokens)).unwrap();
+                        match_tokens
+                            .write_fmt(format_args!(
+                                "{enum_name}::{variant_ident}( {pattern_tokens} ) => {{ \
+                                 {block_tokens} }}",
+                                enum_name = enum_name,
+                                variant_ident = variant_ident,
+                                pattern_tokens = pattern_tokens,
+                                block_tokens = block_tokens
+                            ))
+                            .unwrap();
 
                         has_variants = true;
-                    }
+                    },
                 }
             }
         }

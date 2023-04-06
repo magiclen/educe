@@ -11,15 +11,13 @@ fn basic() {
     #[educe(Copy, Clone)]
     enum Enum {
         Unit,
-        Struct {
-            f1: u8,
-        },
+        Struct { f1: u8 },
         Tuple(u8),
     }
 
     let u = Enum::Unit.clone();
     let s = Enum::Struct {
-        f1: 1,
+        f1: 1
     }
     .clone();
     let t = Enum::Tuple(1).clone();
@@ -47,14 +45,12 @@ fn bound_1() {
     #[derive(Educe)]
     #[educe(Copy(bound), Clone(bound))]
     enum Enum<T> {
-        Struct {
-            f1: T,
-        },
+        Struct { f1: T },
         Tuple(T),
     }
 
     let s = Enum::Struct {
-        f1: 1,
+        f1: 1
     }
     .clone();
     let t = Enum::Tuple(1).clone();
@@ -80,14 +76,12 @@ fn bound_2() {
     #[derive(Educe)]
     #[educe(Copy(bound = "T: core::marker::Copy"), Clone(bound = "T: core::marker::Copy"))]
     enum Enum<T> {
-        Struct {
-            f1: T,
-        },
+        Struct { f1: T },
         Tuple(T),
     }
 
     let s = Enum::Struct {
-        f1: 1,
+        f1: 1
     }
     .clone();
     let t = Enum::Tuple(1).clone();
@@ -113,14 +107,12 @@ fn bound_3() {
     #[derive(Educe)]
     #[educe(Copy(bound = "T: core::marker::Copy"), Clone(bound = "T: core::marker::Copy"))]
     enum Enum<T> {
-        Struct {
-            f1: T,
-        },
+        Struct { f1: T },
         Tuple(T),
     }
 
     let s = Enum::Struct {
-        f1: 1,
+        f1: 1
     }
     .clone();
     let t = Enum::Tuple(1).clone();

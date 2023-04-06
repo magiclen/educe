@@ -30,12 +30,11 @@ fn basic() {
     struct Tuple2(u8, #[educe(Deref)] u8);
 
     let s1 = Struct {
-        f1: 1,
+        f1: 1
     };
 
     let s2 = Struct2 {
-        f1: 1,
-        f2: 2,
+        f1: 1, f2: 2
     };
 
     let t1 = Tuple(1);

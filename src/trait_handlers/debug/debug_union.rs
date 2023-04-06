@@ -1,13 +1,12 @@
-use super::super::TraitHandler;
-use super::models::{
-    FieldAttributeBuilder, FieldAttributeName, TypeAttributeBuilder, TypeAttributeName,
-};
-
-use crate::Trait;
-
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Data, DeriveInput, Generics, Meta};
+
+use super::{
+    super::TraitHandler,
+    models::{FieldAttributeBuilder, FieldAttributeName, TypeAttributeBuilder, TypeAttributeName},
+};
+use crate::Trait;
 
 pub struct DebugUnionHandler;
 
@@ -19,12 +18,12 @@ impl TraitHandler for DebugUnionHandler {
         meta: &Meta,
     ) {
         let type_attribute = TypeAttributeBuilder {
-            enable_flag: true,
-            name: TypeAttributeName::Default,
-            enable_name: true,
-            named_field: false,
+            enable_flag:        true,
+            name:               TypeAttributeName::Default,
+            enable_name:        true,
+            named_field:        false,
             enable_named_field: false,
-            enable_bound: true,
+            enable_bound:       true,
         }
         .from_debug_meta(meta);
 
@@ -39,10 +38,10 @@ impl TraitHandler for DebugUnionHandler {
         if let Data::Union(data) = &ast.data {
             for field in data.fields.named.iter() {
                 let _ = FieldAttributeBuilder {
-                    name: FieldAttributeName::Default,
-                    enable_name: false,
+                    name:          FieldAttributeName::Default,
+                    enable_name:   false,
                     enable_ignore: false,
-                    enable_impl: false,
+                    enable_impl:   false,
                 }
                 .from_attributes(&field.attrs, traits);
             }

@@ -1,14 +1,14 @@
-use std::fmt::Write;
-use std::str::FromStr;
-
-use super::super::TraitHandler;
-use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
-
-use crate::Trait;
+use std::{fmt::Write, str::FromStr};
 
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Data, DeriveInput, Fields, Generics, Meta};
+
+use super::{
+    super::TraitHandler,
+    models::{FieldAttributeBuilder, TypeAttributeBuilder},
+};
+use crate::Trait;
 
 pub struct PartialEqEnumHandler;
 
@@ -20,8 +20,7 @@ impl TraitHandler for PartialEqEnumHandler {
         meta: &Meta,
     ) {
         let type_attribute = TypeAttributeBuilder {
-            enable_flag: true,
-            enable_bound: true,
+            enable_flag: true, enable_bound: true
         }
         .from_partial_eq_meta(meta);
 
@@ -38,8 +37,7 @@ impl TraitHandler for PartialEqEnumHandler {
         if let Data::Enum(data) = &ast.data {
             for variant in data.variants.iter() {
                 let _ = TypeAttributeBuilder {
-                    enable_flag: false,
-                    enable_bound: false,
+                    enable_flag: false, enable_bound: false
                 }
                 .from_attributes(&variant.attrs, traits);
 
@@ -48,8 +46,16 @@ impl TraitHandler for PartialEqEnumHandler {
                 match &variant.fields {
                     Fields::Unit => {
                         // TODO Unit
-                        match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident} => {{ if let {enum_name}::{variant_ident} = other {{ }} else {{ return false; }} }}", enum_name = enum_name, variant_ident = variant_ident)).unwrap();
-                    }
+                        match_tokens
+                            .write_fmt(format_args!(
+                                "{enum_name}::{variant_ident} => {{ if let \
+                                 {enum_name}::{variant_ident} = other {{ }} else {{ return false; \
+                                 }} }}",
+                                enum_name = enum_name,
+                                variant_ident = variant_ident
+                            ))
+                            .unwrap();
+                    },
                     Fields::Named(fields) => {
                         // TODO Struct
                         let mut pattern_tokens = String::new();
@@ -62,7 +68,7 @@ impl TraitHandler for PartialEqEnumHandler {
                         for field in fields.named.iter() {
                             let field_attribute = FieldAttributeBuilder {
                                 enable_ignore: true,
-                                enable_impl: true,
+                                enable_impl:   true,
                             }
                             .from_attributes(&field.attrs, traits);
 
@@ -108,23 +114,53 @@ impl TraitHandler for PartialEqEnumHandler {
                                 Some(compare_trait) => {
                                     let compare_method = compare_method.unwrap();
 
-                                    block_tokens.write_fmt(format_args!("if !{compare_trait}::{compare_method}({field_name}, ___{field_name}) {{ return false; }}", compare_trait = compare_trait, compare_method = compare_method, field_name = field_name)).unwrap();
-                                }
-                                None => {
-                                    match compare_method {
-                                        Some(compare_method) => {
-                                            block_tokens.write_fmt(format_args!("if !{compare_method}({field_name}, ___{field_name}) {{ return false; }}", compare_method = compare_method, field_name = field_name)).unwrap();
-                                        }
-                                        None => {
-                                            block_tokens.write_fmt(format_args!("if core::cmp::PartialEq::ne({field_name}, ___{field_name}) {{ return false; }}", field_name = field_name)).unwrap();
-                                        }
-                                    }
-                                }
+                                    block_tokens
+                                        .write_fmt(format_args!(
+                                            "if !{compare_trait}::{compare_method}({field_name}, \
+                                             ___{field_name}) {{ return false; }}",
+                                            compare_trait = compare_trait,
+                                            compare_method = compare_method,
+                                            field_name = field_name
+                                        ))
+                                        .unwrap();
+                                },
+                                None => match compare_method {
+                                    Some(compare_method) => {
+                                        block_tokens
+                                            .write_fmt(format_args!(
+                                                "if !{compare_method}({field_name}, \
+                                                 ___{field_name}) {{ return false; }}",
+                                                compare_method = compare_method,
+                                                field_name = field_name
+                                            ))
+                                            .unwrap();
+                                    },
+                                    None => {
+                                        block_tokens
+                                            .write_fmt(format_args!(
+                                                "if core::cmp::PartialEq::ne({field_name}, \
+                                                 ___{field_name}) {{ return false; }}",
+                                                field_name = field_name
+                                            ))
+                                            .unwrap();
+                                    },
+                                },
                             }
                         }
 
-                        match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident}{{ {pattern_tokens} }} => {{ if let {enum_name}::{variant_ident} {{ {pattern_2_tokens} }} = other {{ {block_tokens} }} else {{ return false; }} }}", enum_name = enum_name, variant_ident = variant_ident, pattern_tokens = pattern_tokens, pattern_2_tokens = pattern_2_tokens, block_tokens = block_tokens)).unwrap();
-                    }
+                        match_tokens
+                            .write_fmt(format_args!(
+                                "{enum_name}::{variant_ident}{{ {pattern_tokens} }} => {{ if let \
+                                 {enum_name}::{variant_ident} {{ {pattern_2_tokens} }} = other {{ \
+                                 {block_tokens} }} else {{ return false; }} }}",
+                                enum_name = enum_name,
+                                variant_ident = variant_ident,
+                                pattern_tokens = pattern_tokens,
+                                pattern_2_tokens = pattern_2_tokens,
+                                block_tokens = block_tokens
+                            ))
+                            .unwrap();
+                    },
                     Fields::Unnamed(fields) => {
                         // TODO Tuple
                         let mut pattern_tokens = String::new();
@@ -137,7 +173,7 @@ impl TraitHandler for PartialEqEnumHandler {
                         for (index, field) in fields.unnamed.iter().enumerate() {
                             let field_attribute = FieldAttributeBuilder {
                                 enable_ignore: true,
-                                enable_impl: true,
+                                enable_impl:   true,
                             }
                             .from_attributes(&field.attrs, traits);
 
@@ -170,23 +206,53 @@ impl TraitHandler for PartialEqEnumHandler {
                                 Some(compare_trait) => {
                                     let compare_method = compare_method.unwrap();
 
-                                    block_tokens.write_fmt(format_args!("if !{compare_trait}::{compare_method}(_{field_name}, __{field_name}) {{ return false; }}", compare_trait = compare_trait, compare_method = compare_method, field_name = field_name)).unwrap();
-                                }
-                                None => {
-                                    match compare_method {
-                                        Some(compare_method) => {
-                                            block_tokens.write_fmt(format_args!("if !{compare_method}(_{field_name}, __{field_name}) {{ return false; }}", compare_method = compare_method, field_name = field_name)).unwrap();
-                                        }
-                                        None => {
-                                            block_tokens.write_fmt(format_args!("if core::cmp::PartialEq::ne(_{field_name}, __{field_name}) {{ return false; }}", field_name = field_name)).unwrap();
-                                        }
-                                    }
-                                }
+                                    block_tokens
+                                        .write_fmt(format_args!(
+                                            "if !{compare_trait}::{compare_method}(_{field_name}, \
+                                             __{field_name}) {{ return false; }}",
+                                            compare_trait = compare_trait,
+                                            compare_method = compare_method,
+                                            field_name = field_name
+                                        ))
+                                        .unwrap();
+                                },
+                                None => match compare_method {
+                                    Some(compare_method) => {
+                                        block_tokens
+                                            .write_fmt(format_args!(
+                                                "if !{compare_method}(_{field_name}, \
+                                                 __{field_name}) {{ return false; }}",
+                                                compare_method = compare_method,
+                                                field_name = field_name
+                                            ))
+                                            .unwrap();
+                                    },
+                                    None => {
+                                        block_tokens
+                                            .write_fmt(format_args!(
+                                                "if core::cmp::PartialEq::ne(_{field_name}, \
+                                                 __{field_name}) {{ return false; }}",
+                                                field_name = field_name
+                                            ))
+                                            .unwrap();
+                                    },
+                                },
                             }
                         }
 
-                        match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident}( {pattern_tokens} ) => {{ if let {enum_name}::{variant_ident} ( {pattern_2_tokens} ) = other {{ {block_tokens} }} else {{ return false; }} }}", enum_name = enum_name, variant_ident = variant_ident, pattern_tokens = pattern_tokens, pattern_2_tokens = pattern_2_tokens, block_tokens = block_tokens)).unwrap();
-                    }
+                        match_tokens
+                            .write_fmt(format_args!(
+                                "{enum_name}::{variant_ident}( {pattern_tokens} ) => {{ if let \
+                                 {enum_name}::{variant_ident} ( {pattern_2_tokens} ) = other {{ \
+                                 {block_tokens} }} else {{ return false; }} }}",
+                                enum_name = enum_name,
+                                variant_ident = variant_ident,
+                                pattern_tokens = pattern_tokens,
+                                pattern_2_tokens = pattern_2_tokens,
+                                block_tokens = block_tokens
+                            ))
+                            .unwrap();
+                    },
                 }
             }
         }

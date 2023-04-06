@@ -1,14 +1,14 @@
-use std::fmt::Write;
-use std::str::FromStr;
-
-use super::super::TraitHandler;
-use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
-
-use crate::Trait;
+use std::{fmt::Write, str::FromStr};
 
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::{Data, DeriveInput, Fields, Generics, Lit, Meta};
+
+use super::{
+    super::TraitHandler,
+    models::{FieldAttributeBuilder, TypeAttributeBuilder},
+};
+use crate::Trait;
 
 pub struct DefaultStructHandler;
 
@@ -20,10 +20,10 @@ impl TraitHandler for DefaultStructHandler {
         meta: &Meta,
     ) {
         let type_attribute = TypeAttributeBuilder {
-            enable_flag: true,
-            enable_new: true,
+            enable_flag:       true,
+            enable_new:        true,
             enable_expression: true,
-            enable_bound: true,
+            enable_bound:      true,
         }
         .from_default_meta(meta);
 
@@ -38,145 +38,132 @@ impl TraitHandler for DefaultStructHandler {
                 Some(expression) => {
                     for field in data.fields.iter() {
                         let _ = FieldAttributeBuilder {
-                            enable_flag: false,
-                            enable_literal: false,
+                            enable_flag:       false,
+                            enable_literal:    false,
                             enable_expression: false,
                         }
                         .from_attributes(&field.attrs, traits);
                     }
 
                     builder_tokens.extend(quote!(#expression));
-                }
-                None => {
-                    match &data.fields {
-                        Fields::Unit => {
-                            let ident = &ast.ident;
+                },
+                None => match &data.fields {
+                    Fields::Unit => {
+                        let ident = &ast.ident;
 
-                            builder_tokens.extend(quote!(#ident));
-                        }
-                        Fields::Unnamed(_) => {
-                            let mut struct_tokens = ast.ident.to_string();
+                        builder_tokens.extend(quote!(#ident));
+                    },
+                    Fields::Unnamed(_) => {
+                        let mut struct_tokens = ast.ident.to_string();
 
-                            struct_tokens.push('(');
+                        struct_tokens.push('(');
 
-                            for field in data.fields.iter() {
-                                let field_attribute = FieldAttributeBuilder {
-                                    enable_flag: false,
-                                    enable_literal: true,
-                                    enable_expression: true,
-                                }
-                                .from_attributes(&field.attrs, traits);
+                        for field in data.fields.iter() {
+                            let field_attribute = FieldAttributeBuilder {
+                                enable_flag:       false,
+                                enable_literal:    true,
+                                enable_expression: true,
+                            }
+                            .from_attributes(&field.attrs, traits);
 
-                                match field_attribute.literal {
-                                    Some(value) => {
-                                        match &value {
-                                            Lit::Str(s) => {
-                                                struct_tokens
-                                                    .write_fmt(format_args!(
-                                                        "core::convert::Into::into({s})",
-                                                        s = s.into_token_stream()
-                                                    ))
-                                                    .unwrap();
-                                            }
-                                            _ => {
-                                                struct_tokens.push_str(
-                                                    &value.into_token_stream().to_string(),
-                                                );
-                                            }
-                                        }
-                                    }
+                            match field_attribute.literal {
+                                Some(value) => match &value {
+                                    Lit::Str(s) => {
+                                        struct_tokens
+                                            .write_fmt(format_args!(
+                                                "core::convert::Into::into({s})",
+                                                s = s.into_token_stream()
+                                            ))
+                                            .unwrap();
+                                    },
+                                    _ => {
+                                        struct_tokens
+                                            .push_str(&value.into_token_stream().to_string());
+                                    },
+                                },
+                                None => match field_attribute.expression {
+                                    Some(expression) => {
+                                        struct_tokens.push_str(&expression);
+                                    },
                                     None => {
-                                        match field_attribute.expression {
-                                            Some(expression) => {
-                                                struct_tokens.push_str(&expression);
-                                            }
-                                            None => {
-                                                let typ = field
-                                                    .ty
-                                                    .clone()
-                                                    .into_token_stream()
-                                                    .to_string();
+                                        let typ = field.ty.clone().into_token_stream().to_string();
 
-                                                struct_tokens.write_fmt(format_args!("<{typ} as core::default::Default>::default()", typ = typ)).unwrap();
-                                            }
-                                        }
-                                    }
-                                }
-
-                                struct_tokens.push(',');
+                                        struct_tokens
+                                            .write_fmt(format_args!(
+                                                "<{typ} as core::default::Default>::default()",
+                                                typ = typ
+                                            ))
+                                            .unwrap();
+                                    },
+                                },
                             }
 
-                            struct_tokens.push(')');
-
-                            builder_tokens.extend(TokenStream::from_str(&struct_tokens).unwrap());
+                            struct_tokens.push(',');
                         }
-                        Fields::Named(_) => {
-                            let mut struct_tokens = ast.ident.to_string();
 
-                            struct_tokens.push('{');
+                        struct_tokens.push(')');
 
-                            for field in data.fields.iter() {
-                                let field_attribute = FieldAttributeBuilder {
-                                    enable_flag: false,
-                                    enable_literal: true,
-                                    enable_expression: true,
-                                }
-                                .from_attributes(&field.attrs, traits);
+                        builder_tokens.extend(TokenStream::from_str(&struct_tokens).unwrap());
+                    },
+                    Fields::Named(_) => {
+                        let mut struct_tokens = ast.ident.to_string();
 
-                                let field_name = field.ident.as_ref().unwrap().to_string();
+                        struct_tokens.push('{');
 
-                                struct_tokens
-                                    .write_fmt(format_args!(
-                                        "{field_name}: ",
-                                        field_name = field_name
-                                    ))
-                                    .unwrap();
+                        for field in data.fields.iter() {
+                            let field_attribute = FieldAttributeBuilder {
+                                enable_flag:       false,
+                                enable_literal:    true,
+                                enable_expression: true,
+                            }
+                            .from_attributes(&field.attrs, traits);
 
-                                match field_attribute.literal {
-                                    Some(value) => {
-                                        match &value {
-                                            Lit::Str(s) => {
-                                                struct_tokens
-                                                    .write_fmt(format_args!(
-                                                        "core::convert::Into::into({s})",
-                                                        s = s.into_token_stream()
-                                                    ))
-                                                    .unwrap();
-                                            }
-                                            _ => {
-                                                struct_tokens.push_str(
-                                                    &value.into_token_stream().to_string(),
-                                                );
-                                            }
-                                        }
-                                    }
+                            let field_name = field.ident.as_ref().unwrap().to_string();
+
+                            struct_tokens
+                                .write_fmt(format_args!("{field_name}: ", field_name = field_name))
+                                .unwrap();
+
+                            match field_attribute.literal {
+                                Some(value) => match &value {
+                                    Lit::Str(s) => {
+                                        struct_tokens
+                                            .write_fmt(format_args!(
+                                                "core::convert::Into::into({s})",
+                                                s = s.into_token_stream()
+                                            ))
+                                            .unwrap();
+                                    },
+                                    _ => {
+                                        struct_tokens
+                                            .push_str(&value.into_token_stream().to_string());
+                                    },
+                                },
+                                None => match field_attribute.expression {
+                                    Some(expression) => {
+                                        struct_tokens.push_str(&expression);
+                                    },
                                     None => {
-                                        match field_attribute.expression {
-                                            Some(expression) => {
-                                                struct_tokens.push_str(&expression);
-                                            }
-                                            None => {
-                                                let typ = field
-                                                    .ty
-                                                    .clone()
-                                                    .into_token_stream()
-                                                    .to_string();
+                                        let typ = field.ty.clone().into_token_stream().to_string();
 
-                                                struct_tokens.write_fmt(format_args!("<{typ} as core::default::Default>::default()", typ = typ)).unwrap();
-                                            }
-                                        }
-                                    }
-                                }
-
-                                struct_tokens.push(',');
+                                        struct_tokens
+                                            .write_fmt(format_args!(
+                                                "<{typ} as core::default::Default>::default()",
+                                                typ = typ
+                                            ))
+                                            .unwrap();
+                                    },
+                                },
                             }
 
-                            struct_tokens.push('}');
-
-                            builder_tokens.extend(TokenStream::from_str(&struct_tokens).unwrap());
+                            struct_tokens.push(',');
                         }
-                    }
-                }
+
+                        struct_tokens.push('}');
+
+                        builder_tokens.extend(TokenStream::from_str(&struct_tokens).unwrap());
+                    },
+                },
             }
         }
 

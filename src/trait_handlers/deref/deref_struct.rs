@@ -1,14 +1,14 @@
 use std::str::FromStr;
 
-use super::super::TraitHandler;
-use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
-
-use crate::panic;
-use crate::Trait;
-
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::{Data, DeriveInput, Meta};
+
+use super::{
+    super::TraitHandler,
+    models::{FieldAttributeBuilder, TypeAttributeBuilder},
+};
+use crate::{panic, Trait};
 
 pub struct DerefStructHandler;
 
@@ -20,7 +20,7 @@ impl TraitHandler for DerefStructHandler {
         meta: &Meta,
     ) {
         let _ = TypeAttributeBuilder {
-            enable_flag: true,
+            enable_flag: true
         }
         .from_deref_meta(meta);
 
@@ -32,7 +32,7 @@ impl TraitHandler for DerefStructHandler {
 
             for (index, field) in data.fields.iter().enumerate() {
                 let field_attribute = FieldAttributeBuilder {
-                    enable_flag: true,
+                    enable_flag: true
                 }
                 .from_attributes(&field.attrs, traits);
 

@@ -1,13 +1,14 @@
 use std::str::FromStr;
 
-use super::super::TraitHandler;
-use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
-
-use crate::Trait;
-
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Data, DeriveInput, Generics, Meta};
+
+use super::{
+    super::TraitHandler,
+    models::{FieldAttributeBuilder, TypeAttributeBuilder},
+};
+use crate::Trait;
 
 pub struct HashStructHandler;
 
@@ -19,8 +20,7 @@ impl TraitHandler for HashStructHandler {
         meta: &Meta,
     ) {
         let type_attribute = TypeAttributeBuilder {
-            enable_flag: true,
-            enable_bound: true,
+            enable_flag: true, enable_bound: true
         }
         .from_hash_meta(meta);
 
@@ -34,7 +34,7 @@ impl TraitHandler for HashStructHandler {
             for (index, field) in data.fields.iter().enumerate() {
                 let field_attribute = FieldAttributeBuilder {
                     enable_ignore: true,
-                    enable_impl: true,
+                    enable_impl:   true,
                 }
                 .from_attributes(&field.attrs, traits);
 
@@ -63,28 +63,26 @@ impl TraitHandler for HashStructHandler {
                         );
 
                         hasher_tokens.extend(TokenStream::from_str(&statement).unwrap());
-                    }
-                    None => {
-                        match hash_method {
-                            Some(hash_method) => {
-                                let statement = format!(
-                                    "{hash_method}(&self.{field_name}, state);",
-                                    hash_method = hash_method,
-                                    field_name = field_name
-                                );
+                    },
+                    None => match hash_method {
+                        Some(hash_method) => {
+                            let statement = format!(
+                                "{hash_method}(&self.{field_name}, state);",
+                                hash_method = hash_method,
+                                field_name = field_name
+                            );
 
-                                hasher_tokens.extend(TokenStream::from_str(&statement).unwrap());
-                            }
-                            None => {
-                                let statement = format!(
-                                    "core::hash::Hash::hash(&self.{field_name}, state);",
-                                    field_name = field_name
-                                );
+                            hasher_tokens.extend(TokenStream::from_str(&statement).unwrap());
+                        },
+                        None => {
+                            let statement = format!(
+                                "core::hash::Hash::hash(&self.{field_name}, state);",
+                                field_name = field_name
+                            );
 
-                                hasher_tokens.extend(TokenStream::from_str(&statement).unwrap());
-                            }
-                        }
-                    }
+                            hasher_tokens.extend(TokenStream::from_str(&statement).unwrap());
+                        },
+                    },
                 }
             }
         }

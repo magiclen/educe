@@ -430,8 +430,7 @@ fn ignore_1() {
     assert_eq!(
         "Struct { f2: 2 }",
         format!("{:?}", Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         })
     );
 
@@ -456,8 +455,7 @@ fn ignore_2() {
     assert_eq!(
         "Struct { f2: 2 }",
         format!("{:?}", Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         })
     );
 
@@ -482,8 +480,7 @@ fn ignore_3() {
     assert_eq!(
         "Struct { f2: 2 }",
         format!("{:?}", Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         })
     );
 

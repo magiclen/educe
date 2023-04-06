@@ -1,15 +1,14 @@
-use std::fmt::Write;
-use std::str::FromStr;
-
-use super::super::TraitHandler;
-use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
-
-use crate::panic;
-use crate::Trait;
+use std::{fmt::Write, str::FromStr};
 
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::{Data, DeriveInput, Fields, Generics, Lit, Meta};
+
+use super::{
+    super::TraitHandler,
+    models::{FieldAttributeBuilder, TypeAttributeBuilder},
+};
+use crate::{panic, Trait};
 
 pub struct DefaultEnumHandler;
 
@@ -21,10 +20,10 @@ impl TraitHandler for DefaultEnumHandler {
         meta: &Meta,
     ) {
         let type_attribute = TypeAttributeBuilder {
-            enable_flag: true,
-            enable_new: true,
+            enable_flag:       true,
+            enable_new:        true,
             enable_expression: true,
-            enable_bound: true,
+            enable_bound:      true,
         }
         .from_default_meta(meta);
 
@@ -39,10 +38,10 @@ impl TraitHandler for DefaultEnumHandler {
                 Some(expression) => {
                     for variant in data.variants.iter() {
                         let _ = TypeAttributeBuilder {
-                            enable_flag: false,
-                            enable_new: false,
+                            enable_flag:       false,
+                            enable_new:        false,
                             enable_expression: false,
-                            enable_bound: false,
+                            enable_bound:      false,
                         }
                         .from_attributes(&variant.attrs, traits);
 
@@ -50,7 +49,7 @@ impl TraitHandler for DefaultEnumHandler {
                     }
 
                     builder_tokens.extend(quote!(#expression));
-                }
+                },
                 None => {
                     let variant = {
                         let variants = &data.variants;
@@ -59,10 +58,10 @@ impl TraitHandler for DefaultEnumHandler {
                             let variant = &variants[0];
 
                             let _ = TypeAttributeBuilder {
-                                enable_flag: true,
-                                enable_new: false,
+                                enable_flag:       true,
+                                enable_new:        false,
                                 enable_expression: false,
-                                enable_bound: false,
+                                enable_bound:      false,
                             }
                             .from_attributes(&variant.attrs, traits);
 
@@ -76,10 +75,10 @@ impl TraitHandler for DefaultEnumHandler {
                                 match variant {
                                     Some(variant) => {
                                         let variant_attribute = TypeAttributeBuilder {
-                                            enable_flag: true,
-                                            enable_new: false,
+                                            enable_flag:       true,
+                                            enable_new:        false,
                                             enable_expression: false,
-                                            enable_bound: false,
+                                            enable_bound:      false,
                                         }
                                         .from_attributes(&variant.attrs, traits);
 
@@ -104,7 +103,7 @@ impl TraitHandler for DefaultEnumHandler {
                                                                 traits,
                                                             );
                                                         }
-                                                    }
+                                                    },
                                                     None => break,
                                                 }
                                             }
@@ -113,7 +112,7 @@ impl TraitHandler for DefaultEnumHandler {
                                         } else {
                                             ensure_fields_no_attribute(&variant.fields, traits);
                                         }
-                                    }
+                                    },
                                     None => panic::no_default_variant(),
                                 }
                             }
@@ -137,8 +136,8 @@ impl TraitHandler for DefaultEnumHandler {
 
                             for field in fields.named.iter() {
                                 let field_attribute = FieldAttributeBuilder {
-                                    enable_flag: false,
-                                    enable_literal: true,
+                                    enable_flag:       false,
+                                    enable_literal:    true,
                                     enable_expression: true,
                                 }
                                 .from_attributes(&field.attrs, traits);
@@ -153,28 +152,25 @@ impl TraitHandler for DefaultEnumHandler {
                                     .unwrap();
 
                                 match field_attribute.literal {
-                                    Some(value) => {
-                                        match &value {
-                                            Lit::Str(s) => {
-                                                enum_tokens
-                                                    .write_fmt(format_args!(
-                                                        "core::convert::Into::into({s})",
-                                                        s = s.into_token_stream()
-                                                    ))
-                                                    .unwrap();
-                                            }
-                                            _ => {
-                                                enum_tokens.push_str(
-                                                    &value.into_token_stream().to_string(),
-                                                );
-                                            }
-                                        }
-                                    }
+                                    Some(value) => match &value {
+                                        Lit::Str(s) => {
+                                            enum_tokens
+                                                .write_fmt(format_args!(
+                                                    "core::convert::Into::into({s})",
+                                                    s = s.into_token_stream()
+                                                ))
+                                                .unwrap();
+                                        },
+                                        _ => {
+                                            enum_tokens
+                                                .push_str(&value.into_token_stream().to_string());
+                                        },
+                                    },
                                     None => {
                                         match field_attribute.expression {
                                             Some(expression) => {
                                                 enum_tokens.push_str(&expression);
-                                            }
+                                            },
                                             None => {
                                                 let typ = field
                                                     .ty
@@ -183,51 +179,48 @@ impl TraitHandler for DefaultEnumHandler {
                                                     .to_string();
 
                                                 enum_tokens.write_fmt(format_args!("<{typ} as core::default::Default>::default()", typ = typ)).unwrap();
-                                            }
+                                            },
                                         }
-                                    }
+                                    },
                                 }
 
                                 enum_tokens.push(',');
                             }
 
                             enum_tokens.push('}');
-                        }
+                        },
                         Fields::Unnamed(fields) => {
                             // TODO Tuple
                             enum_tokens.push('(');
 
                             for field in fields.unnamed.iter() {
                                 let field_attribute = FieldAttributeBuilder {
-                                    enable_flag: false,
-                                    enable_literal: true,
+                                    enable_flag:       false,
+                                    enable_literal:    true,
                                     enable_expression: true,
                                 }
                                 .from_attributes(&field.attrs, traits);
 
                                 match field_attribute.literal {
-                                    Some(value) => {
-                                        match &value {
-                                            Lit::Str(s) => {
-                                                enum_tokens
-                                                    .write_fmt(format_args!(
-                                                        "core::convert::Into::into({s})",
-                                                        s = s.into_token_stream()
-                                                    ))
-                                                    .unwrap();
-                                            }
-                                            _ => {
-                                                enum_tokens.push_str(
-                                                    &value.into_token_stream().to_string(),
-                                                );
-                                            }
-                                        }
-                                    }
+                                    Some(value) => match &value {
+                                        Lit::Str(s) => {
+                                            enum_tokens
+                                                .write_fmt(format_args!(
+                                                    "core::convert::Into::into({s})",
+                                                    s = s.into_token_stream()
+                                                ))
+                                                .unwrap();
+                                        },
+                                        _ => {
+                                            enum_tokens
+                                                .push_str(&value.into_token_stream().to_string());
+                                        },
+                                    },
                                     None => {
                                         match field_attribute.expression {
                                             Some(expression) => {
                                                 enum_tokens.push_str(&expression);
-                                            }
+                                            },
                                             None => {
                                                 let typ = field
                                                     .ty
@@ -236,20 +229,20 @@ impl TraitHandler for DefaultEnumHandler {
                                                     .to_string();
 
                                                 enum_tokens.write_fmt(format_args!("<{typ} as core::default::Default>::default()", typ = typ)).unwrap();
-                                            }
+                                            },
                                         }
-                                    }
+                                    },
                                 }
 
                                 enum_tokens.push(',');
                             }
 
                             enum_tokens.push(')');
-                        }
+                        },
                     }
 
                     builder_tokens.extend(TokenStream::from_str(&enum_tokens).unwrap());
-                }
+                },
             }
         }
 
@@ -298,22 +291,22 @@ fn ensure_fields_no_attribute(fields: &Fields, traits: &[Trait]) {
         Fields::Named(fields) => {
             for field in fields.named.iter() {
                 let _ = FieldAttributeBuilder {
-                    enable_flag: false,
-                    enable_literal: false,
+                    enable_flag:       false,
+                    enable_literal:    false,
                     enable_expression: false,
                 }
                 .from_attributes(&field.attrs, traits);
             }
-        }
+        },
         Fields::Unnamed(fields) => {
             for field in fields.unnamed.iter() {
                 let _ = FieldAttributeBuilder {
-                    enable_flag: false,
-                    enable_literal: false,
+                    enable_flag:       false,
+                    enable_literal:    false,
                     enable_expression: false,
                 }
                 .from_attributes(&field.attrs, traits);
             }
-        }
+        },
     }
 }

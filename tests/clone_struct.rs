@@ -24,7 +24,7 @@ fn basic() {
 
     let u = Unit.clone();
     let s = Struct {
-        f1: 1,
+        f1: 1
     }
     .clone();
     let t = Tuple(1).clone();
@@ -53,7 +53,7 @@ fn clone_without_trait_1() {
     struct Tuple(#[educe(Clone(method = "clone"))] u8);
 
     let s = Struct {
-        f1: 1,
+        f1: 1
     }
     .clone();
     let t = Tuple(1).clone();
@@ -80,7 +80,7 @@ fn clone_without_trait_2() {
     struct Tuple(#[educe(Clone(method("clone")))] u8);
 
     let s = Struct {
-        f1: 1,
+        f1: 1
     }
     .clone();
     let t = Tuple(1).clone();
@@ -113,7 +113,7 @@ fn clone_with_trait_1() {
     struct Tuple(#[educe(Clone(trait = "A"))] u8);
 
     let s = Struct {
-        f1: 1,
+        f1: 1
     }
     .clone();
     let t = Tuple(1).clone();
@@ -146,7 +146,7 @@ fn clone_with_trait_2() {
     struct Tuple(#[educe(Clone(trait("A")))] u8);
 
     let s = Struct {
-        f1: 1,
+        f1: 1
     }
     .clone();
     let t = Tuple(1).clone();
@@ -179,7 +179,7 @@ fn clone_with_trait_3() {
     struct Tuple(#[educe(Clone(trait = "A", method = "cloner"))] u8);
 
     let s = Struct {
-        f1: 1,
+        f1: 1
     }
     .clone();
     let t = Tuple(1).clone();
@@ -212,7 +212,7 @@ fn clone_with_trait_4() {
     struct Tuple(#[educe(Clone(trait("A"), method("cloner")))] u8);
 
     let s = Struct {
-        f1: 1,
+        f1: 1
     }
     .clone();
     let t = Tuple(1).clone();
@@ -234,7 +234,7 @@ fn bound_1() {
     struct Tuple<T>(T);
 
     let s = Struct {
-        f1: 1,
+        f1: 1
     }
     .clone();
     let t = Tuple(1).clone();
@@ -256,7 +256,7 @@ fn bound_2() {
     struct Tuple<T>(T);
 
     let s = Struct {
-        f1: 1,
+        f1: 1
     }
     .clone();
     let t = Tuple(1).clone();
@@ -278,7 +278,7 @@ fn bound_3() {
     struct Tuple<T>(T);
 
     let s = Struct {
-        f1: 1,
+        f1: 1
     }
     .clone();
     let t = Tuple(1).clone();

@@ -1,13 +1,12 @@
-use super::super::super::{
-    create_where_predicates_from_generic_parameters, create_where_predicates_from_lit_str,
-};
-
-use crate::panic;
-
 use quote::{quote, ToTokens};
 use syn::{
     punctuated::Punctuated, token::Comma, GenericParam, Lit, Meta, NestedMeta, WherePredicate,
 };
+
+use super::super::super::{
+    create_where_predicates_from_generic_parameters, create_where_predicates_from_lit_str,
+};
+use crate::panic;
 
 #[derive(Clone)]
 pub enum TypeAttributeBound {
@@ -23,12 +22,10 @@ impl TypeAttributeBound {
     ) -> Punctuated<WherePredicate, Comma> {
         match self {
             TypeAttributeBound::None => Punctuated::new(),
-            TypeAttributeBound::Auto => {
-                create_where_predicates_from_generic_parameters(
-                    params,
-                    &syn::parse2(quote!(core::cmp::Eq)).unwrap(),
-                )
-            }
+            TypeAttributeBound::Auto => create_where_predicates_from_generic_parameters(
+                params,
+                &syn::parse2(quote!(core::cmp::Eq)).unwrap(),
+            ),
             TypeAttributeBound::Custom(where_predicates) => where_predicates,
         }
     }
@@ -101,23 +98,19 @@ impl TypeAttributeBuilder {
                                                                 TypeAttributeBound::Custom(
                                                                     where_predicates,
                                                                 )
-                                                            }
-                                                            None => {
-                                                                panic::empty_parameter(
-                                                                    meta_name.as_str(),
-                                                                )
-                                                            }
+                                                            },
+                                                            None => panic::empty_parameter(
+                                                                meta_name.as_str(),
+                                                            ),
                                                         };
-                                                    }
-                                                    _ => {
-                                                        panic::parameter_incorrect_format(
-                                                            meta_name.as_str(),
-                                                            &correct_usage_for_bound,
-                                                        )
-                                                    }
+                                                    },
+                                                    _ => panic::parameter_incorrect_format(
+                                                        meta_name.as_str(),
+                                                        &correct_usage_for_bound,
+                                                    ),
                                                 }
                                             }
-                                        }
+                                        },
                                         Meta::NameValue(named_value) => {
                                             let lit = &named_value.lit;
 
@@ -137,22 +130,18 @@ impl TypeAttributeBuilder {
                                                             TypeAttributeBound::Custom(
                                                                 where_predicates,
                                                             )
-                                                        }
-                                                        None => {
-                                                            panic::empty_parameter(
-                                                                meta_name.as_str(),
-                                                            )
-                                                        }
+                                                        },
+                                                        None => panic::empty_parameter(
+                                                            meta_name.as_str(),
+                                                        ),
                                                     };
-                                                }
-                                                _ => {
-                                                    panic::parameter_incorrect_format(
-                                                        meta_name.as_str(),
-                                                        &correct_usage_for_bound,
-                                                    )
-                                                }
+                                                },
+                                                _ => panic::parameter_incorrect_format(
+                                                    meta_name.as_str(),
+                                                    &correct_usage_for_bound,
+                                                ),
                                             }
-                                        }
+                                        },
                                         Meta::Path(_) => {
                                             if bound_is_set {
                                                 panic::reset_parameter(meta_name.as_str());
@@ -161,21 +150,21 @@ impl TypeAttributeBuilder {
                                             bound_is_set = true;
 
                                             bound = TypeAttributeBound::Auto;
-                                        }
+                                        },
                                     }
-                                }
+                                },
                                 _ => panic::unknown_parameter("Eq", meta_name.as_str()),
                             }
-                        }
+                        },
                         _ => {
                             panic::attribute_incorrect_format("Eq", &correct_usage_for_eq_attribute)
-                        }
+                        },
                     }
                 }
-            }
+            },
             Meta::NameValue(_) => {
                 panic::attribute_incorrect_format("Eq", &correct_usage_for_eq_attribute)
-            }
+            },
             Meta::Path(_) => (),
         }
 

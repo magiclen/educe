@@ -65,24 +65,20 @@ fn basic_2() {
     assert_eq!(
         Ordering::Greater,
         Struct {
-            f1: 2,
-            f2: 1
+            f1: 2, f2: 1
         }
         .cmp(&Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         })
     );
 
     assert_eq!(
         Ordering::Less,
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
         .cmp(&Struct {
-            f1: 2,
-            f2: 1
+            f1: 2, f2: 1
         })
     );
 
@@ -108,36 +104,30 @@ fn ignore() {
     assert_eq!(
         Ordering::Greater,
         Struct {
-            f1: 1,
-            f2: 3
+            f1: 1, f2: 3
         }
         .cmp(&Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         })
     );
 
     assert_eq!(
         Ordering::Less,
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
         .cmp(&Struct {
-            f1: 1,
-            f2: 3
+            f1: 1, f2: 3
         })
     );
 
     assert_eq!(
         Ordering::Equal,
         Struct {
-            f1: 2,
-            f2: 2
+            f1: 2, f2: 2
         }
         .cmp(&Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         })
     );
 
@@ -167,36 +157,30 @@ fn compare_without_trait_1() {
     assert_eq!(
         Ordering::Less,
         Struct {
-            f1: 1,
-            f2: 3
+            f1: 1, f2: 3
         }
         .cmp(&Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         })
     );
 
     assert_eq!(
         Ordering::Greater,
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
         .cmp(&Struct {
-            f1: 1,
-            f2: 3
+            f1: 1, f2: 3
         })
     );
 
     assert_eq!(
         Ordering::Equal,
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
         .cmp(&Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         })
     );
 
@@ -226,36 +210,30 @@ fn compare_without_trait_2() {
     assert_eq!(
         Ordering::Less,
         Struct {
-            f1: 1,
-            f2: 3
+            f1: 1, f2: 3
         }
         .cmp(&Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         })
     );
 
     assert_eq!(
         Ordering::Greater,
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
         .cmp(&Struct {
-            f1: 1,
-            f2: 3
+            f1: 1, f2: 3
         })
     );
 
     assert_eq!(
         Ordering::Equal,
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
         .cmp(&Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         })
     );
 
@@ -298,36 +276,30 @@ fn compare_with_trait_1() {
     assert_eq!(
         Ordering::Less,
         Struct {
-            f1: 1,
-            f2: 3
+            f1: 1, f2: 3
         }
         .cmp(&Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         })
     );
 
     assert_eq!(
         Ordering::Greater,
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
         .cmp(&Struct {
-            f1: 1,
-            f2: 3
+            f1: 1, f2: 3
         })
     );
 
     assert_eq!(
         Ordering::Equal,
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
         .cmp(&Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         })
     );
 
@@ -370,36 +342,30 @@ fn compare_with_trait_2() {
     assert_eq!(
         Ordering::Less,
         Struct {
-            f1: 1,
-            f2: 3
+            f1: 1, f2: 3
         }
         .cmp(&Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         })
     );
 
     assert_eq!(
         Ordering::Greater,
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
         .cmp(&Struct {
-            f1: 1,
-            f2: 3
+            f1: 1, f2: 3
         })
     );
 
     assert_eq!(
         Ordering::Equal,
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
         .cmp(&Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         })
     );
 
@@ -435,36 +401,30 @@ fn compare_with_trait_3() {
     assert_eq!(
         Ordering::Less,
         Struct {
-            f1: 1,
-            f2: 3
+            f1: 1, f2: 3
         }
         .cmp(&Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         })
     );
 
     assert_eq!(
         Ordering::Greater,
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
         .cmp(&Struct {
-            f1: 1,
-            f2: 3
+            f1: 1, f2: 3
         })
     );
 
     assert_eq!(
         Ordering::Equal,
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
         .cmp(&Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         })
     );
 
@@ -500,36 +460,30 @@ fn compare_with_trait_4() {
     assert_eq!(
         Ordering::Less,
         Struct {
-            f1: 1,
-            f2: 3
+            f1: 1, f2: 3
         }
         .cmp(&Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         })
     );
 
     assert_eq!(
         Ordering::Greater,
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
         .cmp(&Struct {
-            f1: 1,
-            f2: 3
+            f1: 1, f2: 3
         })
     );
 
     assert_eq!(
         Ordering::Equal,
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
         .cmp(&Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         })
     );
 
@@ -663,24 +617,20 @@ fn rank_1() {
     assert_eq!(
         Ordering::Less,
         Struct {
-            f1: 2,
-            f2: 1
+            f1: 2, f2: 1
         }
         .cmp(&Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         })
     );
 
     assert_eq!(
         Ordering::Greater,
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
         .cmp(&Struct {
-            f1: 2,
-            f2: 1
+            f1: 2, f2: 1
         })
     );
 
@@ -705,24 +655,20 @@ fn rank_2() {
     assert_eq!(
         Ordering::Less,
         Struct {
-            f1: 2,
-            f2: 1
+            f1: 2, f2: 1
         }
         .cmp(&Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         })
     );
 
     assert_eq!(
         Ordering::Greater,
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
         .cmp(&Struct {
-            f1: 2,
-            f2: 1
+            f1: 2, f2: 1
         })
     );
 
@@ -748,24 +694,20 @@ fn rank_3() {
     assert_eq!(
         Ordering::Less,
         Struct {
-            f1: 2,
-            f2: 1
+            f1: 2, f2: 1
         }
         .cmp(&Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         })
     );
 
     assert_eq!(
         Ordering::Greater,
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
         .cmp(&Struct {
-            f1: 2,
-            f2: 1
+            f1: 2, f2: 1
         })
     );
 
@@ -791,24 +733,20 @@ fn rank_4() {
     assert_eq!(
         Ordering::Less,
         Struct {
-            f1: 2,
-            f2: 1
+            f1: 2, f2: 1
         }
         .cmp(&Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         })
     );
 
     assert_eq!(
         Ordering::Greater,
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
         .cmp(&Struct {
-            f1: 2,
-            f2: 1
+            f1: 2, f2: 1
         })
     );
 

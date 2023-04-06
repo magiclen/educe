@@ -1,22 +1,20 @@
-use super::super::super::create_expr_string_from_lit_str;
-
-use crate::panic;
-use crate::Trait;
-
 use quote::ToTokens;
 use syn::{Attribute, Lit, Meta, NestedMeta};
 
+use super::super::super::create_expr_string_from_lit_str;
+use crate::{panic, Trait};
+
 #[derive(Clone)]
 pub struct FieldAttribute {
-    pub flag: bool,
-    pub literal: Option<Lit>,
+    pub flag:       bool,
+    pub literal:    Option<Lit>,
     pub expression: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 pub struct FieldAttributeBuilder {
-    pub enable_flag: bool,
-    pub enable_literal: bool,
+    pub enable_flag:       bool,
+    pub enable_literal:    bool,
     pub enable_expression: bool,
 }
 
@@ -84,16 +82,14 @@ impl FieldAttributeBuilder {
                                                                 meta_name.as_str(),
                                                             )
                                                         }
-                                                    }
-                                                    _ => {
-                                                        panic::parameter_incorrect_format(
-                                                            meta_name.as_str(),
-                                                            &correct_usage_for_expression,
-                                                        )
-                                                    }
+                                                    },
+                                                    _ => panic::parameter_incorrect_format(
+                                                        meta_name.as_str(),
+                                                        &correct_usage_for_expression,
+                                                    ),
                                                 }
                                             }
-                                        }
+                                        },
                                         Meta::NameValue(named_value) => {
                                             let lit = &named_value.lit;
 
@@ -110,26 +106,22 @@ impl FieldAttributeBuilder {
                                                     } else {
                                                         panic::empty_parameter(meta_name.as_str())
                                                     }
-                                                }
-                                                _ => {
-                                                    panic::parameter_incorrect_format(
-                                                        meta_name.as_str(),
-                                                        &correct_usage_for_expression,
-                                                    )
-                                                }
+                                                },
+                                                _ => panic::parameter_incorrect_format(
+                                                    meta_name.as_str(),
+                                                    &correct_usage_for_expression,
+                                                ),
                                             }
-                                        }
-                                        _ => {
-                                            panic::parameter_incorrect_format(
-                                                meta_name.as_str(),
-                                                &correct_usage_for_expression,
-                                            )
-                                        }
+                                        },
+                                        _ => panic::parameter_incorrect_format(
+                                            meta_name.as_str(),
+                                            &correct_usage_for_expression,
+                                        ),
                                     }
-                                }
+                                },
                                 _ => panic::unknown_parameter("Default", meta_name.as_str()),
                             }
-                        }
+                        },
                         NestedMeta::Lit(lit) => {
                             if !self.enable_literal {
                                 panic::attribute_incorrect_format(
@@ -143,10 +135,10 @@ impl FieldAttributeBuilder {
                             }
 
                             value = Some(lit.clone());
-                        }
+                        },
                     }
                 }
-            }
+            },
             Meta::NameValue(named_value) => {
                 if !self.enable_literal {
                     panic::attribute_incorrect_format(
@@ -158,7 +150,7 @@ impl FieldAttributeBuilder {
                 let lit = &named_value.lit;
 
                 value = Some(lit.clone());
-            }
+            },
             Meta::Path(_) => {
                 if !self.enable_flag {
                     panic::attribute_incorrect_format(
@@ -168,7 +160,7 @@ impl FieldAttributeBuilder {
                 }
 
                 flag = true;
-            }
+            },
         }
 
         if value.is_some() && expression.is_some() {
@@ -212,20 +204,18 @@ impl FieldAttributeBuilder {
 
                                         result = Some(self.from_default_meta(meta));
                                     }
-                                }
+                                },
                                 _ => panic::educe_format_incorrect(),
                             }
                         }
-                    }
+                    },
                     _ => panic::educe_format_incorrect(),
                 }
             }
         }
 
         result.unwrap_or(FieldAttribute {
-            flag: false,
-            literal: None,
-            expression: None,
+            flag: false, literal: None, expression: None
         })
     }
 }

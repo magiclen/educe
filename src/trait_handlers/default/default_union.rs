@@ -1,15 +1,14 @@
-use std::fmt::Write;
-use std::str::FromStr;
-
-use super::super::TraitHandler;
-use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
-
-use crate::panic;
-use crate::Trait;
+use std::{fmt::Write, str::FromStr};
 
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::{Data, DeriveInput, Generics, Lit, Meta};
+
+use super::{
+    super::TraitHandler,
+    models::{FieldAttributeBuilder, TypeAttributeBuilder},
+};
+use crate::{panic, Trait};
 
 pub struct DefaultUnionHandler;
 
@@ -21,10 +20,10 @@ impl TraitHandler for DefaultUnionHandler {
         meta: &Meta,
     ) {
         let type_attribute = TypeAttributeBuilder {
-            enable_flag: true,
-            enable_new: true,
+            enable_flag:       true,
+            enable_new:        true,
             enable_expression: true,
-            enable_bound: true,
+            enable_bound:      true,
         }
         .from_default_meta(meta);
 
@@ -39,15 +38,15 @@ impl TraitHandler for DefaultUnionHandler {
                 Some(expression) => {
                     for field in data.fields.named.iter() {
                         let _ = FieldAttributeBuilder {
-                            enable_flag: false,
-                            enable_literal: false,
+                            enable_flag:       false,
+                            enable_literal:    false,
                             enable_expression: false,
                         }
                         .from_attributes(&field.attrs, traits);
                     }
 
                     builder_tokens.extend(quote!(#expression));
-                }
+                },
                 None => {
                     let ident = ast.ident.to_string();
 
@@ -58,8 +57,8 @@ impl TraitHandler for DefaultUnionHandler {
                             let field = &fields[0];
 
                             let field_attribute = FieldAttributeBuilder {
-                                enable_flag: true,
-                                enable_literal: true,
+                                enable_flag:       true,
+                                enable_literal:    true,
                                 enable_expression: true,
                             }
                             .from_attributes(&field.attrs, traits);
@@ -80,8 +79,8 @@ impl TraitHandler for DefaultUnionHandler {
                                 match field {
                                     Some(field) => {
                                         let field_attribute = FieldAttributeBuilder {
-                                            enable_flag: true,
-                                            enable_literal: true,
+                                            enable_flag:       true,
+                                            enable_literal:    true,
                                             enable_expression: true,
                                         }
                                         .from_attributes(&field.attrs, traits);
@@ -100,8 +99,8 @@ impl TraitHandler for DefaultUnionHandler {
                                                     Some(field) => {
                                                         let field_attribute =
                                                             FieldAttributeBuilder {
-                                                                enable_flag: true,
-                                                                enable_literal: true,
+                                                                enable_flag:       true,
+                                                                enable_literal:    true,
                                                                 enable_expression: true,
                                                             }
                                                             .from_attributes(&field.attrs, traits);
@@ -112,7 +111,7 @@ impl TraitHandler for DefaultUnionHandler {
                                                         {
                                                             panic::multiple_default_fields();
                                                         }
-                                                    }
+                                                    },
                                                     None => break,
                                                 }
                                             }
@@ -123,7 +122,7 @@ impl TraitHandler for DefaultUnionHandler {
                                                 field.ty.clone().into_token_stream().to_string(),
                                             );
                                         }
-                                    }
+                                    },
                                     None => panic::no_default_field(),
                                 }
                             }
@@ -137,42 +136,38 @@ impl TraitHandler for DefaultUnionHandler {
                     );
 
                     match field_attribute.literal {
-                        Some(value) => {
-                            match &value {
-                                Lit::Str(s) => {
-                                    union_tokens
-                                        .write_fmt(format_args!(
-                                            "core::convert::Into::into({s})",
-                                            s = s.into_token_stream()
-                                        ))
-                                        .unwrap();
-                                }
-                                _ => {
-                                    union_tokens.push_str(&value.into_token_stream().to_string());
-                                }
-                            }
-                        }
-                        None => {
-                            match field_attribute.expression {
-                                Some(expression) => {
-                                    union_tokens.push_str(&expression);
-                                }
-                                None => {
-                                    union_tokens
-                                        .write_fmt(format_args!(
-                                            "<{typ} as core::default::Default>::default()",
-                                            typ = typ
-                                        ))
-                                        .unwrap();
-                                }
-                            }
-                        }
+                        Some(value) => match &value {
+                            Lit::Str(s) => {
+                                union_tokens
+                                    .write_fmt(format_args!(
+                                        "core::convert::Into::into({s})",
+                                        s = s.into_token_stream()
+                                    ))
+                                    .unwrap();
+                            },
+                            _ => {
+                                union_tokens.push_str(&value.into_token_stream().to_string());
+                            },
+                        },
+                        None => match field_attribute.expression {
+                            Some(expression) => {
+                                union_tokens.push_str(&expression);
+                            },
+                            None => {
+                                union_tokens
+                                    .write_fmt(format_args!(
+                                        "<{typ} as core::default::Default>::default()",
+                                        typ = typ
+                                    ))
+                                    .unwrap();
+                            },
+                        },
                     }
 
                     union_tokens.push('}');
 
                     builder_tokens.extend(TokenStream::from_str(&union_tokens).unwrap());
-                }
+                },
             }
         }
 

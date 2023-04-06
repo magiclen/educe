@@ -23,12 +23,11 @@ fn basic() {
     }
 
     let s1 = Enum::Struct {
-        f1: 1,
+        f1: 1
     };
 
     let s2 = Enum::Struct2 {
-        f1: 1,
-        f2: 2,
+        f1: 1, f2: 2
     };
 
     let t1 = Enum::Tuple(1);

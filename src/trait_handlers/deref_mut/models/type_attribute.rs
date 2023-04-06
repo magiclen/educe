@@ -1,8 +1,7 @@
-use crate::panic;
-use crate::Trait;
-
 use quote::ToTokens;
 use syn::{Attribute, Meta, NestedMeta};
+
+use crate::{panic, Trait};
 
 #[derive(Clone)]
 pub struct TypeAttribute {
@@ -30,18 +29,14 @@ impl TypeAttributeBuilder {
         };
 
         match meta {
-            Meta::List(_) => {
-                panic::attribute_incorrect_format(
-                    "DerefMut",
-                    &correct_usage_for_deref_mut_attribute,
-                )
-            }
-            Meta::NameValue(_) => {
-                panic::attribute_incorrect_format(
-                    "DerefMut",
-                    &correct_usage_for_deref_mut_attribute,
-                )
-            }
+            Meta::List(_) => panic::attribute_incorrect_format(
+                "DerefMut",
+                &correct_usage_for_deref_mut_attribute,
+            ),
+            Meta::NameValue(_) => panic::attribute_incorrect_format(
+                "DerefMut",
+                &correct_usage_for_deref_mut_attribute,
+            ),
             Meta::Path(_) => {
                 if !self.enable_flag {
                     panic::attribute_incorrect_format(
@@ -51,7 +46,7 @@ impl TypeAttributeBuilder {
                 }
 
                 flag = true;
-            }
+            },
         }
 
         TypeAttribute {
@@ -88,11 +83,11 @@ impl TypeAttributeBuilder {
 
                                             result = Some(self.from_deref_mut_meta(meta));
                                         }
-                                    }
+                                    },
                                     _ => panic::educe_format_incorrect(),
                                 }
                             }
-                        }
+                        },
                         _ => panic::educe_format_incorrect(),
                     }
                 }
@@ -100,7 +95,7 @@ impl TypeAttributeBuilder {
         }
 
         result.unwrap_or(TypeAttribute {
-            flag: false,
+            flag: false
         })
     }
 }

@@ -5,7 +5,6 @@
 extern crate educe;
 
 use core::hash::{Hash, Hasher};
-
 use std::collections::hash_map::DefaultHasher;
 
 #[test]
@@ -36,7 +35,7 @@ fn basic() {
         let mut hasher = DefaultHasher::new();
 
         Struct {
-            f1: 1,
+            f1: 1
         }
         .hash(&mut hasher);
 
@@ -85,7 +84,7 @@ fn ignore() {
         let mut hasher = DefaultHasher::new();
 
         Struct {
-            f1: 1,
+            f1: 1
         }
         .hash(&mut hasher);
 
@@ -145,7 +144,7 @@ fn hash_without_trait_1() {
         let mut hasher = DefaultHasher::new();
 
         Struct {
-            f1: 1,
+            f1: 1
         }
         .hash(&mut hasher);
 
@@ -156,7 +155,7 @@ fn hash_without_trait_1() {
         let mut hasher = DefaultHasher::new();
 
         Struct2 {
-            f1: 1,
+            f1: 1
         }
         .hash(&mut hasher);
 
@@ -217,7 +216,7 @@ fn hash_without_trait_2() {
         let mut hasher = DefaultHasher::new();
 
         Struct {
-            f1: 1,
+            f1: 1
         }
         .hash(&mut hasher);
 
@@ -228,7 +227,7 @@ fn hash_without_trait_2() {
         let mut hasher = DefaultHasher::new();
 
         Struct2 {
-            f1: 1,
+            f1: 1
         }
         .hash(&mut hasher);
 
@@ -293,7 +292,7 @@ fn hash_with_trait_1() {
         let mut hasher = DefaultHasher::new();
 
         Struct {
-            f1: 1,
+            f1: 1
         }
         .hash(&mut hasher);
 
@@ -304,7 +303,7 @@ fn hash_with_trait_1() {
         let mut hasher = DefaultHasher::new();
 
         Struct2 {
-            f1: 1,
+            f1: 1
         }
         .hash(&mut hasher);
 
@@ -369,7 +368,7 @@ fn hash_with_trait_2() {
         let mut hasher = DefaultHasher::new();
 
         Struct {
-            f1: 1,
+            f1: 1
         }
         .hash(&mut hasher);
 
@@ -380,7 +379,7 @@ fn hash_with_trait_2() {
         let mut hasher = DefaultHasher::new();
 
         Struct2 {
-            f1: 1,
+            f1: 1
         }
         .hash(&mut hasher);
 
@@ -445,7 +444,7 @@ fn hash_with_trait_3() {
         let mut hasher = DefaultHasher::new();
 
         Struct {
-            f1: 1,
+            f1: 1
         }
         .hash(&mut hasher);
 
@@ -456,7 +455,7 @@ fn hash_with_trait_3() {
         let mut hasher = DefaultHasher::new();
 
         Struct2 {
-            f1: 1,
+            f1: 1
         }
         .hash(&mut hasher);
 
@@ -521,7 +520,7 @@ fn hash_with_trait_4() {
         let mut hasher = DefaultHasher::new();
 
         Struct {
-            f1: 1,
+            f1: 1
         }
         .hash(&mut hasher);
 
@@ -532,7 +531,7 @@ fn hash_with_trait_4() {
         let mut hasher = DefaultHasher::new();
 
         Struct2 {
-            f1: 1,
+            f1: 1
         }
         .hash(&mut hasher);
 
@@ -568,7 +567,7 @@ fn bound_1() {
         let mut hasher = DefaultHasher::new();
 
         Struct {
-            f1: 1,
+            f1: 1
         }
         .hash(&mut hasher);
 
@@ -602,7 +601,7 @@ fn bound_2() {
         let mut hasher = DefaultHasher::new();
 
         Struct {
-            f1: 1,
+            f1: 1
         }
         .hash(&mut hasher);
 
@@ -636,7 +635,7 @@ fn bound_3() {
         let mut hasher = DefaultHasher::new();
 
         Struct {
-            f1: 1,
+            f1: 1
         }
         .hash(&mut hasher);
 

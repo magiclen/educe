@@ -60,31 +60,25 @@ fn ignore() {
 
     assert!(
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } == Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
     );
 
     assert!(
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } == Struct {
-            f1: 2,
-            f2: 2
+            f1: 2, f2: 2
         }
     );
 
     assert!(
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } != Struct {
-            f1: 2,
-            f2: 3
+            f1: 2, f2: 3
         }
     );
 
@@ -113,31 +107,25 @@ fn compare_without_trait_1() {
 
     assert!(
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } != Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
     );
 
     assert!(
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } == Struct {
-            f1: 2,
-            f2: 2
+            f1: 2, f2: 2
         }
     );
 
     assert!(
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } != Struct {
-            f1: 2,
-            f2: 3
+            f1: 2, f2: 3
         }
     );
 
@@ -166,31 +154,25 @@ fn compare_without_trait_2() {
 
     assert!(
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } != Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
     );
 
     assert!(
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } == Struct {
-            f1: 2,
-            f2: 2
+            f1: 2, f2: 2
         }
     );
 
     assert!(
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } != Struct {
-            f1: 2,
-            f2: 3
+            f1: 2, f2: 3
         }
     );
 
@@ -225,31 +207,25 @@ fn compare_with_trait_1() {
 
     assert!(
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } != Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
     );
 
     assert!(
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } == Struct {
-            f1: 2,
-            f2: 2
+            f1: 2, f2: 2
         }
     );
 
     assert!(
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } != Struct {
-            f1: 2,
-            f2: 3
+            f1: 2, f2: 3
         }
     );
 
@@ -284,31 +260,25 @@ fn compare_with_trait_2() {
 
     assert!(
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } != Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
     );
 
     assert!(
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } == Struct {
-            f1: 2,
-            f2: 2
+            f1: 2, f2: 2
         }
     );
 
     assert!(
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } != Struct {
-            f1: 2,
-            f2: 3
+            f1: 2, f2: 3
         }
     );
 
@@ -343,31 +313,25 @@ fn compare_with_trait_3() {
 
     assert!(
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } != Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
     );
 
     assert!(
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } == Struct {
-            f1: 2,
-            f2: 2
+            f1: 2, f2: 2
         }
     );
 
     assert!(
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } != Struct {
-            f1: 2,
-            f2: 3
+            f1: 2, f2: 3
         }
     );
 
@@ -402,31 +366,25 @@ fn compare_with_trait_4() {
 
     assert!(
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } != Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
     );
 
     assert!(
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } == Struct {
-            f1: 2,
-            f2: 2
+            f1: 2, f2: 2
         }
     );
 
     assert!(
         Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } != Struct {
-            f1: 2,
-            f2: 3
+            f1: 2, f2: 3
         }
     );
 

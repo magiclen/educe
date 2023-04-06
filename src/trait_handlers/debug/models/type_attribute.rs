@@ -1,16 +1,14 @@
-use super::super::super::{
-    create_path_string_from_lit_str, create_where_predicates_from_generic_parameters,
-    create_where_predicates_from_lit_str,
-};
-
-use crate::panic;
-use crate::Trait;
-
 use quote::{quote, ToTokens};
 use syn::{
     punctuated::Punctuated, token::Comma, Attribute, GenericParam, Ident, Lit, Meta, NestedMeta,
     WherePredicate,
 };
+
+use super::super::super::{
+    create_path_string_from_lit_str, create_where_predicates_from_generic_parameters,
+    create_where_predicates_from_lit_str,
+};
+use crate::{panic, Trait};
 
 #[derive(Debug, Clone)]
 pub enum TypeAttributeName {
@@ -43,12 +41,10 @@ impl TypeAttributeBound {
     ) -> Punctuated<WherePredicate, Comma> {
         match self {
             TypeAttributeBound::None => Punctuated::new(),
-            TypeAttributeBound::Auto => {
-                create_where_predicates_from_generic_parameters(
-                    params,
-                    &syn::parse2(quote!(core::fmt::Debug)).unwrap(),
-                )
-            }
+            TypeAttributeBound::Auto => create_where_predicates_from_generic_parameters(
+                params,
+                &syn::parse2(quote!(core::fmt::Debug)).unwrap(),
+            ),
             TypeAttributeBound::Custom(where_predicates) => where_predicates,
         }
     }
@@ -56,20 +52,20 @@ impl TypeAttributeBound {
 
 #[derive(Clone)]
 pub struct TypeAttribute {
-    pub flag: bool,
-    pub name: TypeAttributeName,
+    pub flag:        bool,
+    pub name:        TypeAttributeName,
     pub named_field: bool,
-    pub bound: TypeAttributeBound,
+    pub bound:       TypeAttributeBound,
 }
 
 #[derive(Debug, Clone)]
 pub struct TypeAttributeBuilder {
-    pub enable_flag: bool,
-    pub name: TypeAttributeName,
-    pub enable_name: bool,
-    pub named_field: bool,
+    pub enable_flag:        bool,
+    pub name:               TypeAttributeName,
+    pub enable_name:        bool,
+    pub named_field:        bool,
     pub enable_named_field: bool,
-    pub enable_bound: bool,
+    pub enable_bound:       bool,
 }
 
 impl TypeAttributeBuilder {
@@ -161,65 +157,53 @@ impl TypeAttributeBuilder {
                                         Meta::List(list) => {
                                             for p in list.nested.iter() {
                                                 match p {
-                                                    NestedMeta::Lit(lit) => {
-                                                        match lit {
-                                                            Lit::Str(s) => {
-                                                                if name_is_set {
-                                                                    panic::reset_parameter(
-                                                                        meta_name.as_str(),
-                                                                    );
-                                                                }
-
-                                                                name_is_set = true;
-
-                                                                let s =
-                                                                    create_path_string_from_lit_str(
-                                                                        s,
-                                                                    );
-
-                                                                name = match s {
-                                                                    Some(s) => {
-                                                                        TypeAttributeName::Custom(s)
-                                                                    }
-                                                                    None => {
-                                                                        TypeAttributeName::Disable
-                                                                    }
-                                                                };
-                                                            }
-                                                            Lit::Bool(s) => {
-                                                                if name_is_set {
-                                                                    panic::reset_parameter(
-                                                                        meta_name.as_str(),
-                                                                    );
-                                                                }
-
-                                                                name_is_set = true;
-
-                                                                if s.value {
-                                                                    name =
-                                                                        TypeAttributeName::Default;
-                                                                } else {
-                                                                    name =
-                                                                        TypeAttributeName::Disable;
-                                                                }
-                                                            }
-                                                            _ => {
-                                                                panic::parameter_incorrect_format(
+                                                    NestedMeta::Lit(lit) => match lit {
+                                                        Lit::Str(s) => {
+                                                            if name_is_set {
+                                                                panic::reset_parameter(
                                                                     meta_name.as_str(),
-                                                                    &correct_usage_for_name,
-                                                                )
+                                                                );
                                                             }
-                                                        }
-                                                    }
-                                                    _ => {
-                                                        panic::parameter_incorrect_format(
+
+                                                            name_is_set = true;
+
+                                                            let s =
+                                                                create_path_string_from_lit_str(s);
+
+                                                            name = match s {
+                                                                Some(s) => {
+                                                                    TypeAttributeName::Custom(s)
+                                                                },
+                                                                None => TypeAttributeName::Disable,
+                                                            };
+                                                        },
+                                                        Lit::Bool(s) => {
+                                                            if name_is_set {
+                                                                panic::reset_parameter(
+                                                                    meta_name.as_str(),
+                                                                );
+                                                            }
+
+                                                            name_is_set = true;
+
+                                                            if s.value {
+                                                                name = TypeAttributeName::Default;
+                                                            } else {
+                                                                name = TypeAttributeName::Disable;
+                                                            }
+                                                        },
+                                                        _ => panic::parameter_incorrect_format(
                                                             meta_name.as_str(),
                                                             &correct_usage_for_name,
-                                                        )
-                                                    }
+                                                        ),
+                                                    },
+                                                    _ => panic::parameter_incorrect_format(
+                                                        meta_name.as_str(),
+                                                        &correct_usage_for_name,
+                                                    ),
                                                 }
                                             }
-                                        }
+                                        },
                                         Meta::NameValue(named_value) => {
                                             let lit = &named_value.lit;
 
@@ -237,7 +221,7 @@ impl TypeAttributeBuilder {
                                                         Some(s) => TypeAttributeName::Custom(s),
                                                         None => TypeAttributeName::Disable,
                                                     };
-                                                }
+                                                },
                                                 Lit::Bool(s) => {
                                                     if name_is_set {
                                                         panic::reset_parameter(meta_name.as_str());
@@ -250,23 +234,19 @@ impl TypeAttributeBuilder {
                                                     } else {
                                                         name = TypeAttributeName::Disable;
                                                     }
-                                                }
-                                                _ => {
-                                                    panic::parameter_incorrect_format(
-                                                        meta_name.as_str(),
-                                                        &correct_usage_for_name,
-                                                    )
-                                                }
+                                                },
+                                                _ => panic::parameter_incorrect_format(
+                                                    meta_name.as_str(),
+                                                    &correct_usage_for_name,
+                                                ),
                                             }
-                                        }
-                                        _ => {
-                                            panic::parameter_incorrect_format(
-                                                meta_name.as_str(),
-                                                &correct_usage_for_name,
-                                            )
-                                        }
+                                        },
+                                        _ => panic::parameter_incorrect_format(
+                                            meta_name.as_str(),
+                                            &correct_usage_for_name,
+                                        ),
                                     }
-                                }
+                                },
                                 "named_field" => {
                                     if !self.enable_named_field {
                                         panic::unknown_parameter("Debug", meta_name.as_str());
@@ -286,16 +266,14 @@ impl TypeAttributeBuilder {
                                                         named_field_is_set = true;
 
                                                         named_field = s.value;
-                                                    }
-                                                    _ => {
-                                                        panic::parameter_incorrect_format(
-                                                            meta_name.as_str(),
-                                                            &correct_usage_for_named_field,
-                                                        )
-                                                    }
+                                                    },
+                                                    _ => panic::parameter_incorrect_format(
+                                                        meta_name.as_str(),
+                                                        &correct_usage_for_named_field,
+                                                    ),
                                                 }
                                             }
-                                        }
+                                        },
                                         Meta::NameValue(named_value) => {
                                             let lit = &named_value.lit;
 
@@ -308,23 +286,19 @@ impl TypeAttributeBuilder {
                                                     named_field_is_set = true;
 
                                                     named_field = s.value;
-                                                }
-                                                _ => {
-                                                    panic::parameter_incorrect_format(
-                                                        meta_name.as_str(),
-                                                        &correct_usage_for_named_field,
-                                                    )
-                                                }
+                                                },
+                                                _ => panic::parameter_incorrect_format(
+                                                    meta_name.as_str(),
+                                                    &correct_usage_for_named_field,
+                                                ),
                                             }
-                                        }
-                                        _ => {
-                                            panic::parameter_incorrect_format(
-                                                meta_name.as_str(),
-                                                &correct_usage_for_named_field,
-                                            )
-                                        }
+                                        },
+                                        _ => panic::parameter_incorrect_format(
+                                            meta_name.as_str(),
+                                            &correct_usage_for_named_field,
+                                        ),
                                     }
-                                }
+                                },
                                 "bound" => {
                                     if !self.enable_bound {
                                         panic::unknown_parameter("Debug", meta_name.as_str());
@@ -351,23 +325,19 @@ impl TypeAttributeBuilder {
                                                                 TypeAttributeBound::Custom(
                                                                     where_predicates,
                                                                 )
-                                                            }
-                                                            None => {
-                                                                panic::empty_parameter(
-                                                                    meta_name.as_str(),
-                                                                )
-                                                            }
+                                                            },
+                                                            None => panic::empty_parameter(
+                                                                meta_name.as_str(),
+                                                            ),
                                                         };
-                                                    }
-                                                    _ => {
-                                                        panic::parameter_incorrect_format(
-                                                            meta_name.as_str(),
-                                                            &correct_usage_for_bound,
-                                                        )
-                                                    }
+                                                    },
+                                                    _ => panic::parameter_incorrect_format(
+                                                        meta_name.as_str(),
+                                                        &correct_usage_for_bound,
+                                                    ),
                                                 }
                                             }
-                                        }
+                                        },
                                         Meta::NameValue(named_value) => {
                                             let lit = &named_value.lit;
 
@@ -387,22 +357,18 @@ impl TypeAttributeBuilder {
                                                             TypeAttributeBound::Custom(
                                                                 where_predicates,
                                                             )
-                                                        }
-                                                        None => {
-                                                            panic::empty_parameter(
-                                                                meta_name.as_str(),
-                                                            )
-                                                        }
+                                                        },
+                                                        None => panic::empty_parameter(
+                                                            meta_name.as_str(),
+                                                        ),
                                                     };
-                                                }
-                                                _ => {
-                                                    panic::parameter_incorrect_format(
-                                                        meta_name.as_str(),
-                                                        &correct_usage_for_bound,
-                                                    )
-                                                }
+                                                },
+                                                _ => panic::parameter_incorrect_format(
+                                                    meta_name.as_str(),
+                                                    &correct_usage_for_bound,
+                                                ),
                                             }
-                                        }
+                                        },
                                         Meta::Path(_) => {
                                             if bound_is_set {
                                                 panic::reset_parameter(meta_name.as_str());
@@ -411,46 +377,42 @@ impl TypeAttributeBuilder {
                                             bound_is_set = true;
 
                                             bound = TypeAttributeBound::Auto;
-                                        }
+                                        },
                                     }
-                                }
+                                },
                                 _ => panic::unknown_parameter("Debug", meta_name.as_str()),
                             }
-                        }
-                        NestedMeta::Lit(lit) => {
-                            match lit {
-                                Lit::Str(s) => {
-                                    if !self.enable_name {
-                                        panic::attribute_incorrect_format(
-                                            "Debug",
-                                            &correct_usage_for_debug_attribute,
-                                        )
-                                    }
-
-                                    if name_is_set {
-                                        panic::reset_parameter("name");
-                                    }
-
-                                    name_is_set = true;
-
-                                    let s = create_path_string_from_lit_str(s);
-
-                                    name = match s {
-                                        Some(s) => TypeAttributeName::Custom(s),
-                                        None => TypeAttributeName::Disable,
-                                    };
-                                }
-                                _ => {
+                        },
+                        NestedMeta::Lit(lit) => match lit {
+                            Lit::Str(s) => {
+                                if !self.enable_name {
                                     panic::attribute_incorrect_format(
                                         "Debug",
                                         &correct_usage_for_debug_attribute,
                                     )
                                 }
-                            }
-                        }
+
+                                if name_is_set {
+                                    panic::reset_parameter("name");
+                                }
+
+                                name_is_set = true;
+
+                                let s = create_path_string_from_lit_str(s);
+
+                                name = match s {
+                                    Some(s) => TypeAttributeName::Custom(s),
+                                    None => TypeAttributeName::Disable,
+                                };
+                            },
+                            _ => panic::attribute_incorrect_format(
+                                "Debug",
+                                &correct_usage_for_debug_attribute,
+                            ),
+                        },
                     }
                 }
-            }
+            },
             Meta::NameValue(named_value) => {
                 let lit = &named_value.lit;
 
@@ -469,22 +431,20 @@ impl TypeAttributeBuilder {
                             Some(s) => TypeAttributeName::Custom(s),
                             None => TypeAttributeName::Disable,
                         };
-                    }
-                    _ => {
-                        panic::attribute_incorrect_format(
-                            "Debug",
-                            &correct_usage_for_debug_attribute,
-                        )
-                    }
+                    },
+                    _ => panic::attribute_incorrect_format(
+                        "Debug",
+                        &correct_usage_for_debug_attribute,
+                    ),
                 }
-            }
+            },
             Meta::Path(_) => {
                 if !self.enable_flag {
                     panic::attribute_incorrect_format("Debug", &correct_usage_for_debug_attribute);
                 }
 
                 flag = true;
-            }
+            },
         }
 
         TypeAttribute {
@@ -524,11 +484,11 @@ impl TypeAttributeBuilder {
 
                                             result = Some(self.from_debug_meta(meta));
                                         }
-                                    }
+                                    },
                                     _ => panic::educe_format_incorrect(),
                                 }
                             }
-                        }
+                        },
                         _ => panic::educe_format_incorrect(),
                     }
                 }
@@ -536,10 +496,10 @@ impl TypeAttributeBuilder {
         }
 
         result.unwrap_or(TypeAttribute {
-            flag: false,
-            name: self.name,
+            flag:        false,
+            name:        self.name,
             named_field: self.named_field,
-            bound: TypeAttributeBound::None,
+            bound:       TypeAttributeBound::None,
         })
     }
 }

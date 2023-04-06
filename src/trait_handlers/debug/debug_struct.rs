@@ -1,16 +1,14 @@
 use std::str::FromStr;
 
-use super::super::TraitHandler;
-use super::models::{
-    FieldAttributeBuilder, FieldAttributeName, TypeAttributeBuilder, TypeAttributeName,
-};
-
-use crate::panic;
-use crate::Trait;
-
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::{Data, DeriveInput, Fields, Generics, Meta};
+
+use super::{
+    super::TraitHandler,
+    models::{FieldAttributeBuilder, FieldAttributeName, TypeAttributeBuilder, TypeAttributeName},
+};
+use crate::{panic, Trait};
 
 pub struct DebugStructHandler;
 
@@ -30,12 +28,12 @@ impl TraitHandler for DebugStructHandler {
         };
 
         let type_attribute = TypeAttributeBuilder {
-            enable_flag: true,
-            name: TypeAttributeName::Default,
-            enable_name: true,
-            named_field: !is_tuple,
+            enable_flag:        true,
+            name:               TypeAttributeName::Default,
+            enable_name:        true,
+            named_field:        !is_tuple,
             enable_named_field: true,
-            enable_bound: true,
+            enable_bound:       true,
         }
         .from_debug_meta(meta);
 
@@ -69,10 +67,10 @@ impl TraitHandler for DebugStructHandler {
             if let Data::Struct(data) = &ast.data {
                 for (index, field) in data.fields.iter().enumerate() {
                     let field_attribute = FieldAttributeBuilder {
-                        name: FieldAttributeName::Default,
-                        enable_name: true,
+                        name:          FieldAttributeName::Default,
+                        enable_name:   true,
                         enable_ignore: true,
-                        enable_impl: true,
+                        enable_impl:   true,
                     }
                     .from_attributes(&field.attrs, traits);
 
@@ -92,33 +90,43 @@ impl TraitHandler for DebugStructHandler {
                             } else {
                                 (rename, format!("{}", index))
                             }
-                        }
+                        },
                         None => {
                             if let Some(ident) = field.ident.as_ref() {
                                 (ident.to_string(), ident.to_string())
                             } else {
                                 (format!("_{}", index), format!("{}", index))
                             }
-                        }
+                        },
                     };
 
                     match format_trait {
                         Some(format_trait) => {
                             let format_method = format_method.unwrap();
 
-                            builder_tokens.extend(TokenStream::from_str(&format!("
+                            builder_tokens.extend(
+                                TokenStream::from_str(&format!(
+                                    "
                                 let arg = {{
                                     struct MyDebug<'a, T: {format_trait}>(&'a T);
 
-                                    impl<'a, T: {format_trait}> core::fmt::Debug for MyDebug<'a, T> {{
-                                        fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {{
+                                    impl<'a, T: {format_trait}> core::fmt::Debug for MyDebug<'a, \
+                                     T> {{
+                                        fn fmt(&self, formatter: &mut core::fmt::Formatter) -> \
+                                     core::fmt::Result {{
                                             {format_trait}::{format_method}(self.0, formatter)
                                         }}
                                     }}
 
                                     MyDebug(&self.{field_name})
                                 }};
-                            ", format_trait = format_trait, format_method = format_method, field_name = field_name)).unwrap());
+                            ",
+                                    format_trait = format_trait,
+                                    format_method = format_method,
+                                    field_name = field_name
+                                ))
+                                .unwrap(),
+                            );
 
                             let statement = if name.is_empty() {
                                 format!("builder.entry(&RawString({key:?}), &arg);", key = key)
@@ -127,58 +135,60 @@ impl TraitHandler for DebugStructHandler {
                             };
 
                             builder_tokens.extend(TokenStream::from_str(&statement).unwrap());
-                        }
-                        None => {
-                            match format_method {
-                                Some(format_method) => {
-                                    let ty = field.ty.clone().into_token_stream().to_string();
+                        },
+                        None => match format_method {
+                            Some(format_method) => {
+                                let ty = field.ty.clone().into_token_stream().to_string();
 
-                                    builder_tokens.extend(TokenStream::from_str(&format!("
+                                builder_tokens.extend(
+                                    TokenStream::from_str(&format!(
+                                        "
                                         let arg = {{
                                             struct MyDebug<'a>(&'a {ty});
 
                                             impl<'a> core::fmt::Debug for MyDebug<'a> {{
-                                                fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {{
+                                                fn fmt(&self, formatter: &mut \
+                                         core::fmt::Formatter) -> core::fmt::Result {{
                                                     {format_method}(self.0, formatter)
                                                 }}
                                             }}
 
                                             MyDebug(&self.{field_name})
                                         }};
-                                    ", ty = ty, format_method = format_method, field_name = field_name)).unwrap());
+                                    ",
+                                        ty = ty,
+                                        format_method = format_method,
+                                        field_name = field_name
+                                    ))
+                                    .unwrap(),
+                                );
 
-                                    let statement = if name.is_empty() {
-                                        format!(
-                                            "builder.entry(&RawString({key:?}), &arg);",
-                                            key = key
-                                        )
-                                    } else {
-                                        format!("builder.field({key:?}, &arg);", key = key)
-                                    };
+                                let statement = if name.is_empty() {
+                                    format!("builder.entry(&RawString({key:?}), &arg);", key = key)
+                                } else {
+                                    format!("builder.field({key:?}, &arg);", key = key)
+                                };
 
-                                    builder_tokens
-                                        .extend(TokenStream::from_str(&statement).unwrap());
-                                }
-                                None => {
-                                    let statement = if name.is_empty() {
-                                        format!(
+                                builder_tokens.extend(TokenStream::from_str(&statement).unwrap());
+                            },
+                            None => {
+                                let statement = if name.is_empty() {
+                                    format!(
                                         "builder.entry(&RawString({key:?}), &self.{field_name});",
                                         key = key,
                                         field_name = field_name
                                     )
-                                    } else {
-                                        format!(
-                                            "builder.field({key:?}, &self.{field_name});",
-                                            key = key,
-                                            field_name = field_name
-                                        )
-                                    };
+                                } else {
+                                    format!(
+                                        "builder.field({key:?}, &self.{field_name});",
+                                        key = key,
+                                        field_name = field_name
+                                    )
+                                };
 
-                                    builder_tokens
-                                        .extend(TokenStream::from_str(&statement).unwrap());
-                                }
-                            }
-                        }
+                                builder_tokens.extend(TokenStream::from_str(&statement).unwrap());
+                            },
+                        },
                     }
 
                     has_fields = true;
@@ -190,10 +200,10 @@ impl TraitHandler for DebugStructHandler {
             if let Data::Struct(data) = &ast.data {
                 for (index, field) in data.fields.iter().enumerate() {
                     let field_attribute = FieldAttributeBuilder {
-                        name: FieldAttributeName::Default,
-                        enable_name: false,
+                        name:          FieldAttributeName::Default,
+                        enable_name:   false,
                         enable_ignore: true,
-                        enable_impl: true,
+                        enable_impl:   true,
                     }
                     .from_attributes(&field.attrs, traits);
 
@@ -214,57 +224,72 @@ impl TraitHandler for DebugStructHandler {
                         Some(format_trait) => {
                             let format_method = format_method.unwrap();
 
-                            builder_tokens.extend(TokenStream::from_str(&format!("
+                            builder_tokens.extend(
+                                TokenStream::from_str(&format!(
+                                    "
                                 let arg = {{
                                     struct MyDebug<'a, T: {format_trait}>(&'a T);
 
-                                    impl<'a, T: {format_trait}> core::fmt::Debug for MyDebug<'a, T> {{
-                                        fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {{
+                                    impl<'a, T: {format_trait}> core::fmt::Debug for MyDebug<'a, \
+                                     T> {{
+                                        fn fmt(&self, formatter: &mut core::fmt::Formatter) -> \
+                                     core::fmt::Result {{
                                             {format_trait}::{format_method}(self.0, formatter)
                                         }}
                                     }}
 
                                     MyDebug(&self.{field_name})
                                 }};
-                            ", format_trait = format_trait, format_method = format_method, field_name = field_name)).unwrap());
+                            ",
+                                    format_trait = format_trait,
+                                    format_method = format_method,
+                                    field_name = field_name
+                                ))
+                                .unwrap(),
+                            );
 
                             builder_tokens
                                 .extend(TokenStream::from_str("builder.field(&arg);").unwrap());
-                        }
-                        None => {
-                            match format_method {
-                                Some(format_method) => {
-                                    let ty = field.ty.clone().into_token_stream().to_string();
+                        },
+                        None => match format_method {
+                            Some(format_method) => {
+                                let ty = field.ty.clone().into_token_stream().to_string();
 
-                                    builder_tokens.extend(TokenStream::from_str(&format!("
+                                builder_tokens.extend(
+                                    TokenStream::from_str(&format!(
+                                        "
                                         let arg = {{
                                             struct MyDebug<'a>(&'a {ty});
 
                                             impl<'a> core::fmt::Debug for MyDebug<'a> {{
-                                                fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {{
+                                                fn fmt(&self, formatter: &mut \
+                                         core::fmt::Formatter) -> core::fmt::Result {{
                                                     {format_method}(self.0, formatter)
                                                 }}
                                             }}
 
                                             MyDebug(&self.{field_name})
                                         }};
-                                    ", ty = ty, format_method = format_method, field_name = field_name)).unwrap());
-
-                                    builder_tokens.extend(
-                                        TokenStream::from_str("builder.field(&arg);").unwrap(),
-                                    );
-                                }
-                                None => {
-                                    let statement = format!(
-                                        "builder.field(&self.{field_name});",
+                                    ",
+                                        ty = ty,
+                                        format_method = format_method,
                                         field_name = field_name
-                                    );
+                                    ))
+                                    .unwrap(),
+                                );
 
-                                    builder_tokens
-                                        .extend(TokenStream::from_str(&statement).unwrap());
-                                }
-                            }
-                        }
+                                builder_tokens
+                                    .extend(TokenStream::from_str("builder.field(&arg);").unwrap());
+                            },
+                            None => {
+                                let statement = format!(
+                                    "builder.field(&self.{field_name});",
+                                    field_name = field_name
+                                );
+
+                                builder_tokens.extend(TokenStream::from_str(&statement).unwrap());
+                            },
+                        },
                     }
 
                     has_fields = true;

@@ -12,9 +12,7 @@ fn basic() {
     enum Enum {
         Unit,
         Unit2,
-        Struct {
-            f1: u8,
-        },
+        Struct { f1: u8 },
         Tuple(u8),
     }
 
@@ -57,31 +55,25 @@ fn ignore() {
 
     assert!(
         Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } == Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
     );
 
     assert!(
         Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } == Enum::Struct {
-            f1: 2,
-            f2: 2
+            f1: 2, f2: 2
         }
     );
 
     assert!(
         Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } != Enum::Struct {
-            f1: 2,
-            f2: 3
+            f1: 2, f2: 3
         }
     );
 
@@ -109,31 +101,25 @@ fn compare_without_trait_1() {
 
     assert!(
         Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } != Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
     );
 
     assert!(
         Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } == Enum::Struct {
-            f1: 2,
-            f2: 2
+            f1: 2, f2: 2
         }
     );
 
     assert!(
         Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } != Enum::Struct {
-            f1: 2,
-            f2: 3
+            f1: 2, f2: 3
         }
     );
 
@@ -161,31 +147,25 @@ fn compare_without_trait_2() {
 
     assert!(
         Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } != Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
     );
 
     assert!(
         Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } == Enum::Struct {
-            f1: 2,
-            f2: 2
+            f1: 2, f2: 2
         }
     );
 
     assert!(
         Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } != Enum::Struct {
-            f1: 2,
-            f2: 3
+            f1: 2, f2: 3
         }
     );
 
@@ -219,31 +199,25 @@ fn compare_with_trait_1() {
 
     assert!(
         Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } != Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
     );
 
     assert!(
         Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } == Enum::Struct {
-            f1: 2,
-            f2: 2
+            f1: 2, f2: 2
         }
     );
 
     assert!(
         Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } != Enum::Struct {
-            f1: 2,
-            f2: 3
+            f1: 2, f2: 3
         }
     );
 
@@ -277,31 +251,25 @@ fn compare_with_trait_2() {
 
     assert!(
         Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } != Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
     );
 
     assert!(
         Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } == Enum::Struct {
-            f1: 2,
-            f2: 2
+            f1: 2, f2: 2
         }
     );
 
     assert!(
         Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } != Enum::Struct {
-            f1: 2,
-            f2: 3
+            f1: 2, f2: 3
         }
     );
 
@@ -335,31 +303,25 @@ fn compare_with_trait_3() {
 
     assert!(
         Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } != Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
     );
 
     assert!(
         Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } == Enum::Struct {
-            f1: 2,
-            f2: 2
+            f1: 2, f2: 2
         }
     );
 
     assert!(
         Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } != Enum::Struct {
-            f1: 2,
-            f2: 3
+            f1: 2, f2: 3
         }
     );
 
@@ -393,31 +355,25 @@ fn compare_with_trait_4() {
 
     assert!(
         Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } != Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         }
     );
 
     assert!(
         Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } == Enum::Struct {
-            f1: 2,
-            f2: 2
+            f1: 2, f2: 2
         }
     );
 
     assert!(
         Enum::Struct {
-            f1: 1,
-            f2: 2
+            f1: 1, f2: 2
         } != Enum::Struct {
-            f1: 2,
-            f2: 3
+            f1: 2, f2: 3
         }
     );
 
@@ -432,9 +388,7 @@ fn bound_1() {
     #[educe(PartialEq(bound))]
     enum Enum<T> {
         Unit,
-        Struct {
-            f1: T,
-        },
+        Struct { f1: T },
         Tuple(T),
     }
 
@@ -466,9 +420,7 @@ fn bound_2() {
     #[educe(PartialEq(bound = "T: core::cmp::PartialEq"))]
     enum Enum<T> {
         Unit,
-        Struct {
-            f1: T,
-        },
+        Struct { f1: T },
         Tuple(T),
     }
 
@@ -500,9 +452,7 @@ fn bound_3() {
     #[educe(PartialEq(bound("T: core::cmp::PartialEq")))]
     enum Enum<T> {
         Unit,
-        Struct {
-            f1: T,
-        },
+        Struct { f1: T },
         Tuple(T),
     }
 

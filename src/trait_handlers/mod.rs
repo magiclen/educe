@@ -25,14 +25,14 @@ pub mod partial_ord;
 
 use std::str::FromStr;
 
-use crate::Trait;
-
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::{
     self, punctuated::Punctuated, token::Comma, DeriveInput, Expr, GenericParam, LitStr, Meta,
     Path, WhereClause, WherePredicate,
 };
+
+use crate::Trait;
 
 pub trait TraitHandler {
     fn trait_meta_handler(

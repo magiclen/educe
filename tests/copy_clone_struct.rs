@@ -24,7 +24,7 @@ fn basic() {
 
     let u = Unit.clone();
     let s = Struct {
-        f1: 1,
+        f1: 1
     }
     .clone();
     let t = Tuple(1).clone();
@@ -48,7 +48,7 @@ fn bound_1() {
     struct Tuple<T>(T);
 
     let s = Struct {
-        f1: 1,
+        f1: 1
     }
     .clone();
     let t = Tuple(1).clone();
@@ -70,7 +70,7 @@ fn bound_2() {
     struct Tuple<T>(T);
 
     let s = Struct {
-        f1: 1,
+        f1: 1
     }
     .clone();
     let t = Tuple(1).clone();
@@ -92,7 +92,7 @@ fn bound_3() {
     struct Tuple<T>(T);
 
     let s = Struct {
-        f1: 1,
+        f1: 1
     }
     .clone();
     let t = Tuple(1).clone();

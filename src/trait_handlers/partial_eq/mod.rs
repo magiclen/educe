@@ -3,16 +3,13 @@ mod models;
 mod partial_eq_enum;
 mod partial_eq_struct;
 
-use super::TraitHandler;
-
-use crate::panic;
-use crate::Trait;
-
+use partial_eq_enum::PartialEqEnumHandler;
+use partial_eq_struct::PartialEqStructHandler;
 use proc_macro2::TokenStream;
 use syn::{Data, DeriveInput, Meta};
 
-use partial_eq_enum::PartialEqEnumHandler;
-use partial_eq_struct::PartialEqStructHandler;
+use super::TraitHandler;
+use crate::{panic, Trait};
 
 pub struct PartialEqHandler;
 
@@ -26,10 +23,10 @@ impl TraitHandler for PartialEqHandler {
         match ast.data {
             Data::Struct(_) => {
                 PartialEqStructHandler::trait_meta_handler(ast, tokens, traits, meta);
-            }
+            },
             Data::Enum(_) => {
                 PartialEqEnumHandler::trait_meta_handler(ast, tokens, traits, meta);
-            }
+            },
             Data::Union(_) => panic::trait_not_support_union(Trait::PartialEq),
         }
     }

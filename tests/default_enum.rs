@@ -52,7 +52,7 @@ fn basic() {
     }
 
     assert!(matches!(Enum4::default(), Enum4::Struct {
-        f1: 0,
+        f1: 0
     }));
 }
 
@@ -63,9 +63,7 @@ fn type_default_1() {
     #[educe(Default(expression = "Enum::Struct { f1: 1 }"))]
     enum Enum {
         Unit,
-        Struct {
-            f1: u8,
-        },
+        Struct { f1: u8 },
         Tuple(u8),
     }
 
@@ -88,9 +86,7 @@ fn type_default_2() {
     #[educe(Default(expression("Enum::Struct { f1: 1 }")))]
     enum Enum {
         Unit,
-        Struct {
-            f1: u8,
-        },
+        Struct { f1: u8 },
         Tuple(u8),
     }
 
@@ -429,7 +425,7 @@ fn bound_1() {
     }
 
     assert!(matches!(Enum::default(), Enum::Struct {
-        f1: 0,
+        f1: 0
     }));
 }
 
@@ -448,7 +444,7 @@ fn bound_2() {
     }
 
     assert!(matches!(Enum::default(), Enum::Struct {
-        f1: 0,
+        f1: 0
     }));
 }
 
@@ -467,7 +463,7 @@ fn bound_3() {
     }
 
     assert!(matches!(Enum::default(), Enum::Struct {
-        f1: 0,
+        f1: 0
     }));
 }
 
@@ -486,6 +482,6 @@ fn new() {
     }
 
     assert!(matches!(Enum::new(), Enum::Struct {
-        f1: 0,
+        f1: 0
     }));
 }

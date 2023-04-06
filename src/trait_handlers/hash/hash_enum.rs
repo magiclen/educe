@@ -1,14 +1,14 @@
-use std::fmt::Write;
-use std::str::FromStr;
-
-use super::super::TraitHandler;
-use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
-
-use crate::Trait;
+use std::{fmt::Write, str::FromStr};
 
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Data, DeriveInput, Fields, Generics, Meta};
+
+use super::{
+    super::TraitHandler,
+    models::{FieldAttributeBuilder, TypeAttributeBuilder},
+};
+use crate::Trait;
 
 pub struct HashEnumHandler;
 
@@ -20,8 +20,7 @@ impl TraitHandler for HashEnumHandler {
         meta: &Meta,
     ) {
         let type_attribute = TypeAttributeBuilder {
-            enable_flag: true,
-            enable_bound: true,
+            enable_flag: true, enable_bound: true
         }
         .from_hash_meta(meta);
 
@@ -41,8 +40,7 @@ impl TraitHandler for HashEnumHandler {
 
                 for variant in data.variants.iter() {
                     let _ = TypeAttributeBuilder {
-                        enable_flag: false,
-                        enable_bound: false,
+                        enable_flag: false, enable_bound: false
                     }
                     .from_attributes(&variant.attrs, traits);
 
@@ -51,7 +49,7 @@ impl TraitHandler for HashEnumHandler {
                             non_unit = true;
 
                             break;
-                        }
+                        },
                         _ => (),
                     }
                 }
@@ -66,8 +64,16 @@ impl TraitHandler for HashEnumHandler {
                     match &variant.fields {
                         Fields::Unit => {
                             // TODO Unit
-                            match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident} => {{ core::hash::Hash::hash(&{index}, state); }}", enum_name = enum_name, variant_ident = variant_ident, index = index)).unwrap();
-                        }
+                            match_tokens
+                                .write_fmt(format_args!(
+                                    "{enum_name}::{variant_ident} => {{ \
+                                     core::hash::Hash::hash(&{index}, state); }}",
+                                    enum_name = enum_name,
+                                    variant_ident = variant_ident,
+                                    index = index
+                                ))
+                                .unwrap();
+                        },
                         Fields::Named(fields) => {
                             // TODO Struct
                             let mut pattern_tokens = String::new();
@@ -83,7 +89,7 @@ impl TraitHandler for HashEnumHandler {
                             for field in fields.named.iter() {
                                 let field_attribute = FieldAttributeBuilder {
                                     enable_ignore: true,
-                                    enable_impl: true,
+                                    enable_impl:   true,
                                 }
                                 .from_attributes(&field.attrs, traits);
 
@@ -121,28 +127,40 @@ impl TraitHandler for HashEnumHandler {
                                                 field_name = field_name
                                             ))
                                             .unwrap();
-                                    }
-                                    None => {
-                                        match hash_method {
-                                            Some(hash_method) => {
-                                                block_tokens
-                                                    .write_fmt(format_args!(
-                                                        "{hash_method}({field_name}, state);",
-                                                        hash_method = hash_method,
-                                                        field_name = field_name
-                                                    ))
-                                                    .unwrap();
-                                            }
-                                            None => {
-                                                block_tokens.write_fmt(format_args!("core::hash::Hash::hash({field_name}, state);", field_name = field_name)).unwrap();
-                                            }
-                                        }
-                                    }
+                                    },
+                                    None => match hash_method {
+                                        Some(hash_method) => {
+                                            block_tokens
+                                                .write_fmt(format_args!(
+                                                    "{hash_method}({field_name}, state);",
+                                                    hash_method = hash_method,
+                                                    field_name = field_name
+                                                ))
+                                                .unwrap();
+                                        },
+                                        None => {
+                                            block_tokens
+                                                .write_fmt(format_args!(
+                                                    "core::hash::Hash::hash({field_name}, state);",
+                                                    field_name = field_name
+                                                ))
+                                                .unwrap();
+                                        },
+                                    },
                                 }
                             }
 
-                            match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident} {{ {pattern_tokens} }} => {{ {block_tokens} }}", enum_name = enum_name, variant_ident = variant_ident, pattern_tokens = pattern_tokens, block_tokens = block_tokens)).unwrap();
-                        }
+                            match_tokens
+                                .write_fmt(format_args!(
+                                    "{enum_name}::{variant_ident} {{ {pattern_tokens} }} => {{ \
+                                     {block_tokens} }}",
+                                    enum_name = enum_name,
+                                    variant_ident = variant_ident,
+                                    pattern_tokens = pattern_tokens,
+                                    block_tokens = block_tokens
+                                ))
+                                .unwrap();
+                        },
                         Fields::Unnamed(fields) => {
                             // TODO Tuple
                             let mut pattern_tokens = String::new();
@@ -158,7 +176,7 @@ impl TraitHandler for HashEnumHandler {
                             for (index, field) in fields.unnamed.iter().enumerate() {
                                 let field_attribute = FieldAttributeBuilder {
                                     enable_ignore: true,
-                                    enable_impl: true,
+                                    enable_impl:   true,
                                 }
                                 .from_attributes(&field.attrs, traits);
 
@@ -183,36 +201,64 @@ impl TraitHandler for HashEnumHandler {
                                     Some(hash_trait) => {
                                         let hash_method = hash_method.unwrap();
 
-                                        block_tokens.write_fmt(format_args!("{hash_trait}::{hash_method}(_{field_name}, state);", hash_trait = hash_trait, hash_method = hash_method, field_name = field_name)).unwrap();
-                                    }
-                                    None => {
-                                        match hash_method {
-                                            Some(hash_method) => {
-                                                block_tokens
-                                                    .write_fmt(format_args!(
-                                                        "{hash_method}(_{field_name}, state);",
-                                                        hash_method = hash_method,
-                                                        field_name = field_name
-                                                    ))
-                                                    .unwrap();
-                                            }
-                                            None => {
-                                                block_tokens.write_fmt(format_args!("core::hash::Hash::hash(_{field_name}, state);", field_name = field_name)).unwrap();
-                                            }
-                                        }
-                                    }
+                                        block_tokens
+                                            .write_fmt(format_args!(
+                                                "{hash_trait}::{hash_method}(_{field_name}, \
+                                                 state);",
+                                                hash_trait = hash_trait,
+                                                hash_method = hash_method,
+                                                field_name = field_name
+                                            ))
+                                            .unwrap();
+                                    },
+                                    None => match hash_method {
+                                        Some(hash_method) => {
+                                            block_tokens
+                                                .write_fmt(format_args!(
+                                                    "{hash_method}(_{field_name}, state);",
+                                                    hash_method = hash_method,
+                                                    field_name = field_name
+                                                ))
+                                                .unwrap();
+                                        },
+                                        None => {
+                                            block_tokens
+                                                .write_fmt(format_args!(
+                                                    "core::hash::Hash::hash(_{field_name}, state);",
+                                                    field_name = field_name
+                                                ))
+                                                .unwrap();
+                                        },
+                                    },
                                 }
                             }
 
-                            match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident}( {pattern_tokens} ) => {{ {block_tokens} }}", enum_name = enum_name, variant_ident = variant_ident, pattern_tokens = pattern_tokens, block_tokens = block_tokens)).unwrap();
-                        }
+                            match_tokens
+                                .write_fmt(format_args!(
+                                    "{enum_name}::{variant_ident}( {pattern_tokens} ) => {{ \
+                                     {block_tokens} }}",
+                                    enum_name = enum_name,
+                                    variant_ident = variant_ident,
+                                    pattern_tokens = pattern_tokens,
+                                    block_tokens = block_tokens
+                                ))
+                                .unwrap();
+                        },
                     }
                 }
             } else {
                 for variant in data.variants.iter() {
                     let variant_ident = variant.ident.to_string();
 
-                    match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident} => {{ core::hash::Hash::hash(&({enum_name}::{variant_ident} as isize), state); }}", enum_name = enum_name, variant_ident = variant_ident)).unwrap();
+                    match_tokens
+                        .write_fmt(format_args!(
+                            "{enum_name}::{variant_ident} => {{ \
+                             core::hash::Hash::hash(&({enum_name}::{variant_ident} as isize), \
+                             state); }}",
+                            enum_name = enum_name,
+                            variant_ident = variant_ident
+                        ))
+                        .unwrap();
                 }
             }
         }

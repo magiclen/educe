@@ -1,13 +1,12 @@
 mod models;
 
-use super::TraitHandler;
-use crate::Trait;
-
+use models::TypeAttributeBuilder;
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{DeriveInput, Generics, Meta};
 
-use models::TypeAttributeBuilder;
+use super::TraitHandler;
+use crate::Trait;
 
 pub struct CopyHandler;
 
@@ -19,7 +18,7 @@ impl TraitHandler for CopyHandler {
         meta: &Meta,
     ) {
         let type_attribute = TypeAttributeBuilder {
-            enable_bound: true,
+            enable_bound: true
         }
         .from_copy_meta(meta);
 

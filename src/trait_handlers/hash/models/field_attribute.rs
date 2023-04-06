@@ -1,22 +1,20 @@
-use super::super::super::create_path_string_from_lit_str;
-
-use crate::panic;
-use crate::Trait;
-
 use quote::ToTokens;
 use syn::{Attribute, Lit, Meta, NestedMeta};
 
+use super::super::super::create_path_string_from_lit_str;
+use crate::{panic, Trait};
+
 #[derive(Debug, Clone)]
 pub struct FieldAttribute {
-    pub ignore: bool,
+    pub ignore:      bool,
     pub hash_method: Option<String>,
-    pub hash_trait: Option<String>,
+    pub hash_trait:  Option<String>,
 }
 
 #[derive(Debug, Clone)]
 pub struct FieldAttributeBuilder {
     pub enable_ignore: bool,
-    pub enable_impl: bool,
+    pub enable_impl:   bool,
 }
 
 impl FieldAttributeBuilder {
@@ -81,15 +79,13 @@ impl FieldAttributeBuilder {
                                             ignore_is_set = true;
 
                                             ignore = true;
-                                        }
-                                        _ => {
-                                            panic::parameter_incorrect_format(
-                                                meta_name.as_str(),
-                                                &correct_usage_for_ignore,
-                                            )
-                                        }
+                                        },
+                                        _ => panic::parameter_incorrect_format(
+                                            meta_name.as_str(),
+                                            &correct_usage_for_ignore,
+                                        ),
                                     }
-                                }
+                                },
                                 "method" => {
                                     if !self.enable_impl {
                                         panic::unknown_parameter("Hash", meta_name.as_str());
@@ -115,16 +111,14 @@ impl FieldAttributeBuilder {
                                                                 meta_name.as_str(),
                                                             );
                                                         }
-                                                    }
-                                                    _ => {
-                                                        panic::parameter_incorrect_format(
-                                                            meta_name.as_str(),
-                                                            &correct_usage_for_impl,
-                                                        )
-                                                    }
+                                                    },
+                                                    _ => panic::parameter_incorrect_format(
+                                                        meta_name.as_str(),
+                                                        &correct_usage_for_impl,
+                                                    ),
                                                 }
                                             }
-                                        }
+                                        },
                                         Meta::NameValue(named_value) => {
                                             let lit = &named_value.lit;
 
@@ -141,23 +135,19 @@ impl FieldAttributeBuilder {
                                                     } else {
                                                         panic::empty_parameter(meta_name.as_str());
                                                     }
-                                                }
-                                                _ => {
-                                                    panic::parameter_incorrect_format(
-                                                        meta_name.as_str(),
-                                                        &correct_usage_for_impl,
-                                                    )
-                                                }
+                                                },
+                                                _ => panic::parameter_incorrect_format(
+                                                    meta_name.as_str(),
+                                                    &correct_usage_for_impl,
+                                                ),
                                             }
-                                        }
-                                        _ => {
-                                            panic::parameter_incorrect_format(
-                                                meta_name.as_str(),
-                                                &correct_usage_for_impl,
-                                            )
-                                        }
+                                        },
+                                        _ => panic::parameter_incorrect_format(
+                                            meta_name.as_str(),
+                                            &correct_usage_for_impl,
+                                        ),
                                     }
-                                }
+                                },
                                 "trait" => {
                                     if !self.enable_impl {
                                         panic::unknown_parameter("Hash", meta_name.as_str());
@@ -183,16 +173,14 @@ impl FieldAttributeBuilder {
                                                                 meta_name.as_str(),
                                                             );
                                                         }
-                                                    }
-                                                    _ => {
-                                                        panic::parameter_incorrect_format(
-                                                            meta_name.as_str(),
-                                                            &correct_usage_for_impl,
-                                                        )
-                                                    }
+                                                    },
+                                                    _ => panic::parameter_incorrect_format(
+                                                        meta_name.as_str(),
+                                                        &correct_usage_for_impl,
+                                                    ),
                                                 }
                                             }
-                                        }
+                                        },
                                         Meta::NameValue(named_value) => {
                                             let lit = &named_value.lit;
 
@@ -209,35 +197,29 @@ impl FieldAttributeBuilder {
                                                     } else {
                                                         panic::empty_parameter(meta_name.as_str());
                                                     }
-                                                }
-                                                _ => {
-                                                    panic::parameter_incorrect_format(
-                                                        meta_name.as_str(),
-                                                        &correct_usage_for_impl,
-                                                    )
-                                                }
+                                                },
+                                                _ => panic::parameter_incorrect_format(
+                                                    meta_name.as_str(),
+                                                    &correct_usage_for_impl,
+                                                ),
                                             }
-                                        }
-                                        _ => {
-                                            panic::parameter_incorrect_format(
-                                                meta_name.as_str(),
-                                                &correct_usage_for_impl,
-                                            )
-                                        }
+                                        },
+                                        _ => panic::parameter_incorrect_format(
+                                            meta_name.as_str(),
+                                            &correct_usage_for_impl,
+                                        ),
                                     }
-                                }
+                                },
                                 _ => panic::unknown_parameter("Hash", meta_name.as_str()),
                             }
-                        }
-                        _ => {
-                            panic::attribute_incorrect_format(
-                                "Hash",
-                                &correct_usage_for_hash_attribute,
-                            )
-                        }
+                        },
+                        _ => panic::attribute_incorrect_format(
+                            "Hash",
+                            &correct_usage_for_hash_attribute,
+                        ),
                     }
                 }
-            }
+            },
             _ => panic::attribute_incorrect_format("Hash", &correct_usage_for_hash_attribute),
         }
 
@@ -282,20 +264,20 @@ impl FieldAttributeBuilder {
 
                                         result = Some(self.from_hash_meta(meta));
                                     }
-                                }
+                                },
                                 _ => panic::educe_format_incorrect(),
                             }
                         }
-                    }
+                    },
                     _ => panic::educe_format_incorrect(),
                 }
             }
         }
 
         result.unwrap_or(FieldAttribute {
-            ignore: false,
+            ignore:      false,
             hash_method: None,
-            hash_trait: None,
+            hash_trait:  None,
         })
     }
 }

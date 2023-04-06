@@ -1,15 +1,14 @@
-use std::fmt::Write;
-use std::str::FromStr;
-
-use super::super::TraitHandler;
-use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
-
-use crate::panic;
-use crate::Trait;
+use std::{fmt::Write, str::FromStr};
 
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::{Data, DeriveInput, Fields, Meta};
+
+use super::{
+    super::TraitHandler,
+    models::{FieldAttributeBuilder, TypeAttributeBuilder},
+};
+use crate::{panic, Trait};
 
 pub struct DerefEnumHandler;
 
@@ -21,7 +20,7 @@ impl TraitHandler for DerefEnumHandler {
         meta: &Meta,
     ) {
         let _ = TypeAttributeBuilder {
-            enable_flag: true,
+            enable_flag: true
         }
         .from_deref_meta(meta);
 
@@ -35,7 +34,7 @@ impl TraitHandler for DerefEnumHandler {
         if let Data::Enum(data) = &ast.data {
             for variant in data.variants.iter() {
                 let _ = TypeAttributeBuilder {
-                    enable_flag: false,
+                    enable_flag: false
                 }
                 .from_attributes(&variant.attrs, traits);
 
@@ -45,7 +44,7 @@ impl TraitHandler for DerefEnumHandler {
                     Fields::Unit => {
                         // TODO Unit
                         panic::deref_cannot_support_unit_variant();
-                    }
+                    },
                     Fields::Named(fields) => {
                         // TODO Struct
                         let mut pattern_tokens = String::new();
@@ -57,7 +56,7 @@ impl TraitHandler for DerefEnumHandler {
 
                         for field in fields.named.iter() {
                             let field_attribute = FieldAttributeBuilder {
-                                enable_flag: true,
+                                enable_flag: true
                             }
                             .from_attributes(&field.attrs, traits);
 
@@ -120,8 +119,17 @@ impl TraitHandler for DerefEnumHandler {
                             }
                         }
 
-                        match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident} {{ {pattern_tokens} }} => {{ {block_tokens} }}", enum_name = enum_name, variant_ident = variant_ident, pattern_tokens = pattern_tokens, block_tokens = block_tokens)).unwrap();
-                    }
+                        match_tokens
+                            .write_fmt(format_args!(
+                                "{enum_name}::{variant_ident} {{ {pattern_tokens} }} => {{ \
+                                 {block_tokens} }}",
+                                enum_name = enum_name,
+                                variant_ident = variant_ident,
+                                pattern_tokens = pattern_tokens,
+                                block_tokens = block_tokens
+                            ))
+                            .unwrap();
+                    },
                     Fields::Unnamed(fields) => {
                         // TODO Tuple
                         let mut pattern_tokens = String::new();
@@ -133,7 +141,7 @@ impl TraitHandler for DerefEnumHandler {
 
                         for (index, field) in fields.unnamed.iter().enumerate() {
                             let field_attribute = FieldAttributeBuilder {
-                                enable_flag: true,
+                                enable_flag: true
                             }
                             .from_attributes(&field.attrs, traits);
 
@@ -200,8 +208,17 @@ impl TraitHandler for DerefEnumHandler {
                             }
                         }
 
-                        match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident}( {pattern_tokens} ) => {{ {block_tokens} }}", enum_name = enum_name, variant_ident = variant_ident, pattern_tokens = pattern_tokens, block_tokens = block_tokens)).unwrap();
-                    }
+                        match_tokens
+                            .write_fmt(format_args!(
+                                "{enum_name}::{variant_ident}( {pattern_tokens} ) => {{ \
+                                 {block_tokens} }}",
+                                enum_name = enum_name,
+                                variant_ident = variant_ident,
+                                pattern_tokens = pattern_tokens,
+                                block_tokens = block_tokens
+                            ))
+                            .unwrap();
+                    },
                 }
             }
         }

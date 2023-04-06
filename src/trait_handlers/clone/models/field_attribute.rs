@@ -1,15 +1,13 @@
-use super::super::super::create_path_string_from_lit_str;
-
-use crate::panic;
-use crate::Trait;
-
 use quote::ToTokens;
 use syn::{Attribute, Lit, Meta, NestedMeta};
+
+use super::super::super::create_path_string_from_lit_str;
+use crate::{panic, Trait};
 
 #[derive(Debug, Clone)]
 pub struct FieldAttribute {
     pub clone_method: Option<String>,
-    pub clone_trait: Option<String>,
+    pub clone_trait:  Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -75,16 +73,14 @@ impl FieldAttributeBuilder {
                                                                 meta_name.as_str(),
                                                             );
                                                         }
-                                                    }
-                                                    _ => {
-                                                        panic::parameter_incorrect_format(
-                                                            meta_name.as_str(),
-                                                            &correct_usage_for_impl,
-                                                        )
-                                                    }
+                                                    },
+                                                    _ => panic::parameter_incorrect_format(
+                                                        meta_name.as_str(),
+                                                        &correct_usage_for_impl,
+                                                    ),
                                                 }
                                             }
-                                        }
+                                        },
                                         Meta::NameValue(named_value) => {
                                             let lit = &named_value.lit;
 
@@ -101,23 +97,19 @@ impl FieldAttributeBuilder {
                                                     } else {
                                                         panic::empty_parameter(meta_name.as_str());
                                                     }
-                                                }
-                                                _ => {
-                                                    panic::parameter_incorrect_format(
-                                                        meta_name.as_str(),
-                                                        &correct_usage_for_impl,
-                                                    )
-                                                }
+                                                },
+                                                _ => panic::parameter_incorrect_format(
+                                                    meta_name.as_str(),
+                                                    &correct_usage_for_impl,
+                                                ),
                                             }
-                                        }
-                                        _ => {
-                                            panic::parameter_incorrect_format(
-                                                meta_name.as_str(),
-                                                &correct_usage_for_impl,
-                                            )
-                                        }
+                                        },
+                                        _ => panic::parameter_incorrect_format(
+                                            meta_name.as_str(),
+                                            &correct_usage_for_impl,
+                                        ),
                                     }
-                                }
+                                },
                                 "trait" => {
                                     if !self.enable_impl {
                                         panic::unknown_parameter("Clone", meta_name.as_str());
@@ -143,16 +135,14 @@ impl FieldAttributeBuilder {
                                                                 meta_name.as_str(),
                                                             );
                                                         }
-                                                    }
-                                                    _ => {
-                                                        panic::parameter_incorrect_format(
-                                                            meta_name.as_str(),
-                                                            &correct_usage_for_impl,
-                                                        )
-                                                    }
+                                                    },
+                                                    _ => panic::parameter_incorrect_format(
+                                                        meta_name.as_str(),
+                                                        &correct_usage_for_impl,
+                                                    ),
                                                 }
                                             }
-                                        }
+                                        },
                                         Meta::NameValue(named_value) => {
                                             let lit = &named_value.lit;
 
@@ -169,35 +159,29 @@ impl FieldAttributeBuilder {
                                                     } else {
                                                         panic::empty_parameter(meta_name.as_str());
                                                     }
-                                                }
-                                                _ => {
-                                                    panic::parameter_incorrect_format(
-                                                        meta_name.as_str(),
-                                                        &correct_usage_for_impl,
-                                                    )
-                                                }
+                                                },
+                                                _ => panic::parameter_incorrect_format(
+                                                    meta_name.as_str(),
+                                                    &correct_usage_for_impl,
+                                                ),
                                             }
-                                        }
-                                        _ => {
-                                            panic::parameter_incorrect_format(
-                                                meta_name.as_str(),
-                                                &correct_usage_for_impl,
-                                            )
-                                        }
+                                        },
+                                        _ => panic::parameter_incorrect_format(
+                                            meta_name.as_str(),
+                                            &correct_usage_for_impl,
+                                        ),
                                     }
-                                }
+                                },
                                 _ => panic::unknown_parameter("Clone", meta_name.as_str()),
                             }
-                        }
-                        _ => {
-                            panic::attribute_incorrect_format(
-                                "Clone",
-                                &correct_usage_for_clone_attribute,
-                            )
-                        }
+                        },
+                        _ => panic::attribute_incorrect_format(
+                            "Clone",
+                            &correct_usage_for_clone_attribute,
+                        ),
                     }
                 }
-            }
+            },
             _ => panic::attribute_incorrect_format("Clone", &correct_usage_for_clone_attribute),
         }
 
@@ -241,19 +225,18 @@ impl FieldAttributeBuilder {
 
                                         result = Some(self.from_clone_meta(meta));
                                     }
-                                }
+                                },
                                 _ => panic::educe_format_incorrect(),
                             }
                         }
-                    }
+                    },
                     _ => panic::educe_format_incorrect(),
                 }
             }
         }
 
         result.unwrap_or(FieldAttribute {
-            clone_method: None,
-            clone_trait: None,
+            clone_method: None, clone_trait: None
         })
     }
 }

@@ -14,7 +14,7 @@ fn basic() {
     }
 
     let u = Union {
-        f1: 1,
+        f1: 1
     }
     .clone();
 

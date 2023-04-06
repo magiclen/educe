@@ -1,14 +1,14 @@
-use std::fmt::Write;
-use std::str::FromStr;
-
-use super::super::TraitHandler;
-use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
-
-use crate::Trait;
+use std::{fmt::Write, str::FromStr};
 
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{punctuated::Punctuated, Data, DeriveInput, Fields, Generics, Meta};
+
+use super::{
+    super::TraitHandler,
+    models::{FieldAttributeBuilder, TypeAttributeBuilder},
+};
+use crate::Trait;
 
 pub struct CloneStructHandler;
 
@@ -20,8 +20,7 @@ impl TraitHandler for CloneStructHandler {
         meta: &Meta,
     ) {
         let type_attribute = TypeAttributeBuilder {
-            enable_flag: true,
-            enable_bound: true,
+            enable_flag: true, enable_bound: true
         }
         .from_clone_meta(meta);
 
@@ -39,7 +38,7 @@ impl TraitHandler for CloneStructHandler {
 
             for (index, field) in data.fields.iter().enumerate() {
                 let field_attribute = FieldAttributeBuilder {
-                    enable_impl: true,
+                    enable_impl: true
                 }
                 .from_attributes(&field.attrs, traits);
 
@@ -76,7 +75,13 @@ impl TraitHandler for CloneStructHandler {
                 let mut clone_from = String::new();
 
                 for field_name in field_names {
-                    clone_from.write_fmt(format_args!("core::clone::Clone::clone_from(&mut self.{field_name}, &_source.{field_name});", field_name = field_name)).unwrap();
+                    clone_from
+                        .write_fmt(format_args!(
+                            "core::clone::Clone::clone_from(&mut self.{field_name}, \
+                             &_source.{field_name});",
+                            field_name = field_name
+                        ))
+                        .unwrap();
                 }
 
                 clone_from_tokens.extend(TokenStream::from_str(&clone_from).unwrap());
@@ -90,7 +95,7 @@ impl TraitHandler for CloneStructHandler {
                         let ident = &ast.ident;
 
                         clone_tokens.extend(quote!(#ident));
-                    }
+                    },
                     Fields::Unnamed(_) => {
                         let mut clone = ast.ident.to_string();
                         let mut clone_from = String::new();
@@ -115,26 +120,50 @@ impl TraitHandler for CloneStructHandler {
                                             field_name = field_name
                                         ))
                                         .unwrap();
-                                    clone_from.write_fmt(format_args!("self.{field_name} = {clone_trait}::{clone_method}(&_source.{field_name});", clone_trait = clone_trait, clone_method = clone_method, field_name = field_name)).unwrap();
-                                }
-                                None => {
-                                    match clone_method {
-                                        Some(clone_method) => {
-                                            clone
-                                                .write_fmt(format_args!(
-                                                    "{clone_method}(&self.{field_name}),",
-                                                    clone_method = clone_method,
-                                                    field_name = field_name
-                                                ))
-                                                .unwrap();
-                                            clone_from.write_fmt(format_args!("self.{field_name} = {clone_method}(&_source.{field_name});", clone_method = clone_method, field_name = field_name)).unwrap();
-                                        }
-                                        None => {
-                                            clone.write_fmt(format_args!("core::clone::Clone::clone(&self.{field_name}),", field_name = field_name)).unwrap();
-                                            clone_from.write_fmt(format_args!("core::clone::Clone::clone_from(&mut self.{field_name}, &_source.{field_name});", field_name = field_name)).unwrap();
-                                        }
-                                    }
-                                }
+                                    clone_from
+                                        .write_fmt(format_args!(
+                                            "self.{field_name} = \
+                                             {clone_trait}::{clone_method}(&_source.{field_name});",
+                                            clone_trait = clone_trait,
+                                            clone_method = clone_method,
+                                            field_name = field_name
+                                        ))
+                                        .unwrap();
+                                },
+                                None => match clone_method {
+                                    Some(clone_method) => {
+                                        clone
+                                            .write_fmt(format_args!(
+                                                "{clone_method}(&self.{field_name}),",
+                                                clone_method = clone_method,
+                                                field_name = field_name
+                                            ))
+                                            .unwrap();
+                                        clone_from
+                                            .write_fmt(format_args!(
+                                                "self.{field_name} = \
+                                                 {clone_method}(&_source.{field_name});",
+                                                clone_method = clone_method,
+                                                field_name = field_name
+                                            ))
+                                            .unwrap();
+                                    },
+                                    None => {
+                                        clone
+                                            .write_fmt(format_args!(
+                                                "core::clone::Clone::clone(&self.{field_name}),",
+                                                field_name = field_name
+                                            ))
+                                            .unwrap();
+                                        clone_from
+                                            .write_fmt(format_args!(
+                                                "core::clone::Clone::clone_from(&mut \
+                                                 self.{field_name}, &_source.{field_name});",
+                                                field_name = field_name
+                                            ))
+                                            .unwrap();
+                                    },
+                                },
                             }
                         }
 
@@ -142,7 +171,7 @@ impl TraitHandler for CloneStructHandler {
 
                         clone_tokens.extend(TokenStream::from_str(&clone).unwrap());
                         clone_from_tokens.extend(TokenStream::from_str(&clone_from).unwrap());
-                    }
+                    },
                     Fields::Named(_) => {
                         let mut clone = ast.ident.to_string();
                         let mut clone_from = String::new();
@@ -159,21 +188,60 @@ impl TraitHandler for CloneStructHandler {
                                 Some(clone_trait) => {
                                     let clone_method = clone_method.unwrap();
 
-                                    clone.write_fmt(format_args!("{field_name}: {clone_trait}::{clone_method}(&self.{field_name}),", clone_trait = clone_trait, clone_method = clone_method, field_name = field_name)).unwrap();
-                                    clone_from.write_fmt(format_args!("self.{field_name} = {clone_trait}::{clone_method}(&_source.{field_name});", clone_trait = clone_trait, clone_method = clone_method, field_name = field_name)).unwrap();
-                                }
-                                None => {
-                                    match clone_method {
-                                        Some(clone_method) => {
-                                            clone.write_fmt(format_args!("{field_name}: {clone_method}(&self.{field_name}),", clone_method = clone_method, field_name = field_name)).unwrap();
-                                            clone_from.write_fmt(format_args!("self.{field_name} = {clone_method}(&_source.{field_name});", clone_method = clone_method, field_name = field_name)).unwrap();
-                                        }
-                                        None => {
-                                            clone.write_fmt(format_args!("{field_name}: core::clone::Clone::clone(&self.{field_name}),", field_name = field_name)).unwrap();
-                                            clone_from.write_fmt(format_args!("core::clone::Clone::clone_from(&mut self.{field_name}, &_source.{field_name});", field_name = field_name)).unwrap();
-                                        }
-                                    }
-                                }
+                                    clone
+                                        .write_fmt(format_args!(
+                                            "{field_name}: \
+                                             {clone_trait}::{clone_method}(&self.{field_name}),",
+                                            clone_trait = clone_trait,
+                                            clone_method = clone_method,
+                                            field_name = field_name
+                                        ))
+                                        .unwrap();
+                                    clone_from
+                                        .write_fmt(format_args!(
+                                            "self.{field_name} = \
+                                             {clone_trait}::{clone_method}(&_source.{field_name});",
+                                            clone_trait = clone_trait,
+                                            clone_method = clone_method,
+                                            field_name = field_name
+                                        ))
+                                        .unwrap();
+                                },
+                                None => match clone_method {
+                                    Some(clone_method) => {
+                                        clone
+                                            .write_fmt(format_args!(
+                                                "{field_name}: {clone_method}(&self.{field_name}),",
+                                                clone_method = clone_method,
+                                                field_name = field_name
+                                            ))
+                                            .unwrap();
+                                        clone_from
+                                            .write_fmt(format_args!(
+                                                "self.{field_name} = \
+                                                 {clone_method}(&_source.{field_name});",
+                                                clone_method = clone_method,
+                                                field_name = field_name
+                                            ))
+                                            .unwrap();
+                                    },
+                                    None => {
+                                        clone
+                                            .write_fmt(format_args!(
+                                                "{field_name}: \
+                                                 core::clone::Clone::clone(&self.{field_name}),",
+                                                field_name = field_name
+                                            ))
+                                            .unwrap();
+                                        clone_from
+                                            .write_fmt(format_args!(
+                                                "core::clone::Clone::clone_from(&mut \
+                                                 self.{field_name}, &_source.{field_name});",
+                                                field_name = field_name
+                                            ))
+                                            .unwrap();
+                                    },
+                                },
                             }
                         }
 
@@ -181,7 +249,7 @@ impl TraitHandler for CloneStructHandler {
 
                         clone_tokens.extend(TokenStream::from_str(&clone).unwrap());
                         clone_from_tokens.extend(TokenStream::from_str(&clone_from).unwrap());
-                    }
+                    },
                 }
             }
         }

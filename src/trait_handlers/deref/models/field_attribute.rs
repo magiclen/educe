@@ -1,8 +1,7 @@
-use crate::panic;
-use crate::Trait;
-
 use quote::ToTokens;
 use syn::{Attribute, Meta, NestedMeta};
+
+use crate::{panic, Trait};
 
 #[derive(Clone)]
 pub struct FieldAttribute {
@@ -32,17 +31,17 @@ impl FieldAttributeBuilder {
         match meta {
             Meta::List(_) => {
                 panic::attribute_incorrect_format("Deref", &correct_usage_for_deref_attribute)
-            }
+            },
             Meta::NameValue(_) => {
                 panic::attribute_incorrect_format("Deref", &correct_usage_for_deref_attribute)
-            }
+            },
             Meta::Path(_) => {
                 if !self.enable_flag {
                     panic::attribute_incorrect_format("Deref", &correct_usage_for_deref_attribute);
                 }
 
                 flag = true;
-            }
+            },
         }
 
         FieldAttribute {
@@ -80,18 +79,18 @@ impl FieldAttributeBuilder {
 
                                         result = Some(self.from_deref_meta(meta));
                                     }
-                                }
+                                },
                                 _ => panic::educe_format_incorrect(),
                             }
                         }
-                    }
+                    },
                     _ => panic::educe_format_incorrect(),
                 }
             }
         }
 
         result.unwrap_or(FieldAttribute {
-            flag: false,
+            flag: false
         })
     }
 }

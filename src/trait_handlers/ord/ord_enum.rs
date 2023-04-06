@@ -1,16 +1,14 @@
-use std::collections::BTreeMap;
-use std::fmt::Write;
-use std::str::FromStr;
-
-use super::super::TraitHandler;
-use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
-
-use crate::panic;
-use crate::Trait;
+use std::{collections::BTreeMap, fmt::Write, str::FromStr};
 
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Data, DeriveInput, Fields, Generics, Meta};
+
+use super::{
+    super::TraitHandler,
+    models::{FieldAttributeBuilder, TypeAttributeBuilder},
+};
+use crate::{panic, Trait};
 
 pub struct OrdEnumHandler;
 
@@ -22,10 +20,10 @@ impl TraitHandler for OrdEnumHandler {
         meta: &Meta,
     ) {
         let type_attribute = TypeAttributeBuilder {
-            enable_flag: true,
+            enable_flag:  true,
             enable_bound: true,
-            rank: 0,
-            enable_rank: false,
+            rank:         0,
+            enable_rank:  false,
         }
         .from_ord_meta(meta);
 
@@ -53,10 +51,10 @@ impl TraitHandler for OrdEnumHandler {
 
             for (index, variant) in data.variants.iter().enumerate() {
                 let variant_attribute = TypeAttributeBuilder {
-                    enable_flag: false,
+                    enable_flag:  false,
                     enable_bound: false,
-                    rank: isize::MIN + index as isize,
-                    enable_rank: true,
+                    rank:         isize::MIN + index as isize,
+                    enable_rank:  true,
                 }
                 .from_attributes(&variant.attrs, traits);
 
@@ -75,7 +73,14 @@ impl TraitHandler for OrdEnumHandler {
                 match &variant.fields {
                     Fields::Unit => {
                         // TODO Unit
-                        unit_to_integer.write_fmt(format_args!("{enum_name}::{variant_ident} => {enum_name}::{variant_ident} as isize,", enum_name = enum_name, variant_ident = variant_ident)).unwrap();
+                        unit_to_integer
+                            .write_fmt(format_args!(
+                                "{enum_name}::{variant_ident} => {enum_name}::{variant_ident} as \
+                                 isize,",
+                                enum_name = enum_name,
+                                variant_ident = variant_ident
+                            ))
+                            .unwrap();
                         variant_to_integer
                             .write_fmt(format_args!(
                                 "{enum_name}::{variant_ident} => {value},",
@@ -84,7 +89,7 @@ impl TraitHandler for OrdEnumHandler {
                                 value = value
                             ))
                             .unwrap();
-                    }
+                    },
                     Fields::Named(_) => {
                         // TODO Struct
                         has_non_unit_or_custom_value = true;
@@ -97,7 +102,7 @@ impl TraitHandler for OrdEnumHandler {
                                 value = value
                             ))
                             .unwrap();
-                    }
+                    },
                     Fields::Unnamed(fields) => {
                         // TODO Tuple
                         has_non_unit_or_custom_value = true;
@@ -117,7 +122,7 @@ impl TraitHandler for OrdEnumHandler {
                                 value = value
                             ))
                             .unwrap();
-                    }
+                    },
                 }
 
                 variant_values.push(value);
@@ -137,8 +142,17 @@ impl TraitHandler for OrdEnumHandler {
                     match &variant.fields {
                         Fields::Unit => {
                             // TODO Unit
-                            match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident} => {{ let other_value = variant_to_integer(other); return core::cmp::Ord::cmp(&{variant_value}, &other_value); }}", enum_name = enum_name, variant_ident = variant_ident, variant_value = variant_value)).unwrap();
-                        }
+                            match_tokens
+                                .write_fmt(format_args!(
+                                    "{enum_name}::{variant_ident} => {{ let other_value = \
+                                     variant_to_integer(other); return \
+                                     core::cmp::Ord::cmp(&{variant_value}, &other_value); }}",
+                                    enum_name = enum_name,
+                                    variant_ident = variant_ident,
+                                    variant_value = variant_value
+                                ))
+                                .unwrap();
+                        },
                         Fields::Named(fields) => {
                             // TODO Struct
                             let mut pattern_tokens = String::new();
@@ -151,9 +165,9 @@ impl TraitHandler for OrdEnumHandler {
                             for (index, field) in fields.named.iter().enumerate() {
                                 let field_attribute = FieldAttributeBuilder {
                                     enable_ignore: true,
-                                    enable_impl: true,
-                                    rank: isize::MIN + index as isize,
-                                    enable_rank: true,
+                                    enable_impl:   true,
+                                    rank:          isize::MIN + index as isize,
+                                    enable_rank:   true,
                                 }
                                 .from_attributes(&field.attrs, traits);
 
@@ -209,22 +223,57 @@ impl TraitHandler for OrdEnumHandler {
                                         let compare_method = compare_method.unwrap();
 
                                         block_tokens.write_fmt(format_args!("match {compare_trait}::{compare_method}({field_name}, ___{field_name}) {{ core::cmp::Ordering::Equal => (), core::cmp::Ordering::Greater => {{ return core::cmp::Ordering::Greater; }}, core::cmp::Ordering::Less => {{ return core::cmp::Ordering::Less; }} }}", compare_trait = compare_trait, compare_method = compare_method, field_name = field_name)).unwrap();
-                                    }
-                                    None => {
-                                        match compare_method {
-                                            Some(compare_method) => {
-                                                block_tokens.write_fmt(format_args!("match {compare_method}({field_name}, ___{field_name}) {{ core::cmp::Ordering::Equal => (), core::cmp::Ordering::Greater => {{ return core::cmp::Ordering::Greater; }}, core::cmp::Ordering::Less => {{ return core::cmp::Ordering::Less; }} }}", compare_method = compare_method, field_name = field_name)).unwrap();
-                                            }
-                                            None => {
-                                                block_tokens.write_fmt(format_args!("match core::cmp::Ord::cmp({field_name}, ___{field_name}) {{ core::cmp::Ordering::Equal => (), core::cmp::Ordering::Greater => {{ return core::cmp::Ordering::Greater; }}, core::cmp::Ordering::Less => {{ return core::cmp::Ordering::Less; }} }}", field_name = field_name)).unwrap();
-                                            }
-                                        }
-                                    }
+                                    },
+                                    None => match compare_method {
+                                        Some(compare_method) => {
+                                            block_tokens
+                                                .write_fmt(format_args!(
+                                                    "match {compare_method}({field_name}, \
+                                                     ___{field_name}) {{ \
+                                                     core::cmp::Ordering::Equal => (), \
+                                                     core::cmp::Ordering::Greater => {{ return \
+                                                     core::cmp::Ordering::Greater; }}, \
+                                                     core::cmp::Ordering::Less => {{ return \
+                                                     core::cmp::Ordering::Less; }} }}",
+                                                    compare_method = compare_method,
+                                                    field_name = field_name
+                                                ))
+                                                .unwrap();
+                                        },
+                                        None => {
+                                            block_tokens
+                                                .write_fmt(format_args!(
+                                                    "match core::cmp::Ord::cmp({field_name}, \
+                                                     ___{field_name}) {{ \
+                                                     core::cmp::Ordering::Equal => (), \
+                                                     core::cmp::Ordering::Greater => {{ return \
+                                                     core::cmp::Ordering::Greater; }}, \
+                                                     core::cmp::Ordering::Less => {{ return \
+                                                     core::cmp::Ordering::Less; }} }}",
+                                                    field_name = field_name
+                                                ))
+                                                .unwrap();
+                                        },
+                                    },
                                 }
                             }
 
-                            match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident}{{ {pattern_tokens} }} => {{ if let {enum_name}::{variant_ident} {{ {pattern_2_tokens} }} = other {{ {block_tokens} }} else {{ let other_value = variant_to_integer(other); return core::cmp::Ord::cmp(&{variant_value}, &other_value); }} }}", enum_name = enum_name, variant_ident = variant_ident, pattern_tokens = pattern_tokens, pattern_2_tokens = pattern_2_tokens, block_tokens = block_tokens, variant_value = variant_value)).unwrap();
-                        }
+                            match_tokens
+                                .write_fmt(format_args!(
+                                    "{enum_name}::{variant_ident}{{ {pattern_tokens} }} => {{ if \
+                                     let {enum_name}::{variant_ident} {{ {pattern_2_tokens} }} = \
+                                     other {{ {block_tokens} }} else {{ let other_value = \
+                                     variant_to_integer(other); return \
+                                     core::cmp::Ord::cmp(&{variant_value}, &other_value); }} }}",
+                                    enum_name = enum_name,
+                                    variant_ident = variant_ident,
+                                    pattern_tokens = pattern_tokens,
+                                    pattern_2_tokens = pattern_2_tokens,
+                                    block_tokens = block_tokens,
+                                    variant_value = variant_value
+                                ))
+                                .unwrap();
+                        },
                         Fields::Unnamed(fields) => {
                             // TODO Tuple
                             let mut pattern_tokens = String::new();
@@ -237,9 +286,9 @@ impl TraitHandler for OrdEnumHandler {
                             for (index, field) in fields.unnamed.iter().enumerate() {
                                 let field_attribute = FieldAttributeBuilder {
                                     enable_ignore: true,
-                                    enable_impl: true,
-                                    rank: isize::MIN + index as isize,
-                                    enable_rank: true,
+                                    enable_impl:   true,
+                                    rank:          isize::MIN + index as isize,
+                                    enable_rank:   true,
                                 }
                                 .from_attributes(&field.attrs, traits);
 
@@ -285,22 +334,57 @@ impl TraitHandler for OrdEnumHandler {
                                         let compare_method = compare_method.unwrap();
 
                                         block_tokens.write_fmt(format_args!("match {compare_trait}::{compare_method}(_{field_name}, __{field_name}) {{ core::cmp::Ordering::Equal => (), core::cmp::Ordering::Greater => {{ return core::cmp::Ordering::Greater; }}, core::cmp::Ordering::Less => {{ return core::cmp::Ordering::Less; }} }}", compare_trait = compare_trait, compare_method = compare_method, field_name = field_name)).unwrap();
-                                    }
-                                    None => {
-                                        match compare_method {
-                                            Some(compare_method) => {
-                                                block_tokens.write_fmt(format_args!("match {compare_method}(_{field_name}, __{field_name}) {{ core::cmp::Ordering::Equal => (), core::cmp::Ordering::Greater => {{ return core::cmp::Ordering::Greater; }}, core::cmp::Ordering::Less => {{ return core::cmp::Ordering::Less; }} }}", compare_method = compare_method, field_name = field_name)).unwrap();
-                                            }
-                                            None => {
-                                                block_tokens.write_fmt(format_args!("match core::cmp::Ord::cmp(_{field_name}, __{field_name}) {{ core::cmp::Ordering::Equal => (), core::cmp::Ordering::Greater => {{ return core::cmp::Ordering::Greater; }}, core::cmp::Ordering::Less => {{ return core::cmp::Ordering::Less; }} }}", field_name = field_name)).unwrap();
-                                            }
-                                        }
-                                    }
+                                    },
+                                    None => match compare_method {
+                                        Some(compare_method) => {
+                                            block_tokens
+                                                .write_fmt(format_args!(
+                                                    "match {compare_method}(_{field_name}, \
+                                                     __{field_name}) {{ \
+                                                     core::cmp::Ordering::Equal => (), \
+                                                     core::cmp::Ordering::Greater => {{ return \
+                                                     core::cmp::Ordering::Greater; }}, \
+                                                     core::cmp::Ordering::Less => {{ return \
+                                                     core::cmp::Ordering::Less; }} }}",
+                                                    compare_method = compare_method,
+                                                    field_name = field_name
+                                                ))
+                                                .unwrap();
+                                        },
+                                        None => {
+                                            block_tokens
+                                                .write_fmt(format_args!(
+                                                    "match core::cmp::Ord::cmp(_{field_name}, \
+                                                     __{field_name}) {{ \
+                                                     core::cmp::Ordering::Equal => (), \
+                                                     core::cmp::Ordering::Greater => {{ return \
+                                                     core::cmp::Ordering::Greater; }}, \
+                                                     core::cmp::Ordering::Less => {{ return \
+                                                     core::cmp::Ordering::Less; }} }}",
+                                                    field_name = field_name
+                                                ))
+                                                .unwrap();
+                                        },
+                                    },
                                 }
                             }
 
-                            match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident}( {pattern_tokens} ) => {{ if let {enum_name}::{variant_ident} ( {pattern_2_tokens} ) = other {{ {block_tokens} }} else {{ let other_value = variant_to_integer(other); return core::cmp::Ord::cmp(&{variant_value}, &other_value); }} }}", enum_name = enum_name, variant_ident = variant_ident, pattern_tokens = pattern_tokens, pattern_2_tokens = pattern_2_tokens, block_tokens = block_tokens, variant_value = variant_value)).unwrap();
-                        }
+                            match_tokens
+                                .write_fmt(format_args!(
+                                    "{enum_name}::{variant_ident}( {pattern_tokens} ) => {{ if \
+                                     let {enum_name}::{variant_ident} ( {pattern_2_tokens} ) = \
+                                     other {{ {block_tokens} }} else {{ let other_value = \
+                                     variant_to_integer(other); return \
+                                     core::cmp::Ord::cmp(&{variant_value}, &other_value); }} }}",
+                                    enum_name = enum_name,
+                                    variant_ident = variant_ident,
+                                    pattern_tokens = pattern_tokens,
+                                    pattern_2_tokens = pattern_2_tokens,
+                                    block_tokens = block_tokens,
+                                    variant_value = variant_value
+                                ))
+                                .unwrap();
+                        },
                     }
                 }
             } else {
@@ -311,7 +395,16 @@ impl TraitHandler for OrdEnumHandler {
                 for (index, _) in variants.into_iter().enumerate() {
                     let variant_ident = &variant_idents[index];
 
-                    match_tokens.write_fmt(format_args!("{enum_name}::{variant_ident} => {{ let other_value = unit_to_integer(other); return core::cmp::Ord::cmp(&({enum_name}::{variant_ident} as isize), &other_value); }}", enum_name = enum_name, variant_ident = variant_ident)).unwrap();
+                    match_tokens
+                        .write_fmt(format_args!(
+                            "{enum_name}::{variant_ident} => {{ let other_value = \
+                             unit_to_integer(other); return \
+                             core::cmp::Ord::cmp(&({enum_name}::{variant_ident} as isize), \
+                             &other_value); }}",
+                            enum_name = enum_name,
+                            variant_ident = variant_ident
+                        ))
+                        .unwrap();
                 }
             }
         }
