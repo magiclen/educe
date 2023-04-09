@@ -8,7 +8,7 @@ extern crate educe;
 
 use alloc::string::String;
 
-use assert_approx_eq::assert_approx_eq;
+use assert_eq_float::assert_eq_float;
 
 #[test]
 #[allow(irrefutable_let_patterns)]
@@ -117,7 +117,7 @@ fn field_default_1() {
 
     assert_eq!(1, s.f1);
     assert_eq!(11111111111111111111111111111, s.f2);
-    assert_approx_eq!(1.1, s.f3);
+    assert_eq_float!(1.1, s.f3);
     assert!(s.f4);
     assert_eq!("Hi", s.f5);
     assert_eq!("Hello", s.f6);
@@ -125,7 +125,7 @@ fn field_default_1() {
 
     assert_eq!(1, t.0);
     assert_eq!(11111111111111111111111111111, t.1);
-    assert_approx_eq!(1.1, t.2);
+    assert_eq_float!(1.1, t.2);
     assert!(t.3);
     assert_eq!("Hi", t.4);
     assert_eq!("Hello", t.5);
@@ -170,7 +170,7 @@ fn field_default_2() {
 
     assert_eq!(1, s.f1);
     assert_eq!(11111111111111111111111111111, s.f2);
-    assert_approx_eq!(1.1, s.f3);
+    assert_eq_float!(1.1, s.f3);
     assert!(s.f4);
     assert_eq!("Hi", s.f5);
     assert_eq!("Hello", s.f6);
@@ -178,7 +178,7 @@ fn field_default_2() {
 
     assert_eq!(1, t.0);
     assert_eq!(11111111111111111111111111111, t.1);
-    assert_approx_eq!(1.1, t.2);
+    assert_eq_float!(1.1, t.2);
     assert!(t.3);
     assert_eq!("Hi", t.4);
     assert_eq!("Hello", t.5);
@@ -223,7 +223,7 @@ fn field_default_3() {
 
     assert_eq!(1, s.f1);
     assert_eq!(11111111111111111111111111111, s.f2);
-    assert_approx_eq!(1.1, s.f3);
+    assert_eq_float!(1.1, s.f3);
     assert!(s.f4);
     assert_eq!("Hi", s.f5);
     assert_eq!("Hello", s.f6);
@@ -231,7 +231,7 @@ fn field_default_3() {
 
     assert_eq!(1, t.0);
     assert_eq!(11111111111111111111111111111, t.1);
-    assert_approx_eq!(1.1, t.2);
+    assert_eq_float!(1.1, t.2);
     assert!(t.3);
     assert_eq!("Hi", t.4);
     assert_eq!("Hello", t.5);
@@ -276,7 +276,7 @@ fn field_default_4() {
 
     assert_eq!(1, s.f1);
     assert_eq!(11111111111111111111111111111, s.f2);
-    assert_approx_eq!(1.1, s.f3);
+    assert_eq_float!(1.1, s.f3);
     assert!(s.f4);
     assert_eq!("Hi", s.f5);
     assert_eq!("Hello", s.f6);
@@ -284,7 +284,7 @@ fn field_default_4() {
 
     assert_eq!(1, t.0);
     assert_eq!(11111111111111111111111111111, t.1);
-    assert_approx_eq!(1.1, t.2);
+    assert_eq_float!(1.1, t.2);
     assert!(t.3);
     assert_eq!("Hi", t.4);
     assert_eq!("Hello", t.5);

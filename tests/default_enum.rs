@@ -8,7 +8,7 @@ extern crate educe;
 
 use alloc::string::String;
 
-use assert_approx_eq::assert_approx_eq;
+use assert_eq_float::assert_eq_float;
 
 #[test]
 #[allow(irrefutable_let_patterns, dead_code)]
@@ -157,7 +157,7 @@ fn field_default_1() {
     {
         assert_eq!(1, f1);
         assert_eq!(11111111111111111111111111111, f2);
-        assert_approx_eq!(1.1, f3);
+        assert_eq_float!(1.1, f3);
         assert!(f4);
         assert_eq!("Hi", f5);
         assert_eq!("Hello", f6);
@@ -169,7 +169,7 @@ fn field_default_1() {
     if let Enum2::Tuple(f1, f2, f3, f4, f5, f6, f7) = t {
         assert_eq!(1, f1);
         assert_eq!(11111111111111111111111111111, f2);
-        assert_approx_eq!(1.1, f3);
+        assert_eq_float!(1.1, f3);
         assert!(f4);
         assert_eq!("Hi", f5);
         assert_eq!("Hello", f6);
@@ -234,7 +234,7 @@ fn field_default_2() {
     {
         assert_eq!(1, f1);
         assert_eq!(11111111111111111111111111111, f2);
-        assert_approx_eq!(1.1, f3);
+        assert_eq_float!(1.1, f3);
         assert!(f4);
         assert_eq!("Hi", f5);
         assert_eq!("Hello", f6);
@@ -246,7 +246,7 @@ fn field_default_2() {
     if let Enum2::Tuple(f1, f2, f3, f4, f5, f6, f7) = t {
         assert_eq!(1, f1);
         assert_eq!(11111111111111111111111111111, f2);
-        assert_approx_eq!(1.1, f3);
+        assert_eq_float!(1.1, f3);
         assert!(f4);
         assert_eq!("Hi", f5);
         assert_eq!("Hello", f6);
@@ -311,7 +311,7 @@ fn field_default_3() {
     {
         assert_eq!(1, f1);
         assert_eq!(11111111111111111111111111111, f2);
-        assert_approx_eq!(1.1, f3);
+        assert_eq_float!(1.1, f3);
         assert!(f4);
         assert_eq!("Hi", f5);
         assert_eq!("Hello", f6);
@@ -323,7 +323,7 @@ fn field_default_3() {
     if let Enum2::Tuple(f1, f2, f3, f4, f5, f6, f7) = t {
         assert_eq!(1, f1);
         assert_eq!(11111111111111111111111111111, f2);
-        assert_approx_eq!(1.1, f3);
+        assert_eq_float!(1.1, f3);
         assert!(f4);
         assert_eq!("Hi", f5);
         assert_eq!("Hello", f6);
@@ -388,7 +388,7 @@ fn field_default_4() {
     {
         assert_eq!(1, f1);
         assert_eq!(11111111111111111111111111111, f2);
-        assert_approx_eq!(1.1, f3);
+        assert_eq_float!(1.1, f3);
         assert!(f4);
         assert_eq!("Hi", f5);
         assert_eq!("Hello", f6);
@@ -400,7 +400,7 @@ fn field_default_4() {
     if let Enum2::Tuple(f1, f2, f3, f4, f5, f6, f7) = t {
         assert_eq!(1, f1);
         assert_eq!(11111111111111111111111111111, f2);
-        assert_approx_eq!(1.1, f3);
+        assert_eq_float!(1.1, f3);
         assert!(f4);
         assert_eq!("Hi", f5);
         assert_eq!("Hello", f6);

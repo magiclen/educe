@@ -24,7 +24,7 @@ quote = "1"
 enum-ordinalize = "3.1"
 
 [dev-dependencies]
-assert_approx_eq = "1.1"
+assert-eq-float = "0.1"
 
 [features]
 default = ["Debug", "PartialEq", "Eq", "PartialOrd", "Ord", "Hash", "Default", "Clone", "Copy", "Deref", "DerefMut"]

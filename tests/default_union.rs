@@ -4,7 +4,7 @@
 #[macro_use]
 extern crate educe;
 
-use assert_approx_eq::assert_approx_eq;
+use assert_eq_float::assert_eq_float;
 
 #[test]
 #[allow(dead_code)]
@@ -34,7 +34,7 @@ fn basic() {
         f2: f64,
     }
 
-    assert_approx_eq!(0.0, unsafe { Union3::default().f2 });
+    assert_eq_float!(0.0, unsafe { Union3::default().f2 });
 }
 
 #[test]
@@ -106,7 +106,7 @@ fn field_default_1() {
         f6: char,
     }
 
-    assert_approx_eq!(1.1, unsafe { Union3::default().f3 });
+    assert_eq_float!(1.1, unsafe { Union3::default().f3 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -194,7 +194,7 @@ fn field_default_2() {
         f6: char,
     }
 
-    assert_approx_eq!(1.1, unsafe { Union3::default().f3 });
+    assert_eq_float!(1.1, unsafe { Union3::default().f3 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -282,7 +282,7 @@ fn field_default_3() {
         f6: char,
     }
 
-    assert_approx_eq!(1.1, unsafe { Union3::default().f3 });
+    assert_eq_float!(1.1, unsafe { Union3::default().f3 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -370,7 +370,7 @@ fn field_default_4() {
         f6: char,
     }
 
-    assert_approx_eq!(1.1, unsafe { Union3::default().f3 });
+    assert_eq_float!(1.1, unsafe { Union3::default().f3 });
 
     #[derive(Educe)]
     #[educe(Default)]
@@ -434,7 +434,7 @@ fn bound_1() {
         f2: K,
     }
 
-    assert_approx_eq!(0.0, unsafe { Union2::<u8, f64>::default().f2 });
+    assert_eq_float!(0.0, unsafe { Union2::<u8, f64>::default().f2 });
 }
 
 #[test]
@@ -456,7 +456,7 @@ fn bound_2() {
         f2: K,
     }
 
-    assert_approx_eq!(0.0, unsafe { Union2::<u8, f64>::default().f2 });
+    assert_eq_float!(0.0, unsafe { Union2::<u8, f64>::default().f2 });
 }
 
 #[test]
@@ -478,7 +478,7 @@ fn bound_3() {
         f2: K,
     }
 
-    assert_approx_eq!(0.0, unsafe { Union2::<u8, f64>::default().f2 });
+    assert_eq_float!(0.0, unsafe { Union2::<u8, f64>::default().f2 });
 }
 
 #[test]
@@ -500,5 +500,5 @@ fn new() {
         f2: f64,
     }
 
-    assert_approx_eq!(0.0, unsafe { Union2::new().f2 });
+    assert_eq_float!(0.0, unsafe { Union2::new().f2 });
 }
