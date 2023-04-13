@@ -9,7 +9,6 @@ homepage = "https://magiclen.org/educe"
 keywords = ["derive", "macro", "trait", "field", "procedural"]
 categories = ["no-std", "rust-patterns"]
 description = "This crate provides procedural macros to help you implement Rust-built-in traits quickly."
-readme = "README.md"
 license = "MIT"
 include = ["src/**/*", "Cargo.toml", "README.md", "LICENSE"]
 
