@@ -54,11 +54,9 @@ impl FieldAttributeBuilder {
         let mut result = None;
 
         for attribute in attributes.iter() {
-            let meta = attribute.parse_meta().unwrap();
+            if attribute.path.is_ident("educe") {
+                let meta = attribute.parse_meta().unwrap();
 
-            let meta_name = meta.path().into_token_stream().to_string();
-
-            if meta_name.as_str() == "educe" {
                 match meta {
                     Meta::List(list) => {
                         for p in list.nested.iter() {

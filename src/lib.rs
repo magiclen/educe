@@ -1530,35 +1530,33 @@ fn derive_input_handler(ast: DeriveInput) -> TokenStream {
     let mut trait_meta_map: BTreeMap<Trait, Meta> = BTreeMap::new();
 
     for attr in ast.attrs.iter() {
-        if let Some(attr_meta_name) = attr.path.get_ident() {
-            if attr_meta_name == "educe" {
-                let attr_meta = attr.parse_meta().unwrap();
+        if attr.path.is_ident("educe") {
+            let attr_meta = attr.parse_meta().unwrap();
 
-                match attr_meta {
-                    Meta::List(list) => {
-                        for p in list.nested {
-                            match p {
-                                NestedMeta::Meta(meta) => {
-                                    let meta_name = meta.path().into_token_stream().to_string();
+            match attr_meta {
+                Meta::List(list) => {
+                    for p in list.nested {
+                        match p {
+                            NestedMeta::Meta(meta) => {
+                                let meta_name = meta.path().into_token_stream().to_string();
 
-                                    let t = Trait::from_str(meta_name);
+                                let t = Trait::from_str(meta_name);
 
-                                    if trait_meta_map.contains_key(&t) {
-                                        panic::reuse_a_trait(t);
-                                    }
+                                if trait_meta_map.contains_key(&t) {
+                                    panic::reuse_a_trait(t);
+                                }
 
-                                    trait_meta_map.insert(t, meta);
-                                },
-                                NestedMeta::Lit(_) => {
-                                    panic::educe_format_incorrect();
-                                },
-                            }
+                                trait_meta_map.insert(t, meta);
+                            },
+                            NestedMeta::Lit(_) => {
+                                panic::educe_format_incorrect();
+                            },
                         }
-                    },
-                    _ => {
-                        panic::educe_format_incorrect();
-                    },
-                }
+                    }
+                },
+                _ => {
+                    panic::educe_format_incorrect();
+                },
             }
         }
     }
