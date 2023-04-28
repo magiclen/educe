@@ -55,37 +55,35 @@ impl TypeAttributeBuilder {
         let mut result = None;
 
         for attribute in attributes.iter() {
-            if let Some(meta_name) = attribute.path.get_ident() {
-                if meta_name == "educe" {
-                    let meta = attribute.parse_meta().unwrap();
+            if attribute.path.is_ident("educe") {
+                let meta = attribute.parse_meta().unwrap();
 
-                    match meta {
-                        Meta::List(list) => {
-                            for p in list.nested.iter() {
-                                match p {
-                                    NestedMeta::Meta(meta) => {
-                                        let meta_name = meta.path().into_token_stream().to_string();
+                match meta {
+                    Meta::List(list) => {
+                        for p in list.nested.iter() {
+                            match p {
+                                NestedMeta::Meta(meta) => {
+                                    let meta_name = meta.path().into_token_stream().to_string();
 
-                                        let t = Trait::from_str(meta_name);
+                                    let t = Trait::from_str(meta_name);
 
-                                        if traits.binary_search(&t).is_err() {
-                                            panic::trait_not_used(t);
+                                    if traits.binary_search(&t).is_err() {
+                                        panic::trait_not_used(t);
+                                    }
+
+                                    if t == Trait::DerefMut {
+                                        if result.is_some() {
+                                            panic::reuse_a_trait(t);
                                         }
 
-                                        if t == Trait::DerefMut {
-                                            if result.is_some() {
-                                                panic::reuse_a_trait(t);
-                                            }
-
-                                            result = Some(self.from_deref_mut_meta(meta));
-                                        }
-                                    },
-                                    _ => panic::educe_format_incorrect(),
-                                }
+                                        result = Some(self.from_deref_mut_meta(meta));
+                                    }
+                                },
+                                _ => panic::educe_format_incorrect(),
                             }
-                        },
-                        _ => panic::educe_format_incorrect(),
-                    }
+                        }
+                    },
+                    _ => panic::educe_format_incorrect(),
                 }
             }
         }
