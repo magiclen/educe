@@ -273,6 +273,7 @@ impl TraitHandler for CloneStructHandler {
                     #clone_tokens
                 }
 
+                #[allow(clippy::incorrect_clone_impl_on_copy_type)]
                 #[inline]
                 fn clone_from(&mut self, _source: &Self) {
                     #clone_from_tokens

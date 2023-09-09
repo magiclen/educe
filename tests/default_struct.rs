@@ -1,5 +1,6 @@
 #![cfg(feature = "Default")]
 #![no_std]
+#![allow(clippy::default_constructed_unit_structs)]
 
 extern crate alloc;
 

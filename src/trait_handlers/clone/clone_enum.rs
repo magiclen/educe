@@ -543,6 +543,7 @@ impl TraitHandler for CloneEnumHandler {
                     #clone_tokens
                 }
 
+                #[allow(clippy::incorrect_clone_impl_on_copy_type)]
                 #[inline]
                 fn clone_from(&mut self, _source: &Self) {
                     let mut done = false;
