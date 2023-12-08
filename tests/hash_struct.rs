@@ -67,7 +67,7 @@ fn basic() {
 
 #[allow(dead_code)]
 #[test]
-fn ignore() {
+fn ignore_1() {
     #[derive(Educe)]
     #[educe(Hash)]
     struct Unit;

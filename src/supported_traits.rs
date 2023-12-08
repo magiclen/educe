@@ -10,6 +10,7 @@
     feature = "Default",
     feature = "Deref",
     feature = "DerefMut",
+    feature = "Into",
 )))]
 compile_error!("at least one of the trait features must be enabled");
 
@@ -42,6 +43,8 @@ pub(crate) enum Trait {
     Deref,
     #[cfg(feature = "DerefMut")]
     DerefMut,
+    #[cfg(feature = "Into")]
+    Into,
 
     _Nothing,
 }
@@ -77,6 +80,8 @@ impl Trait {
             "Deref" => Some(Trait::Deref),
             #[cfg(feature = "DerefMut")]
             "DerefMut" => Some(Trait::DerefMut),
+            #[cfg(feature = "Into")]
+            "Into" => Some(Trait::Into),
             _ => None,
         }
     }

@@ -37,7 +37,7 @@ impl FieldAttributeBuilder {
                 let result =
                     list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
 
-                let mut clone_is_set = false;
+                let mut method_is_set = false;
 
                 let mut handler = |meta: Meta| -> syn::Result<bool> {
                     if let Some(ident) = meta.path().get_ident() {
@@ -48,11 +48,11 @@ impl FieldAttributeBuilder {
 
                             let v = meta_2_path(&meta)?;
 
-                            if clone_is_set {
+                            if method_is_set {
                                 return Err(panic::parameter_reset(ident));
                             }
 
-                            clone_is_set = true;
+                            method_is_set = true;
 
                             method = Some(v);
 

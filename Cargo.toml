@@ -1,6 +1,6 @@
 [package]
 name = "educe"
-version = "0.5.0-beta.1"
+version = "0.5.0"
 authors = ["Magic Len <len@magiclen.org>"]
 edition = "2021"
 rust-version = "1.56"
@@ -28,7 +28,7 @@ assert-eq-float = "0.1"
 rustversion = "1"
 
 [features]
-default = ["Debug", "Clone", "Copy", "PartialEq", "Eq", "PartialOrd", "Ord", "Hash", "Default", "Deref", "DerefMut"]
+default = ["Debug", "Clone", "Copy", "PartialEq", "Eq", "PartialOrd", "Ord", "Hash", "Default", "Deref", "DerefMut", "Into"]
 
 full = ["syn/full"]
 
@@ -43,6 +43,7 @@ Hash = []
 Default = []
 Deref = []
 DerefMut = []
+Into = []
 
 [package.metadata.docs.rs]
 all-features = true

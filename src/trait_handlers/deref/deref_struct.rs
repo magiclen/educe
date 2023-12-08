@@ -29,9 +29,7 @@ impl TraitHandler for DerefStructHandler {
         let mut deref_token_stream = proc_macro2::TokenStream::new();
 
         if let Data::Struct(data) = &ast.data {
-            let mut index_counter = 0;
-
-            let field = {
+            let (index, field) = {
                 let fields = &data.fields;
 
                 if fields.len() == 1 {
@@ -42,13 +40,11 @@ impl TraitHandler for DerefStructHandler {
                     }
                     .build_from_attributes(&field.attrs, traits)?;
 
-                    index_counter += 1;
-
-                    field
+                    (0usize, field)
                 } else {
-                    let mut deref_field: Option<&Field> = None;
+                    let mut deref_field: Option<(usize, &Field)> = None;
 
-                    for field in fields {
+                    for (index, field) in fields.iter().enumerate() {
                         let field_attribute = FieldAttributeBuilder {
                             enable_flag: true
                         }
@@ -61,10 +57,8 @@ impl TraitHandler for DerefStructHandler {
                                 ));
                             }
 
-                            deref_field = Some(field);
+                            deref_field = Some((index, field));
                         }
-
-                        index_counter += 1;
                     }
 
                     if let Some(deref_field) = deref_field {
@@ -80,8 +74,7 @@ impl TraitHandler for DerefStructHandler {
 
             target_token_stream.extend(quote!(#dereference_ty));
 
-            let field_name =
-                IdentOrIndex::from_ident_with_index(field.ident.as_ref(), index_counter - 1);
+            let field_name = IdentOrIndex::from_ident_with_index(field.ident.as_ref(), index);
 
             deref_token_stream.extend(if is_ref {
                 quote! (self.#field_name)

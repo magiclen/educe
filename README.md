@@ -1421,7 +1421,7 @@ Use `#[derive(Educe)]` and `#[educe(Deref)]` to implement the `Deref` trait for 
 
 ###### Basic Usage
 
-You must designate a field as a default by inmutably dereferencing it unless the number of fields is exactly one.
+You must designate a field as the default for obtaining an immutable reference unless the number of fields is exactly one.
 
 ```rust
 use educe::Educe;
@@ -1460,7 +1460,7 @@ Use `#[derive(Educe)]` and `#[educe(DerefMut)]` to implement the `DerefMut` trai
 
 ###### Basic Usage
 
-You must designate a field as a default by mutably dereferencing it unless the number of fields is exactly one.
+You must designate a field as the default for obtaining an mutable reference unless the number of fields is exactly one.
 
 ```rust
 use educe::Educe;
@@ -1495,6 +1495,103 @@ enum Enum {
 ```
 
 The mutable dereferencing fields do not need to be the same as the immutable dereferencing fields, but their types must be consistent.
+
+#### Into
+
+Use `#[derive(Educe)]` and `#[educe(Into(type))]` to implement the `Into<type>` trait for a struct or enum.
+
+###### Basic Usage
+
+You need to designate a field as the default for `Into<type>` conversion unless the number of fields is exactly one. If you don't, educe will automatically try to find a proper one.
+
+```rust
+use educe::Educe;
+
+#[derive(Educe)]
+#[educe(Into(u8), Into(u16))]
+struct Struct {
+    f1: u8,
+    f2: u16,
+}
+
+#[derive(Educe)]
+#[educe(Into(u8))]
+enum Enum {
+    V1 {
+        f1: u8,
+        #[educe(Into(u8))]
+        f2: u8,
+    },
+    V2 (
+        u8
+    ),
+}
+```
+
+###### Use Another Method to Perform Into Conversion
+
+The `method` parameter can be utilized to replace the implementation of the `Into` trait for a field, eliminating the need to implement the `Into` trait for the type of that field.
+
+```rust
+use educe::Educe;
+
+fn into(v: u16) -> u8 {
+    v as u8
+}
+
+#[derive(Educe)]
+#[educe(Into(u8))]
+enum Enum {
+    V1 {
+        #[educe(Into(u8, method(into)))]
+        f1: u16,
+    },
+    V2 (
+        u8
+    ),
+}
+```
+
+###### Generic Parameters Bound to the `Into` Trait or Others
+
+Generic parameters will be automatically bound to the `Into<type>` trait if necessary.
+
+```rust
+use educe::Educe;
+
+#[derive(Educe)]
+#[educe(Into(u8))]
+enum Enum<T, K> {
+    V1 {
+        f1: K,
+    },
+    V2 (
+        T
+    ),
+}
+```
+
+Or you can set the where predicates by yourself.
+
+```rust
+use educe::Educe;
+
+fn into<T>(_v: T) -> u8 {
+    0
+}
+
+#[derive(Educe)]
+#[educe(Into(u8, bound(K: Into<u8>)))]
+enum Enum<T, K> {
+    V1 {
+        f1: K,
+    },
+    V2 (
+        #[educe(Into(u8, method(into)))]
+        T
+    ),
+}
+```
 
 ## Crates.io
 

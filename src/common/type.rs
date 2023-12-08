@@ -1,6 +1,38 @@
 use std::collections::HashSet;
 
-use syn::{Ident, Type, TypeParamBound};
+use syn::{
+    parse::{Parse, ParseStream},
+    punctuated::Punctuated,
+    Ident, Meta, Token, Type, TypeParamBound,
+};
+
+pub(crate) struct TypeWithPunctuatedMeta {
+    pub(crate) ty:   Type,
+    pub(crate) list: Punctuated<Meta, Token![,]>,
+}
+
+impl Parse for TypeWithPunctuatedMeta {
+    #[inline]
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let ty = input.parse::<Type>()?;
+
+        if input.is_empty() {
+            return Ok(Self {
+                ty,
+                list: Punctuated::new(),
+            });
+        }
+
+        input.parse::<Token![,]>()?;
+
+        let list = input.parse_terminated(Meta::parse, Token![,])?;
+
+        Ok(Self {
+            ty,
+            list,
+        })
+    }
+}
 
 #[inline]
 pub(crate) fn find_idents_in_type<'a>(set: &mut HashSet<&'a Ident>, ty: &'a Type) {

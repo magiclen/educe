@@ -42,11 +42,9 @@ impl TraitHandler for DerefMutEnumHandler {
                     ));
                 }
 
-                let mut index_counter = 0;
-
                 let fields = &variant.fields;
 
-                let field = if fields.len() == 1 {
+                let (index, field) = if fields.len() == 1 {
                     let field = fields.into_iter().next().unwrap();
 
                     let _ = FieldAttributeBuilder {
@@ -54,13 +52,11 @@ impl TraitHandler for DerefMutEnumHandler {
                     }
                     .build_from_attributes(&field.attrs, traits)?;
 
-                    index_counter += 1;
-
-                    field
+                    (0usize, field)
                 } else {
-                    let mut deref_field: Option<&Field> = None;
+                    let mut deref_field: Option<(usize, &Field)> = None;
 
-                    for field in variant.fields.iter() {
+                    for (index, field) in variant.fields.iter().enumerate() {
                         let field_attribute = FieldAttributeBuilder {
                             enable_flag: true
                         }
@@ -74,10 +70,8 @@ impl TraitHandler for DerefMutEnumHandler {
                                 ));
                             }
 
-                            deref_field = Some(field);
+                            deref_field = Some((index, field));
                         }
-
-                        index_counter += 1;
                     }
 
                     if let Some(deref_field) = deref_field {
@@ -90,14 +84,12 @@ impl TraitHandler for DerefMutEnumHandler {
                     }
                 };
 
-                index_counter -= 1;
-
                 let (field_name, is_tuple): (Ident, bool) = match field.ident.as_ref() {
                     Some(ident) => (ident.clone(), false),
-                    None => (syn::parse_str(&format!("_{}", index_counter)).unwrap(), true),
+                    None => (syn::parse_str(&format!("_{}", index)).unwrap(), true),
                 };
 
-                variants.push((&variant.ident, is_tuple, index_counter, field_name));
+                variants.push((&variant.ident, is_tuple, index, field_name));
             }
 
             if variants.is_empty() {

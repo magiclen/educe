@@ -99,16 +99,16 @@ fn basic_2() {
 
 #[allow(dead_code)]
 #[test]
-fn ignore_2() {
+fn ignore_1() {
     #[derive(Educe)]
     #[educe(Hash)]
     enum Enum<T> {
         Unit,
         Struct {
-            #[educe(Hash(ignore))]
+            #[educe(Hash = false)]
             f1: T,
         },
-        Tuple(#[educe(Hash(ignore))] T),
+        Tuple(#[educe(Hash = false)] T),
     }
 
     let unit_hash = {
@@ -144,16 +144,16 @@ fn ignore_2() {
 
 #[allow(dead_code)]
 #[test]
-fn ignore() {
+fn ignore_2() {
     #[derive(Educe)]
     #[educe(Hash)]
     enum Enum<T> {
         Unit,
         Struct {
-            #[educe(Hash = false)]
+            #[educe(Hash(ignore))]
             f1: T,
         },
-        Tuple(#[educe(Hash = false)] T),
+        Tuple(#[educe(Hash(ignore))] T),
     }
 
     let unit_hash = {

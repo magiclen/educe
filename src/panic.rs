@@ -50,15 +50,16 @@ pub(crate) fn attribute_incorrect_place(name: &Ident) -> syn::Error {
 }
 
 #[inline]
-pub(crate) fn attribute_incorrect_format(
+pub(crate) fn attribute_incorrect_format_with_span(
     name: &Ident,
+    span: Span,
     correct_usage: &[&'static str],
 ) -> syn::Error {
     if correct_usage.is_empty() {
         attribute_incorrect_place(name)
     } else {
         syn::Error::new(
-            name.span(),
+            span,
             format!(
                 "you are using an incorrect format of the `{}` attribute{}",
                 name,
@@ -66,6 +67,14 @@ pub(crate) fn attribute_incorrect_format(
             ),
         )
     }
+}
+
+#[inline]
+pub(crate) fn attribute_incorrect_format(
+    name: &Ident,
+    correct_usage: &[&'static str],
+) -> syn::Error {
+    attribute_incorrect_format_with_span(name, name.span(), correct_usage)
 }
 
 #[inline]

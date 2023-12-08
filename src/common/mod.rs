@@ -27,7 +27,8 @@ pub(crate) mod ident_bool;
     feature = "Ord",
     feature = "Hash",
     feature = "Deref",
-    feature = "DerefMut"
+    feature = "DerefMut",
+    feature = "Into"
 ))]
 #[allow(dead_code)]
 pub(crate) mod ident_index;
@@ -38,5 +39,5 @@ pub(crate) mod int;
 #[allow(dead_code)]
 pub(crate) mod unsafe_punctuated_meta;
 
-#[cfg(any(feature = "PartialOrd", feature = "Ord"))]
+#[cfg(any(feature = "PartialOrd", feature = "Ord", feature = "Into"))]
 pub(crate) mod tools;

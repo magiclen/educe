@@ -53,6 +53,7 @@ jobs:
           - --no-default-features --features Deref
           - --no-default-features --features DerefMut
           - --no-default-features --features Deref --features DerefMut
+          - --no-default-features --features Into
     name: Test ${{ matrix.toolchain }} on ${{ matrix.os }} (${{ matrix.features }})
     runs-on: ${{ matrix.os }}
     steps:
@@ -90,6 +91,7 @@ jobs:
           - --no-default-features --features Deref
           - --no-default-features --features DerefMut
           - --no-default-features --features Deref --features DerefMut
+          - --no-default-features --features Into
     name: Test ${{ matrix.toolchain }} on ${{ matrix.os }} (${{ matrix.features }})
     runs-on: ${{ matrix.os }}
     steps:
