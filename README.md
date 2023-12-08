@@ -1496,16 +1496,6 @@ enum Enum {
 
 The mutable dereferencing fields do not need to be the same as the immutable dereferencing fields, but their types must be consistent.
 
-## TODO
-
-There is a lot of work to be done. Unimplemented traits are listed below:
-
-1. `From`
-1. `Into`
-1. `FromStr`
-1. `TryFrom`
-1. `TryInto`
-
 ## Crates.io
 
 https://crates.io/crates/educe
