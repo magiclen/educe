@@ -1,12 +1,27 @@
-#![allow(clippy::trivially_copy_pass_by_ref)]
 #![cfg(feature = "Clone")]
 #![no_std]
 
-#[macro_use]
-extern crate educe;
+use educe::Educe;
 
 #[test]
-#[allow(irrefutable_let_patterns)]
+fn empty() {
+    #[derive(Educe)]
+    #[educe(Clone)]
+    struct Struct {}
+
+    #[derive(Educe)]
+    #[educe(Clone)]
+    struct Tuple();
+
+    let s = Struct {}.clone();
+    let t = Tuple().clone();
+
+    assert!(matches!(s, Struct {}));
+
+    assert!(matches!(t, Tuple()));
+}
+
+#[test]
 fn basic() {
     #[derive(Educe)]
     #[educe(Clone)]
@@ -36,7 +51,7 @@ fn basic() {
 }
 
 #[test]
-fn clone_without_trait_1() {
+fn method_1() {
     fn clone(v: &u8) -> u8 {
         v + 100
     }
@@ -44,13 +59,13 @@ fn clone_without_trait_1() {
     #[derive(Educe)]
     #[educe(Clone)]
     struct Struct {
-        #[educe(Clone(method = "clone"))]
+        #[educe(Clone(method = clone))]
         f1: u8,
     }
 
     #[derive(Educe)]
     #[educe(Clone)]
-    struct Tuple(#[educe(Clone(method = "clone"))] u8);
+    struct Tuple(#[educe(Clone(method = clone))] u8);
 
     let s = Struct {
         f1: 1
@@ -63,7 +78,7 @@ fn clone_without_trait_1() {
 }
 
 #[test]
-fn clone_without_trait_2() {
+fn method_2() {
     fn clone(v: &u8) -> u8 {
         v + 100
     }
@@ -71,145 +86,13 @@ fn clone_without_trait_2() {
     #[derive(Educe)]
     #[educe(Clone)]
     struct Struct {
-        #[educe(Clone(method("clone")))]
+        #[educe(Clone(method(clone)))]
         f1: u8,
     }
 
     #[derive(Educe)]
     #[educe(Clone)]
-    struct Tuple(#[educe(Clone(method("clone")))] u8);
-
-    let s = Struct {
-        f1: 1
-    }
-    .clone();
-    let t = Tuple(1).clone();
-
-    assert_eq!(101, s.f1);
-    assert_eq!(101, t.0);
-}
-
-#[test]
-fn clone_with_trait_1() {
-    trait A {
-        fn clone(&self) -> Self;
-    }
-
-    impl A for u8 {
-        fn clone(&self) -> u8 {
-            self + 100
-        }
-    }
-
-    #[derive(Educe)]
-    #[educe(Clone)]
-    struct Struct {
-        #[educe(Clone(trait = "A"))]
-        f1: u8,
-    }
-
-    #[derive(Educe)]
-    #[educe(Clone)]
-    struct Tuple(#[educe(Clone(trait = "A"))] u8);
-
-    let s = Struct {
-        f1: 1
-    }
-    .clone();
-    let t = Tuple(1).clone();
-
-    assert_eq!(101, s.f1);
-    assert_eq!(101, t.0);
-}
-
-#[test]
-fn clone_with_trait_2() {
-    trait A {
-        fn clone(&self) -> Self;
-    }
-
-    impl A for u8 {
-        fn clone(&self) -> u8 {
-            self + 100
-        }
-    }
-
-    #[derive(Educe)]
-    #[educe(Clone)]
-    struct Struct {
-        #[educe(Clone(trait("A")))]
-        f1: u8,
-    }
-
-    #[derive(Educe)]
-    #[educe(Clone)]
-    struct Tuple(#[educe(Clone(trait("A")))] u8);
-
-    let s = Struct {
-        f1: 1
-    }
-    .clone();
-    let t = Tuple(1).clone();
-
-    assert_eq!(101, s.f1);
-    assert_eq!(101, t.0);
-}
-
-#[test]
-fn clone_with_trait_3() {
-    trait A {
-        fn cloner(&self) -> Self;
-    }
-
-    impl A for u8 {
-        fn cloner(&self) -> u8 {
-            self + 100
-        }
-    }
-
-    #[derive(Educe)]
-    #[educe(Clone)]
-    struct Struct {
-        #[educe(Clone(trait = "A", method = "cloner"))]
-        f1: u8,
-    }
-
-    #[derive(Educe)]
-    #[educe(Clone)]
-    struct Tuple(#[educe(Clone(trait = "A", method = "cloner"))] u8);
-
-    let s = Struct {
-        f1: 1
-    }
-    .clone();
-    let t = Tuple(1).clone();
-
-    assert_eq!(101, s.f1);
-    assert_eq!(101, t.0);
-}
-
-#[test]
-fn clone_with_trait_4() {
-    trait A {
-        fn cloner(&self) -> Self;
-    }
-
-    impl A for u8 {
-        fn cloner(&self) -> u8 {
-            self + 100
-        }
-    }
-
-    #[derive(Educe)]
-    #[educe(Clone)]
-    struct Struct {
-        #[educe(Clone(trait("A"), method("cloner")))]
-        f1: u8,
-    }
-
-    #[derive(Educe)]
-    #[educe(Clone)]
-    struct Tuple(#[educe(Clone(trait("A"), method("cloner")))] u8);
+    struct Tuple(#[educe(Clone(method(clone)))] u8);
 
     let s = Struct {
         f1: 1
@@ -224,13 +107,13 @@ fn clone_with_trait_4() {
 #[test]
 fn bound_1() {
     #[derive(Educe)]
-    #[educe(Clone(bound))]
+    #[educe(Clone)]
     struct Struct<T> {
         f1: T,
     }
 
     #[derive(Educe)]
-    #[educe(Clone(bound))]
+    #[educe(Clone)]
     struct Tuple<T>(T);
 
     let s = Struct {
@@ -268,13 +151,13 @@ fn bound_2() {
 #[test]
 fn bound_3() {
     #[derive(Educe)]
-    #[educe(Clone(bound("T: core::clone::Clone")))]
+    #[educe(Clone(bound(T: core::clone::Clone)))]
     struct Struct<T> {
         f1: T,
     }
 
     #[derive(Educe)]
-    #[educe(Clone(bound("T: core::clone::Clone")))]
+    #[educe(Clone(bound(T: core::clone::Clone)))]
     struct Tuple<T>(T);
 
     let s = Struct {

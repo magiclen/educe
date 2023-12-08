@@ -1,38 +1,35 @@
-use std::{fmt::Write, str::FromStr};
-
-use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{punctuated::Punctuated, Data, DeriveInput, Fields, Generics, Meta};
+use syn::{punctuated::Punctuated, Data, DeriveInput, Field, Fields, Ident, Meta, Type, Variant};
 
-use super::{
-    super::TraitHandler,
-    models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder},
+use super::models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder};
+use crate::{
+    common::where_predicates_bool::WherePredicates, supported_traits::Trait, TraitHandler,
 };
-use crate::Trait;
 
-pub struct CloneEnumHandler;
+pub(crate) struct CloneEnumHandler;
 
 impl TraitHandler for CloneEnumHandler {
+    #[inline]
     fn trait_meta_handler(
-        ast: &DeriveInput,
-        tokens: &mut TokenStream,
+        ast: &mut DeriveInput,
+        token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
-    ) {
+    ) -> syn::Result<()> {
         let type_attribute = TypeAttributeBuilder {
             enable_flag: true, enable_bound: true
         }
-        .from_clone_meta(meta);
+        .build_from_clone_meta(meta)?;
 
-        let mut bound = Punctuated::new();
+        let mut bound: WherePredicates = Punctuated::new();
 
-        let mut clone_tokens = TokenStream::new();
-        let mut clone_from_tokens = TokenStream::new();
+        let mut clone_token_stream = proc_macro2::TokenStream::new();
+        let mut clone_from_token_stream = proc_macro2::TokenStream::new();
 
         if let Data::Enum(data) = &ast.data {
-            let mut variant_idents = Vec::new();
-            let mut field_attributes_names: Vec<(bool, Vec<FieldAttribute>, Vec<String>)> =
-                Vec::new();
+            type Variants<'a> = Vec<(&'a Variant, Vec<(&'a Field, FieldAttribute)>)>;
+
+            let mut variants: Variants = Vec::new();
 
             #[cfg(feature = "Copy")]
             let mut has_custom_clone_method = false;
@@ -41,61 +38,26 @@ impl TraitHandler for CloneEnumHandler {
                 let _ = TypeAttributeBuilder {
                     enable_flag: false, enable_bound: false
                 }
-                .from_attributes(&variant.attrs, traits);
+                .build_from_attributes(&variant.attrs, traits)?;
 
-                let mut field_attributes = Vec::new();
-                let mut field_names = Vec::new();
-                let mut is_tuple = true;
+                let mut variant_fields: Vec<(&Field, FieldAttribute)> = Vec::new();
 
-                match &variant.fields {
-                    Fields::Unit => (),
-                    Fields::Named(fields) => {
-                        // TODO Struct
-                        is_tuple = false;
+                for field in variant.fields.iter() {
+                    let field_attribute = FieldAttributeBuilder {
+                        enable_method: true
+                    }
+                    .build_from_attributes(&field.attrs, traits)?;
 
-                        for field in fields.named.iter() {
-                            let field_attribute = FieldAttributeBuilder {
-                                enable_impl: true
-                            }
-                            .from_attributes(&field.attrs, traits);
+                    #[cfg(feature = "Copy")]
+                    if field_attribute.method.is_some() {
+                        has_custom_clone_method = true;
+                    }
 
-                            let field_name = field.ident.as_ref().unwrap().to_string();
-
-                            #[cfg(feature = "Copy")]
-                            if field_attribute.clone_method.is_some() {
-                                has_custom_clone_method = true;
-                            }
-
-                            field_attributes.push(field_attribute);
-                            field_names.push(field_name);
-                        }
-                    },
-                    Fields::Unnamed(fields) => {
-                        // TODO Tuple
-                        for (index, field) in fields.unnamed.iter().enumerate() {
-                            let field_attribute = FieldAttributeBuilder {
-                                enable_impl: true
-                            }
-                            .from_attributes(&field.attrs, traits);
-
-                            let field_name = format!("_{}", index);
-
-                            #[cfg(feature = "Copy")]
-                            if field_attribute.clone_method.is_some() {
-                                has_custom_clone_method = true;
-                            }
-
-                            field_attributes.push(field_attribute);
-                            field_names.push(field_name);
-                        }
-                    },
+                    variant_fields.push((field, field_attribute));
                 }
 
-                variant_idents.push(variant.ident.to_string());
-                field_attributes_names.push((is_tuple, field_attributes, field_names));
+                variants.push((variant, variant_fields));
             }
-
-            let enum_name = ast.ident.to_string();
 
             #[cfg(feature = "Copy")]
             let contains_copy = !has_custom_clone_method && traits.contains(&Trait::Copy);
@@ -104,459 +66,195 @@ impl TraitHandler for CloneEnumHandler {
             let contains_copy = false;
 
             if contains_copy {
-                bound = type_attribute
-                    .bound
-                    .into_punctuated_where_predicates_by_generic_parameters_with_copy(
-                        &ast.generics.params,
-                    );
+                bound = type_attribute.bound.into_where_predicates_by_generic_parameters(
+                    &ast.generics.params,
+                    &syn::parse2(quote!(::core::marker::Copy)).unwrap(),
+                );
 
-                clone_tokens.extend(quote!(*self));
-
-                let mut match_tokens = String::from("match self {");
-
-                for (index, variant_ident) in variant_idents.iter().enumerate() {
-                    let field_attributes_names = &field_attributes_names[index];
-                    let is_tuple = field_attributes_names.0;
-                    let field_attributes = &field_attributes_names.1;
-                    let field_names = &field_attributes_names.2;
-                    let is_unit = field_names.is_empty();
-
-                    if is_unit {
-                        match_tokens
-                            .write_fmt(format_args!(
-                                "{enum_name}::{variant_ident} => {{ if let \
-                                 {enum_name}::{variant_ident} = _source {{ done = true; }} }}",
-                                enum_name = enum_name,
-                                variant_ident = variant_ident
-                            ))
-                            .unwrap();
-                    } else {
-                        let mut pattern_tokens = String::new();
-                        let mut pattern_2_tokens = String::new();
-
-                        if is_tuple {
-                            for field_name in field_names {
-                                pattern_tokens
-                                    .write_fmt(format_args!(
-                                        "{field_name},",
-                                        field_name = field_name
-                                    ))
-                                    .unwrap();
-                                pattern_2_tokens
-                                    .write_fmt(format_args!(
-                                        "___{field_name},",
-                                        field_name = field_name
-                                    ))
-                                    .unwrap();
-                            }
-                        } else {
-                            for field_name in field_names {
-                                pattern_tokens
-                                    .write_fmt(format_args!(
-                                        "{field_name},",
-                                        field_name = field_name
-                                    ))
-                                    .unwrap();
-                                pattern_2_tokens
-                                    .write_fmt(format_args!(
-                                        "{field_name}: ___{field_name},",
-                                        field_name = field_name
-                                    ))
-                                    .unwrap();
-                            }
-                        }
-
-                        let mut block_tokens = String::new();
-
-                        for (index, field_attribute) in field_attributes.iter().enumerate() {
-                            let field_name = &field_names[index];
-
-                            let clone_trait = &field_attribute.clone_trait;
-                            let clone_method = &field_attribute.clone_method;
-
-                            match clone_trait {
-                                Some(clone_trait) => {
-                                    let clone_method = clone_method.as_ref().unwrap();
-
-                                    block_tokens
-                                        .write_fmt(format_args!(
-                                            "*{field_name} = \
-                                             {clone_trait}::{clone_method}(___{field_name});",
-                                            clone_trait = clone_trait,
-                                            clone_method = clone_method,
-                                            field_name = field_name
-                                        ))
-                                        .unwrap();
-                                },
-                                None => match clone_method {
-                                    Some(clone_method) => {
-                                        block_tokens
-                                            .write_fmt(format_args!(
-                                                "*{field_name} = {clone_method}(___{field_name});",
-                                                clone_method = clone_method,
-                                                field_name = field_name
-                                            ))
-                                            .unwrap();
-                                    },
-                                    None => {
-                                        block_tokens
-                                            .write_fmt(format_args!(
-                                                "core::clone::Clone::clone_from({field_name}, \
-                                                 ___{field_name});",
-                                                field_name = field_name
-                                            ))
-                                            .unwrap();
-                                    },
-                                },
-                            }
-                        }
-
-                        if is_tuple {
-                            match_tokens
-                                .write_fmt(format_args!(
-                                    "{enum_name}::{variant_ident} ( {pattern_tokens} ) => {{ if \
-                                     let {enum_name}::{variant_ident} ( {pattern_2_tokens} ) = \
-                                     _source {{ {block_tokens} done = true; }} }}",
-                                    enum_name = enum_name,
-                                    variant_ident = variant_ident,
-                                    pattern_tokens = pattern_tokens,
-                                    pattern_2_tokens = pattern_2_tokens,
-                                    block_tokens = block_tokens
-                                ))
-                                .unwrap();
-                        } else {
-                            match_tokens
-                                .write_fmt(format_args!(
-                                    "{enum_name}::{variant_ident} {{ {pattern_tokens} }} => {{ if \
-                                     let {enum_name}::{variant_ident} {{ {pattern_2_tokens} }} = \
-                                     _source {{ {block_tokens} }} done = true; }}",
-                                    enum_name = enum_name,
-                                    variant_ident = variant_ident,
-                                    pattern_tokens = pattern_tokens,
-                                    pattern_2_tokens = pattern_2_tokens,
-                                    block_tokens = block_tokens
-                                ))
-                                .unwrap();
-                        }
-                    }
-                }
-
-                match_tokens.push('}');
-
-                clone_from_tokens.extend(TokenStream::from_str(&match_tokens).unwrap());
+                clone_token_stream.extend(quote!(*self));
             } else {
-                bound = type_attribute
-                    .bound
-                    .into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
+                let mut clone_types: Vec<&Type> = Vec::new();
 
-                let mut clone_match_tokens = String::from("match self {");
-                let mut clone_from_match_tokens = String::from("match self {");
+                if variants.is_empty() {
+                    clone_token_stream.extend(quote!(unreachable!()));
+                    clone_from_token_stream.extend(quote!(let _ = source;));
+                } else {
+                    let mut clone_variants_token_stream = proc_macro2::TokenStream::new();
+                    let mut clone_from_variants_token_stream = proc_macro2::TokenStream::new();
 
-                for (index, variant_ident) in variant_idents.iter().enumerate() {
-                    let field_attributes_names = &field_attributes_names[index];
-                    let is_tuple = field_attributes_names.0;
-                    let field_attributes = &field_attributes_names.1;
-                    let field_names = &field_attributes_names.2;
-                    let is_unit = field_names.is_empty();
+                    for (variant, variant_fields) in variants {
+                        let variant_ident = &variant.ident;
 
-                    if is_unit {
-                        clone_match_tokens
-                            .write_fmt(format_args!(
-                                "{enum_name}::{variant_ident} => {{ {enum_name}::{variant_ident} \
-                                 }}",
-                                enum_name = enum_name,
-                                variant_ident = variant_ident
-                            ))
-                            .unwrap();
-                        clone_from_match_tokens
-                            .write_fmt(format_args!(
-                                "{enum_name}::{variant_ident} => {{ if let \
-                                 {enum_name}::{variant_ident} = _source {{ done = true; }} }}",
-                                enum_name = enum_name,
-                                variant_ident = variant_ident
-                            ))
-                            .unwrap();
-                    } else {
-                        let mut pattern_tokens = String::new();
-                        let mut pattern_2_tokens = String::new();
-                        let mut pattern_3_tokens = String::new();
-
-                        if is_tuple {
-                            let mut clone = format!(
-                                "{enum_name}::{variant_ident}(",
-                                enum_name = enum_name,
-                                variant_ident = variant_ident
-                            );
-                            let mut clone_from = String::new();
-
-                            for field_name in field_names {
-                                pattern_tokens
-                                    .write_fmt(format_args!(
-                                        "{field_name},",
-                                        field_name = field_name
-                                    ))
-                                    .unwrap();
-                                pattern_2_tokens
-                                    .write_fmt(format_args!(
-                                        "{field_name},",
-                                        field_name = field_name
-                                    ))
-                                    .unwrap();
-                                pattern_3_tokens
-                                    .write_fmt(format_args!(
-                                        "___{field_name},",
-                                        field_name = field_name
-                                    ))
-                                    .unwrap();
-                            }
-
-                            for (index, field_attribute) in field_attributes.iter().enumerate() {
-                                let field_name = &field_names[index];
-
-                                let clone_trait = &field_attribute.clone_trait;
-                                let clone_method = &field_attribute.clone_method;
-
-                                match clone_trait {
-                                    Some(clone_trait) => {
-                                        let clone_method = clone_method.as_ref().unwrap();
-
-                                        clone
-                                            .write_fmt(format_args!(
-                                                "{clone_trait}::{clone_method}({field_name}),",
-                                                clone_trait = clone_trait,
-                                                clone_method = clone_method,
-                                                field_name = field_name
-                                            ))
-                                            .unwrap();
-                                        clone_from
-                                            .write_fmt(format_args!(
-                                                "*{field_name} = \
-                                                 {clone_trait}::{clone_method}(___{field_name});",
-                                                clone_trait = clone_trait,
-                                                clone_method = clone_method,
-                                                field_name = field_name
-                                            ))
-                                            .unwrap();
-                                    },
-                                    None => {
-                                        match clone_method {
-                                            Some(clone_method) => {
-                                                clone
-                                                    .write_fmt(format_args!(
-                                                        "{clone_method}({field_name}),",
-                                                        clone_method = clone_method,
-                                                        field_name = field_name
-                                                    ))
-                                                    .unwrap();
-                                                clone_from
-                                                    .write_fmt(format_args!(
-                                                        "*{field_name} = \
-                                                         {clone_method}(___{field_name});",
-                                                        clone_method = clone_method,
-                                                        field_name = field_name
-                                                    ))
-                                                    .unwrap();
-                                            },
-                                            None => {
-                                                clone
-                                                    .write_fmt(format_args!(
-                                                        "core::clone::Clone::clone({field_name}),",
-                                                        field_name = field_name
-                                                    ))
-                                                    .unwrap();
-                                                clone_from.write_fmt(format_args!("core::clone::Clone::clone_from({field_name}, ___{field_name});", field_name = field_name)).unwrap();
-                                            },
+                        match &variant.fields {
+                            Fields::Unit => {
+                                clone_variants_token_stream.extend(quote! {
+                                    Self::#variant_ident => Self::#variant_ident,
+                                });
+                                clone_from_variants_token_stream.extend(quote! {
+                                    Self::#variant_ident => {
+                                        if let Self::#variant_ident = source {
+                                            // same
+                                        } else {
+                                            *self = ::core::clone::Clone::clone(source);
                                         }
                                     },
+                                });
+                            },
+                            Fields::Named(_) => {
+                                let mut pattern_token_stream = proc_macro2::TokenStream::new();
+                                let mut pattern2_token_stream = proc_macro2::TokenStream::new();
+                                let mut fields_token_stream = proc_macro2::TokenStream::new();
+                                let mut body_token_stream = proc_macro2::TokenStream::new();
+
+                                for (field, field_attribute) in variant_fields {
+                                    let field_name = field.ident.as_ref().unwrap();
+
+                                    pattern_token_stream.extend(quote!(#field_name,));
+
+                                    let field_name2: Ident =
+                                        syn::parse_str(&format!("_{}", field_name)).unwrap();
+
+                                    pattern2_token_stream
+                                        .extend(quote!(#field_name: #field_name2,));
+
+                                    if let Some(clone) = field_attribute.method.as_ref() {
+                                        fields_token_stream.extend(quote! {
+                                            #field_name: #clone(#field_name),
+                                        });
+                                        body_token_stream
+                                            .extend(quote!(*#field_name = #clone(#field_name2);));
+                                    } else {
+                                        clone_types.push(&field.ty);
+
+                                        fields_token_stream.extend(quote! {
+                                            #field_name: ::core::clone::Clone::clone(#field_name),
+                                        });
+                                        body_token_stream.extend(
+                                            quote!( ::core::clone::Clone::clone_from(#field_name, #field_name2); ),
+                                        );
+                                    }
                                 }
-                            }
 
-                            clone.push(')');
+                                clone_variants_token_stream.extend(quote! {
+                                    Self::#variant_ident { #pattern_token_stream } => Self::#variant_ident { #fields_token_stream },
+                                });
 
-                            clone_match_tokens
-                                .write_fmt(format_args!(
-                                    "{enum_name}::{variant_ident} ( {pattern_tokens} ) => {{ \
-                                     {clone} }}",
-                                    enum_name = enum_name,
-                                    variant_ident = variant_ident,
-                                    pattern_tokens = pattern_tokens,
-                                    clone = clone
-                                ))
-                                .unwrap();
-                            clone_from_match_tokens
-                                .write_fmt(format_args!(
-                                    "{enum_name}::{variant_ident} ( {pattern_2_tokens} ) => {{ if \
-                                     let {enum_name}::{variant_ident} ( {pattern_3_tokens} ) = \
-                                     _source {{ {block_tokens} done = true; }} }}",
-                                    enum_name = enum_name,
-                                    variant_ident = variant_ident,
-                                    pattern_2_tokens = pattern_2_tokens,
-                                    pattern_3_tokens = pattern_3_tokens,
-                                    block_tokens = clone_from
-                                ))
-                                .unwrap();
-                        } else {
-                            let mut clone = format!(
-                                "{enum_name}::{variant_ident} {{",
-                                enum_name = enum_name,
-                                variant_ident = variant_ident
-                            );
-                            let mut clone_from = String::new();
-
-                            for field_name in field_names {
-                                pattern_tokens
-                                    .write_fmt(format_args!(
-                                        "{field_name},",
-                                        field_name = field_name
-                                    ))
-                                    .unwrap();
-                                pattern_2_tokens
-                                    .write_fmt(format_args!(
-                                        "{field_name},",
-                                        field_name = field_name
-                                    ))
-                                    .unwrap();
-                                pattern_3_tokens
-                                    .write_fmt(format_args!(
-                                        "{field_name}: ___{field_name},",
-                                        field_name = field_name
-                                    ))
-                                    .unwrap();
-                            }
-
-                            for (index, field_attribute) in field_attributes.iter().enumerate() {
-                                let field_name = &field_names[index];
-
-                                let clone_trait = &field_attribute.clone_trait;
-                                let clone_method = &field_attribute.clone_method;
-
-                                match clone_trait {
-                                    Some(clone_trait) => {
-                                        let clone_method = clone_method.as_ref().unwrap();
-
-                                        clone
-                                            .write_fmt(format_args!(
-                                                "{field_name}: \
-                                                 {clone_trait}::{clone_method}({field_name}),",
-                                                clone_trait = clone_trait,
-                                                clone_method = clone_method,
-                                                field_name = field_name
-                                            ))
-                                            .unwrap();
-                                        clone_from
-                                            .write_fmt(format_args!(
-                                                "*{field_name} = \
-                                                 {clone_trait}::{clone_method}(___{field_name});",
-                                                clone_trait = clone_trait,
-                                                clone_method = clone_method,
-                                                field_name = field_name
-                                            ))
-                                            .unwrap();
-                                    },
-                                    None => {
-                                        match clone_method {
-                                            Some(clone_method) => {
-                                                clone
-                                                    .write_fmt(format_args!(
-                                                        "{field_name}: \
-                                                         {clone_method}({field_name}),",
-                                                        clone_method = clone_method,
-                                                        field_name = field_name
-                                                    ))
-                                                    .unwrap();
-                                                clone_from
-                                                    .write_fmt(format_args!(
-                                                        "*{field_name} = \
-                                                         {clone_method}(___{field_name});",
-                                                        clone_method = clone_method,
-                                                        field_name = field_name
-                                                    ))
-                                                    .unwrap();
-                                            },
-                                            None => {
-                                                clone
-                                                    .write_fmt(format_args!(
-                                                        "{field_name}: \
-                                                         core::clone::Clone::clone({field_name}),",
-                                                        field_name = field_name
-                                                    ))
-                                                    .unwrap();
-                                                clone_from.write_fmt(format_args!("core::clone::Clone::clone_from({field_name}, ___{field_name});", field_name = field_name)).unwrap();
-                                            },
+                                clone_from_variants_token_stream.extend(quote! {
+                                    Self::#variant_ident { #pattern_token_stream } => {
+                                        if let Self::#variant_ident { #pattern2_token_stream } = source {
+                                            #body_token_stream
+                                        } else {
+                                            *self = ::core::clone::Clone::clone(source);
                                         }
                                     },
+                                });
+                            },
+                            Fields::Unnamed(_) => {
+                                let mut pattern_token_stream = proc_macro2::TokenStream::new();
+                                let mut pattern2_token_stream = proc_macro2::TokenStream::new();
+                                let mut fields_token_stream = proc_macro2::TokenStream::new();
+                                let mut body_token_stream = proc_macro2::TokenStream::new();
+
+                                for (index, (field, field_attribute)) in
+                                    variant_fields.into_iter().enumerate()
+                                {
+                                    let field_name: Ident =
+                                        syn::parse_str(&format!("_{}", index)).unwrap();
+
+                                    pattern_token_stream.extend(quote!(#field_name,));
+
+                                    let field_name2: Ident =
+                                        syn::parse_str(&format!("_{}", field_name)).unwrap();
+
+                                    pattern2_token_stream.extend(quote!(#field_name2,));
+
+                                    if let Some(clone) = field_attribute.method.as_ref() {
+                                        fields_token_stream.extend(quote! (#clone(#field_name),));
+                                        body_token_stream
+                                            .extend(quote!(*#field_name = #clone(#field_name2);));
+                                    } else {
+                                        clone_types.push(&field.ty);
+
+                                        fields_token_stream.extend(
+                                            quote! ( ::core::clone::Clone::clone(#field_name), ),
+                                        );
+                                        body_token_stream.extend(
+                                            quote!( ::core::clone::Clone::clone_from(#field_name, #field_name2); ),
+                                        );
+                                    }
                                 }
-                            }
 
-                            clone.push('}');
+                                clone_variants_token_stream.extend(quote! {
+                                    Self::#variant_ident ( #pattern_token_stream ) => Self::#variant_ident ( #fields_token_stream ),
+                                });
 
-                            clone_match_tokens
-                                .write_fmt(format_args!(
-                                    "{enum_name}::{variant_ident} {{ {pattern_tokens} }} => {{ \
-                                     {clone} }}",
-                                    enum_name = enum_name,
-                                    variant_ident = variant_ident,
-                                    pattern_tokens = pattern_tokens,
-                                    clone = clone
-                                ))
-                                .unwrap();
-                            clone_from_match_tokens
-                                .write_fmt(format_args!(
-                                    "{enum_name}::{variant_ident} {{ {pattern_2_tokens} }} => {{ \
-                                     if let {enum_name}::{variant_ident} {{ {pattern_3_tokens} }} \
-                                     = _source {{ {block_tokens} }} done = true; }}",
-                                    enum_name = enum_name,
-                                    variant_ident = variant_ident,
-                                    pattern_2_tokens = pattern_2_tokens,
-                                    pattern_3_tokens = pattern_3_tokens,
-                                    block_tokens = clone_from
-                                ))
-                                .unwrap();
+                                clone_from_variants_token_stream.extend(quote! {
+                                    Self::#variant_ident ( #pattern_token_stream ) => {
+                                        if let Self::#variant_ident ( #pattern2_token_stream ) = source {
+                                            #body_token_stream
+                                        } else {
+                                            *self = ::core::clone::Clone::clone(source);
+                                        }
+                                    },
+                                });
+                            },
                         }
                     }
+
+                    clone_token_stream.extend(quote! {
+                        match self {
+                            #clone_variants_token_stream
+                        }
+                    });
+
+                    clone_from_token_stream.extend(quote! {
+                        match self {
+                            #clone_from_variants_token_stream
+                        }
+                    });
                 }
 
-                clone_match_tokens.push('}');
-                clone_from_match_tokens.push('}');
-
-                clone_tokens.extend(TokenStream::from_str(&clone_match_tokens).unwrap());
-                clone_from_tokens.extend(TokenStream::from_str(&clone_from_match_tokens).unwrap());
+                bound =
+                    type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
+                        &ast.generics.params,
+                        &syn::parse2(quote!(::core::clone::Clone)).unwrap(),
+                        &clone_types,
+                    );
             }
         }
 
+        let clone_from_fn_token_stream = if clone_from_token_stream.is_empty() {
+            None
+        } else {
+            Some(quote! {
+                #[inline]
+                fn clone_from(&mut self, source: &Self) {
+                    #clone_from_token_stream
+                }
+            })
+        };
+
         let ident = &ast.ident;
 
-        let mut generics_cloned: Generics = ast.generics.clone();
-
-        let where_clause = generics_cloned.make_where_clause();
+        let where_clause = ast.generics.make_where_clause();
 
         for where_predicate in bound {
             where_clause.predicates.push(where_predicate);
         }
 
-        let (impl_generics, ty_generics, where_clause) = generics_cloned.split_for_impl();
+        let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
-        let compare_impl = quote! {
-            impl #impl_generics core::clone::Clone for #ident #ty_generics #where_clause {
+        token_stream.extend(quote! {
+            impl #impl_generics ::core::clone::Clone for #ident #ty_generics #where_clause {
                 #[inline]
                 fn clone(&self) -> Self {
-                    #clone_tokens
+                    #clone_token_stream
                 }
 
-                #[allow(clippy::incorrect_clone_impl_on_copy_type)]
-                #[inline]
-                fn clone_from(&mut self, _source: &Self) {
-                    let mut done = false;
-
-                    #clone_from_tokens
-
-                    if !done {
-                        *self = core::clone::Clone::clone(_source);
-                    }
-                }
+                #clone_from_fn_token_stream
             }
-        };
+        });
 
-        tokens.extend(compare_impl);
+        Ok(())
     }
 }

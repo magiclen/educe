@@ -1,50 +1,44 @@
-use std::{collections::BTreeMap, str::FromStr};
+use std::collections::BTreeMap;
 
-use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Data, DeriveInput, Generics, Meta};
+use syn::{spanned::Spanned, Data, DeriveInput, Field, Meta, Path, Type};
 
 use super::{
-    super::TraitHandler,
-    models::{FieldAttributeBuilder, TypeAttributeBuilder},
+    models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder},
+    TraitHandler,
 };
-use crate::{panic, Trait};
+use crate::{common::ident_index::IdentOrIndex, Trait};
 
-pub struct OrdStructHandler;
+pub(crate) struct OrdStructHandler;
 
 impl TraitHandler for OrdStructHandler {
+    #[inline]
     fn trait_meta_handler(
-        ast: &DeriveInput,
-        tokens: &mut TokenStream,
+        ast: &mut DeriveInput,
+        token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
-    ) {
+    ) -> syn::Result<()> {
         let type_attribute = TypeAttributeBuilder {
-            enable_flag:  true,
-            enable_bound: true,
-            rank:         0,
-            enable_rank:  false,
+            enable_flag: true, enable_bound: true
         }
-        .from_ord_meta(meta);
+        .build_from_ord_meta(meta)?;
 
-        let bound = type_attribute
-            .bound
-            .into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
+        let mut ord_types: Vec<&Type> = Vec::new();
 
-        let mut comparer_tokens = TokenStream::new();
+        let mut cmp_token_stream = proc_macro2::TokenStream::new();
 
         if let Data::Struct(data) = &ast.data {
-            let mut field_attributes = BTreeMap::new();
-            let mut field_names = BTreeMap::new();
+            let mut fields: BTreeMap<isize, (usize, &Field, FieldAttribute)> = BTreeMap::new();
 
             for (index, field) in data.fields.iter().enumerate() {
                 let field_attribute = FieldAttributeBuilder {
                     enable_ignore: true,
-                    enable_impl:   true,
-                    rank:          isize::MIN + index as isize,
+                    enable_method: true,
                     enable_rank:   true,
+                    rank:          isize::MIN + index as isize,
                 }
-                .from_attributes(&field.attrs, traits);
+                .build_from_attributes(&field.attrs, traits)?;
 
                 if field_attribute.ignore {
                     continue;
@@ -52,97 +46,76 @@ impl TraitHandler for OrdStructHandler {
 
                 let rank = field_attribute.rank;
 
-                if field_attributes.contains_key(&rank) {
-                    panic::reuse_a_rank(rank);
+                if fields.contains_key(&rank) {
+                    return Err(super::panic::reuse_a_rank(
+                        field_attribute.rank_span.unwrap_or_else(|| field.span()),
+                        rank,
+                    ));
                 }
 
-                let field_name = if let Some(ident) = field.ident.as_ref() {
-                    ident.to_string()
-                } else {
-                    format!("{}", index)
-                };
-
-                field_attributes.insert(rank, field_attribute);
-                field_names.insert(rank, field_name);
+                fields.insert(rank, (index, field, field_attribute));
             }
 
-            for (index, field_attribute) in field_attributes {
-                let field_name = field_names.get(&index).unwrap();
+            let built_in_cmp: Path = syn::parse2(quote!(::core::cmp::Ord::cmp)).unwrap();
 
-                let compare_trait = field_attribute.compare_trait;
-                let compare_method = field_attribute.compare_method;
+            for (index, field, field_attribute) in fields.values() {
+                let field_name = IdentOrIndex::from_ident_with_index(field.ident.as_ref(), *index);
 
-                match compare_trait {
-                    Some(compare_trait) => {
-                        let compare_method = compare_method.unwrap();
+                let cmp = field_attribute.method.as_ref().unwrap_or_else(|| {
+                    ord_types.push(&field.ty);
 
-                        let statement = format!(
-                            "match {compare_trait}::{compare_method}(&self.{field_name}, \
-                             &other.{field_name}) {{ core::cmp::Ordering::Equal => (), \
-                             core::cmp::Ordering::Greater => {{ return \
-                             core::cmp::Ordering::Greater; }}, core::cmp::Ordering::Less => {{ \
-                             return core::cmp::Ordering::Less; }} }}",
-                            compare_trait = compare_trait,
-                            compare_method = compare_method,
-                            field_name = field_name
-                        );
+                    &built_in_cmp
+                });
 
-                        comparer_tokens.extend(TokenStream::from_str(&statement).unwrap());
-                    },
-                    None => match compare_method {
-                        Some(compare_method) => {
-                            let statement = format!(
-                                "match {compare_method}(&self.{field_name}, &other.{field_name}) \
-                                 {{ core::cmp::Ordering::Equal => (), \
-                                 core::cmp::Ordering::Greater => {{ return \
-                                 core::cmp::Ordering::Greater; }}, core::cmp::Ordering::Less => \
-                                 {{ return core::cmp::Ordering::Less; }} }}",
-                                compare_method = compare_method,
-                                field_name = field_name
-                            );
-
-                            comparer_tokens.extend(TokenStream::from_str(&statement).unwrap());
-                        },
-                        None => {
-                            let statement = format!(
-                                "match core::cmp::Ord::cmp(&self.{field_name}, \
-                                 &other.{field_name}) {{ core::cmp::Ordering::Equal => (), \
-                                 core::cmp::Ordering::Greater => {{ return \
-                                 core::cmp::Ordering::Greater; }}, core::cmp::Ordering::Less => \
-                                 {{ return core::cmp::Ordering::Less; }} }}",
-                                field_name = field_name
-                            );
-
-                            comparer_tokens.extend(TokenStream::from_str(&statement).unwrap());
-                        },
-                    },
-                }
+                cmp_token_stream.extend(quote! {
+                    match #cmp(&self.#field_name, &other.#field_name) {
+                        ::core::cmp::Ordering::Equal => (),
+                        ::core::cmp::Ordering::Greater => return ::core::cmp::Ordering::Greater,
+                        ::core::cmp::Ordering::Less => return ::core::cmp::Ordering::Less,
+                    }
+                });
             }
         }
 
         let ident = &ast.ident;
 
-        let mut generics_cloned: Generics = ast.generics.clone();
+        let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
+            &ast.generics.params,
+            &syn::parse2(quote!(::core::cmp::Ord)).unwrap(),
+            &ord_types,
+        );
 
-        let where_clause = generics_cloned.make_where_clause();
+        let where_clause = ast.generics.make_where_clause();
 
         for where_predicate in bound {
             where_clause.predicates.push(where_predicate);
         }
 
-        let (impl_generics, ty_generics, where_clause) = generics_cloned.split_for_impl();
+        let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
-        let compare_impl = quote! {
-            impl #impl_generics core::cmp::Ord for #ident #ty_generics #where_clause {
+        token_stream.extend(quote! {
+            impl #impl_generics ::core::cmp::Ord for #ident #ty_generics #where_clause {
                 #[inline]
-                fn cmp(&self, other: &Self) -> core::cmp::Ordering {
-                    #comparer_tokens
+                fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
+                    #cmp_token_stream
 
-                    core::cmp::Ordering::Equal
+                    ::core::cmp::Ordering::Equal
                 }
             }
-        };
+        });
 
-        tokens.extend(compare_impl);
+        #[cfg(feature = "PartialOrd")]
+        if traits.contains(&Trait::PartialOrd) {
+            token_stream.extend(quote! {
+                impl #impl_generics ::core::cmp::PartialOrd for #ident #ty_generics #where_clause {
+                    #[inline]
+                    fn partial_cmp(&self, other: &Self) -> Option<::core::cmp::Ordering> {
+                        Some(::core::cmp::Ord::cmp(self, other))
+                    }
+                }
+            });
+        }
+
+        Ok(())
     }
 }

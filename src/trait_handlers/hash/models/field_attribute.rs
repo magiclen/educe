@@ -1,281 +1,172 @@
-use quote::ToTokens;
-use syn::{Attribute, Lit, Meta, NestedMeta};
+use syn::{punctuated::Punctuated, Attribute, Meta, Path, Token};
 
-use super::super::super::create_path_string_from_lit_str;
-use crate::{panic, Trait};
+use crate::{
+    common::{
+        ident_bool::{meta_2_bool_allow_path, meta_name_value_2_bool},
+        path::meta_2_path,
+    },
+    panic,
+    supported_traits::Trait,
+};
 
-#[derive(Debug, Clone)]
-pub struct FieldAttribute {
-    pub ignore:      bool,
-    pub hash_method: Option<String>,
-    pub hash_trait:  Option<String>,
+pub(crate) struct FieldAttribute {
+    pub(crate) ignore: bool,
+    pub(crate) method: Option<Path>,
 }
 
-#[derive(Debug, Clone)]
-pub struct FieldAttributeBuilder {
-    pub enable_ignore: bool,
-    pub enable_impl:   bool,
+pub(crate) struct FieldAttributeBuilder {
+    pub(crate) enable_ignore: bool,
+    pub(crate) enable_method: bool,
 }
 
 impl FieldAttributeBuilder {
-    #[allow(clippy::wrong_self_convention)]
-    pub fn from_hash_meta(&self, meta: &Meta) -> FieldAttribute {
+    pub(crate) fn build_from_hash_meta(&self, meta: &Meta) -> syn::Result<FieldAttribute> {
+        debug_assert!(meta.path().is_ident("Hash"));
+
         let mut ignore = false;
+        let mut method = None;
 
-        let mut hash_method = None;
-        let mut hash_trait = None;
-
-        let correct_usage_for_hash_attribute = {
+        let correct_usage_for_partial_eq_attribute = {
             let mut usage = vec![];
 
             if self.enable_ignore {
                 usage.push(stringify!(#[educe(Hash = false)]));
-                usage.push(stringify!(#[educe(Hash(false))]));
+                usage.push(stringify!(#[educe(Hash(ignore))]));
             }
 
-            usage
-        };
-
-        let correct_usage_for_ignore = {
-            let usage = vec![stringify!(#[educe(Hash(ignore))])];
-
-            usage
-        };
-
-        let correct_usage_for_impl = {
-            let usage = vec![
-                stringify!(#[educe(Hash(method = "path_to_method"))]),
-                stringify!(#[educe(Hash(trait = "path_to_trait"))]),
-                stringify!(#[educe(Hash(trait = "path_to_trait", method = "path_to_method_in_trait"))]),
-                stringify!(#[educe(Hash(method("path_to_method")))]),
-                stringify!(#[educe(Hash(trait("path_to_trait")))]),
-                stringify!(#[educe(Hash(trait("path_to_trait"), method("path_to_method_in_trait")))]),
-            ];
+            if self.enable_method {
+                usage.push(stringify!(#[educe(Hash(method(path_to_method)))]));
+            }
 
             usage
         };
 
         match meta {
+            Meta::Path(_) => {
+                return Err(panic::attribute_incorrect_format(
+                    meta.path().get_ident().unwrap(),
+                    &correct_usage_for_partial_eq_attribute,
+                ));
+            },
+            Meta::NameValue(name_value) => {
+                if self.enable_ignore {
+                    ignore = !meta_name_value_2_bool(name_value)?;
+                } else {
+                    return Err(panic::attribute_incorrect_format(
+                        meta.path().get_ident().unwrap(),
+                        &correct_usage_for_partial_eq_attribute,
+                    ));
+                }
+            },
             Meta::List(list) => {
+                let result =
+                    list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
+
                 let mut ignore_is_set = false;
+                let mut method_is_set = false;
 
-                for p in list.nested.iter() {
-                    match p {
-                        NestedMeta::Meta(meta) => {
-                            let meta_name = meta.path().into_token_stream().to_string();
+                let mut handler = |meta: Meta| -> syn::Result<bool> {
+                    if let Some(ident) = meta.path().get_ident() {
+                        match ident.to_string().as_str() {
+                            "ignore" => {
+                                if !self.enable_ignore {
+                                    return Ok(false);
+                                }
 
-                            match meta_name.as_str() {
-                                "ignore" => {
-                                    if !self.enable_ignore {
-                                        panic::unknown_parameter("Hash", meta_name.as_str());
-                                    }
+                                let v = meta_2_bool_allow_path(&meta)?;
 
-                                    match meta {
-                                        Meta::Path(_) => {
-                                            if ignore_is_set {
-                                                panic::reset_parameter(meta_name.as_str());
-                                            }
+                                if ignore_is_set {
+                                    return Err(panic::parameter_reset(ident));
+                                }
 
-                                            ignore_is_set = true;
+                                ignore_is_set = true;
 
-                                            ignore = true;
-                                        },
-                                        _ => panic::parameter_incorrect_format(
-                                            meta_name.as_str(),
-                                            &correct_usage_for_ignore,
-                                        ),
-                                    }
-                                },
-                                "method" => {
-                                    if !self.enable_impl {
-                                        panic::unknown_parameter("Hash", meta_name.as_str());
-                                    }
+                                ignore = v;
 
-                                    match meta {
-                                        Meta::List(list) => {
-                                            for p in list.nested.iter() {
-                                                match p {
-                                                    NestedMeta::Lit(Lit::Str(s)) => {
-                                                        if hash_method.is_some() {
-                                                            panic::reset_parameter(
-                                                                meta_name.as_str(),
-                                                            );
-                                                        }
+                                return Ok(true);
+                            },
+                            "method" => {
+                                if !self.enable_method {
+                                    return Ok(false);
+                                }
 
-                                                        let s = create_path_string_from_lit_str(s);
+                                let v = meta_2_path(&meta)?;
 
-                                                        if let Some(s) = s {
-                                                            hash_method = Some(s);
-                                                        } else {
-                                                            panic::empty_parameter(
-                                                                meta_name.as_str(),
-                                                            );
-                                                        }
-                                                    },
-                                                    _ => panic::parameter_incorrect_format(
-                                                        meta_name.as_str(),
-                                                        &correct_usage_for_impl,
-                                                    ),
-                                                }
-                                            }
-                                        },
-                                        Meta::NameValue(named_value) => {
-                                            let lit = &named_value.lit;
+                                if method_is_set {
+                                    return Err(panic::parameter_reset(ident));
+                                }
 
-                                            match lit {
-                                                Lit::Str(s) => {
-                                                    if hash_method.is_some() {
-                                                        panic::reset_parameter(meta_name.as_str());
-                                                    }
+                                method_is_set = true;
 
-                                                    let s = create_path_string_from_lit_str(s);
+                                method = Some(v);
 
-                                                    if let Some(s) = s {
-                                                        hash_method = Some(s);
-                                                    } else {
-                                                        panic::empty_parameter(meta_name.as_str());
-                                                    }
-                                                },
-                                                _ => panic::parameter_incorrect_format(
-                                                    meta_name.as_str(),
-                                                    &correct_usage_for_impl,
-                                                ),
-                                            }
-                                        },
-                                        _ => panic::parameter_incorrect_format(
-                                            meta_name.as_str(),
-                                            &correct_usage_for_impl,
-                                        ),
-                                    }
-                                },
-                                "trait" => {
-                                    if !self.enable_impl {
-                                        panic::unknown_parameter("Hash", meta_name.as_str());
-                                    }
+                                return Ok(true);
+                            },
+                            _ => (),
+                        }
+                    }
 
-                                    match meta {
-                                        Meta::List(list) => {
-                                            for p in list.nested.iter() {
-                                                match p {
-                                                    NestedMeta::Lit(Lit::Str(s)) => {
-                                                        if hash_trait.is_some() {
-                                                            panic::reset_parameter(
-                                                                meta_name.as_str(),
-                                                            );
-                                                        }
+                    Ok(false)
+                };
 
-                                                        let s = create_path_string_from_lit_str(s);
-
-                                                        if let Some(s) = s {
-                                                            hash_trait = Some(s);
-                                                        } else {
-                                                            panic::empty_parameter(
-                                                                meta_name.as_str(),
-                                                            );
-                                                        }
-                                                    },
-                                                    _ => panic::parameter_incorrect_format(
-                                                        meta_name.as_str(),
-                                                        &correct_usage_for_impl,
-                                                    ),
-                                                }
-                                            }
-                                        },
-                                        Meta::NameValue(named_value) => {
-                                            let lit = &named_value.lit;
-
-                                            match lit {
-                                                Lit::Str(s) => {
-                                                    if hash_trait.is_some() {
-                                                        panic::reset_parameter(meta_name.as_str());
-                                                    }
-
-                                                    let s = create_path_string_from_lit_str(s);
-
-                                                    if let Some(s) = s {
-                                                        hash_trait = Some(s);
-                                                    } else {
-                                                        panic::empty_parameter(meta_name.as_str());
-                                                    }
-                                                },
-                                                _ => panic::parameter_incorrect_format(
-                                                    meta_name.as_str(),
-                                                    &correct_usage_for_impl,
-                                                ),
-                                            }
-                                        },
-                                        _ => panic::parameter_incorrect_format(
-                                            meta_name.as_str(),
-                                            &correct_usage_for_impl,
-                                        ),
-                                    }
-                                },
-                                _ => panic::unknown_parameter("Hash", meta_name.as_str()),
-                            }
-                        },
-                        _ => panic::attribute_incorrect_format(
-                            "Hash",
-                            &correct_usage_for_hash_attribute,
-                        ),
+                for p in result {
+                    if !handler(p)? {
+                        return Err(panic::attribute_incorrect_format(
+                            meta.path().get_ident().unwrap(),
+                            &correct_usage_for_partial_eq_attribute,
+                        ));
                     }
                 }
             },
-            _ => panic::attribute_incorrect_format("Hash", &correct_usage_for_hash_attribute),
         }
 
-        if hash_trait.is_some() && hash_method.is_none() {
-            hash_method = Some("hash".to_string());
-        }
-
-        FieldAttribute {
+        Ok(FieldAttribute {
             ignore,
-            hash_method,
-            hash_trait,
-        }
+            method,
+        })
     }
 
-    #[allow(clippy::wrong_self_convention)]
-    pub fn from_attributes(self, attributes: &[Attribute], traits: &[Trait]) -> FieldAttribute {
-        let mut result = None;
+    pub(crate) fn build_from_attributes(
+        &self,
+        attributes: &[Attribute],
+        traits: &[Trait],
+    ) -> syn::Result<FieldAttribute> {
+        let mut output = None;
 
         for attribute in attributes.iter() {
-            if attribute.path.is_ident("educe") {
-                let meta = attribute.parse_meta().unwrap();
+            let path = attribute.path();
 
-                match meta {
-                    Meta::List(list) => {
-                        for p in list.nested.iter() {
-                            match p {
-                                NestedMeta::Meta(meta) => {
-                                    let meta_name = meta.path().into_token_stream().to_string();
+            if path.is_ident("educe") {
+                if let Meta::List(list) = &attribute.meta {
+                    let result =
+                        list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
 
-                                    let t = Trait::from_str(meta_name);
+                    for meta in result {
+                        let path = meta.path();
 
-                                    if traits.binary_search(&t).is_err() {
-                                        panic::trait_not_used(t);
-                                    }
+                        let t = match Trait::from_path(path) {
+                            Some(t) => t,
+                            None => return Err(panic::unsupported_trait(meta.path())),
+                        };
 
-                                    if t == Trait::Hash {
-                                        if result.is_some() {
-                                            panic::reuse_a_trait(t);
-                                        }
-
-                                        result = Some(self.from_hash_meta(meta));
-                                    }
-                                },
-                                _ => panic::educe_format_incorrect(),
-                            }
+                        if !traits.contains(&t) {
+                            return Err(panic::trait_not_used(path.get_ident().unwrap()));
                         }
-                    },
-                    _ => panic::educe_format_incorrect(),
+
+                        if t == Trait::Hash {
+                            if output.is_some() {
+                                return Err(panic::reuse_a_trait(path.get_ident().unwrap()));
+                            }
+
+                            output = Some(self.build_from_hash_meta(&meta)?);
+                        }
+                    }
                 }
             }
         }
 
-        result.unwrap_or(FieldAttribute {
-            ignore:      false,
-            hash_method: None,
-            hash_trait:  None,
-        })
+        Ok(output.unwrap_or(FieldAttribute {
+            ignore: false, method: None
+        }))
     }
 }

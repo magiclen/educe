@@ -1,240 +1,125 @@
-use quote::ToTokens;
-use syn::{Attribute, Lit, Meta, NestedMeta};
+use syn::{punctuated::Punctuated, Attribute, Meta, Path, Token};
 
-use super::super::super::create_path_string_from_lit_str;
-use crate::{panic, Trait};
+use crate::{common::path::meta_2_path, panic, supported_traits::Trait};
 
-#[derive(Debug, Clone)]
-pub struct FieldAttribute {
-    pub clone_method: Option<String>,
-    pub clone_trait:  Option<String>,
+pub(crate) struct FieldAttribute {
+    pub(crate) method: Option<Path>,
 }
 
-#[derive(Debug, Clone)]
-pub struct FieldAttributeBuilder {
-    pub enable_impl: bool,
+pub(crate) struct FieldAttributeBuilder {
+    pub(crate) enable_method: bool,
 }
 
 impl FieldAttributeBuilder {
-    #[allow(clippy::wrong_self_convention)]
-    pub fn from_clone_meta(&self, meta: &Meta) -> FieldAttribute {
-        let mut clone_method = None;
-        let mut clone_trait = None;
+    pub(crate) fn build_from_clone_meta(&self, meta: &Meta) -> syn::Result<FieldAttribute> {
+        debug_assert!(meta.path().is_ident("Clone"));
+
+        let mut method = None;
 
         let correct_usage_for_clone_attribute = {
-            let usage = vec![];
+            let mut usage = vec![];
 
-            usage
-        };
-
-        let correct_usage_for_impl = {
-            let usage = vec![
-                stringify!(#[educe(Clone(method = "path_to_method"))]),
-                stringify!(#[educe(Clone(trait = "path_to_trait"))]),
-                stringify!(#[educe(Clone(trait = "path_to_trait", method = "path_to_method_in_trait"))]),
-                stringify!(#[educe(Clone(method("path_to_method")))]),
-                stringify!(#[educe(Clone(trait("path_to_trait")))]),
-                stringify!(#[educe(Clone(trait("path_to_trait"), method("path_to_method_in_trait")))]),
-            ];
+            if self.enable_method {
+                usage.push(stringify!(#[educe(Clone(method(path_to_method)))]));
+            }
 
             usage
         };
 
         match meta {
+            Meta::Path(_) | Meta::NameValue(_) => {
+                return Err(panic::attribute_incorrect_format(
+                    meta.path().get_ident().unwrap(),
+                    &correct_usage_for_clone_attribute,
+                ));
+            },
             Meta::List(list) => {
-                for p in list.nested.iter() {
-                    match p {
-                        NestedMeta::Meta(meta) => {
-                            let meta_name = meta.path().into_token_stream().to_string();
+                let result =
+                    list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
 
-                            match meta_name.as_str() {
-                                "method" => {
-                                    if !self.enable_impl {
-                                        panic::unknown_parameter("Clone", meta_name.as_str());
-                                    }
+                let mut clone_is_set = false;
 
-                                    match meta {
-                                        Meta::List(list) => {
-                                            for p in list.nested.iter() {
-                                                match p {
-                                                    NestedMeta::Lit(Lit::Str(s)) => {
-                                                        if clone_method.is_some() {
-                                                            panic::reset_parameter(
-                                                                meta_name.as_str(),
-                                                            );
-                                                        }
-
-                                                        let s = create_path_string_from_lit_str(s);
-
-                                                        if let Some(s) = s {
-                                                            clone_method = Some(s);
-                                                        } else {
-                                                            panic::empty_parameter(
-                                                                meta_name.as_str(),
-                                                            );
-                                                        }
-                                                    },
-                                                    _ => panic::parameter_incorrect_format(
-                                                        meta_name.as_str(),
-                                                        &correct_usage_for_impl,
-                                                    ),
-                                                }
-                                            }
-                                        },
-                                        Meta::NameValue(named_value) => {
-                                            let lit = &named_value.lit;
-
-                                            match lit {
-                                                Lit::Str(s) => {
-                                                    if clone_method.is_some() {
-                                                        panic::reset_parameter(meta_name.as_str());
-                                                    }
-
-                                                    let s = create_path_string_from_lit_str(s);
-
-                                                    if let Some(s) = s {
-                                                        clone_method = Some(s);
-                                                    } else {
-                                                        panic::empty_parameter(meta_name.as_str());
-                                                    }
-                                                },
-                                                _ => panic::parameter_incorrect_format(
-                                                    meta_name.as_str(),
-                                                    &correct_usage_for_impl,
-                                                ),
-                                            }
-                                        },
-                                        _ => panic::parameter_incorrect_format(
-                                            meta_name.as_str(),
-                                            &correct_usage_for_impl,
-                                        ),
-                                    }
-                                },
-                                "trait" => {
-                                    if !self.enable_impl {
-                                        panic::unknown_parameter("Clone", meta_name.as_str());
-                                    }
-
-                                    match meta {
-                                        Meta::List(list) => {
-                                            for p in list.nested.iter() {
-                                                match p {
-                                                    NestedMeta::Lit(Lit::Str(s)) => {
-                                                        if clone_trait.is_some() {
-                                                            panic::reset_parameter(
-                                                                meta_name.as_str(),
-                                                            );
-                                                        }
-
-                                                        let s = create_path_string_from_lit_str(s);
-
-                                                        if let Some(s) = s {
-                                                            clone_trait = Some(s);
-                                                        } else {
-                                                            panic::empty_parameter(
-                                                                meta_name.as_str(),
-                                                            );
-                                                        }
-                                                    },
-                                                    _ => panic::parameter_incorrect_format(
-                                                        meta_name.as_str(),
-                                                        &correct_usage_for_impl,
-                                                    ),
-                                                }
-                                            }
-                                        },
-                                        Meta::NameValue(named_value) => {
-                                            let lit = &named_value.lit;
-
-                                            match lit {
-                                                Lit::Str(s) => {
-                                                    if clone_trait.is_some() {
-                                                        panic::reset_parameter(meta_name.as_str());
-                                                    }
-
-                                                    let s = create_path_string_from_lit_str(s);
-
-                                                    if let Some(s) = s {
-                                                        clone_trait = Some(s);
-                                                    } else {
-                                                        panic::empty_parameter(meta_name.as_str());
-                                                    }
-                                                },
-                                                _ => panic::parameter_incorrect_format(
-                                                    meta_name.as_str(),
-                                                    &correct_usage_for_impl,
-                                                ),
-                                            }
-                                        },
-                                        _ => panic::parameter_incorrect_format(
-                                            meta_name.as_str(),
-                                            &correct_usage_for_impl,
-                                        ),
-                                    }
-                                },
-                                _ => panic::unknown_parameter("Clone", meta_name.as_str()),
+                let mut handler = |meta: Meta| -> syn::Result<bool> {
+                    if let Some(ident) = meta.path().get_ident() {
+                        if ident == "method" {
+                            if !self.enable_method {
+                                return Ok(false);
                             }
-                        },
-                        _ => panic::attribute_incorrect_format(
-                            "Clone",
+
+                            let v = meta_2_path(&meta)?;
+
+                            if clone_is_set {
+                                return Err(panic::parameter_reset(ident));
+                            }
+
+                            clone_is_set = true;
+
+                            method = Some(v);
+
+                            return Ok(true);
+                        }
+                    }
+
+                    Ok(false)
+                };
+
+                for p in result {
+                    if !handler(p)? {
+                        return Err(panic::attribute_incorrect_format(
+                            meta.path().get_ident().unwrap(),
                             &correct_usage_for_clone_attribute,
-                        ),
+                        ));
                     }
                 }
             },
-            _ => panic::attribute_incorrect_format("Clone", &correct_usage_for_clone_attribute),
         }
 
-        if clone_trait.is_some() && clone_method.is_none() {
-            clone_method = Some("clone".to_string());
-        }
-
-        FieldAttribute {
-            clone_method,
-            clone_trait,
-        }
+        Ok(FieldAttribute {
+            method,
+        })
     }
 
-    #[allow(clippy::wrong_self_convention)]
-    pub fn from_attributes(self, attributes: &[Attribute], traits: &[Trait]) -> FieldAttribute {
-        let mut result = None;
+    pub(crate) fn build_from_attributes(
+        &self,
+        attributes: &[Attribute],
+        traits: &[Trait],
+    ) -> syn::Result<FieldAttribute> {
+        let mut output = None;
 
         for attribute in attributes.iter() {
-            if attribute.path.is_ident("educe") {
-                let meta = attribute.parse_meta().unwrap();
+            let path = attribute.path();
 
-                match meta {
-                    Meta::List(list) => {
-                        for p in list.nested.iter() {
-                            match p {
-                                NestedMeta::Meta(meta) => {
-                                    let meta_name = meta.path().into_token_stream().to_string();
+            if path.is_ident("educe") {
+                if let Meta::List(list) = &attribute.meta {
+                    let result =
+                        list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
 
-                                    let t = Trait::from_str(meta_name);
+                    for meta in result {
+                        let path = meta.path();
 
-                                    if traits.binary_search(&t).is_err() {
-                                        panic::trait_not_used(t);
-                                    }
+                        let t = match Trait::from_path(path) {
+                            Some(t) => t,
+                            None => return Err(panic::unsupported_trait(meta.path())),
+                        };
 
-                                    if t == Trait::Clone {
-                                        if result.is_some() {
-                                            panic::reuse_a_trait(t);
-                                        }
-
-                                        result = Some(self.from_clone_meta(meta));
-                                    }
-                                },
-                                _ => panic::educe_format_incorrect(),
-                            }
+                        if !traits.contains(&t) {
+                            return Err(panic::trait_not_used(path.get_ident().unwrap()));
                         }
-                    },
-                    _ => panic::educe_format_incorrect(),
+
+                        if t == Trait::Clone {
+                            if output.is_some() {
+                                return Err(panic::reuse_a_trait(path.get_ident().unwrap()));
+                            }
+
+                            output = Some(self.build_from_clone_meta(&meta)?);
+                        }
+                    }
                 }
             }
         }
 
-        result.unwrap_or(FieldAttribute {
-            clone_method: None, clone_trait: None
-        })
+        Ok(output.unwrap_or(FieldAttribute {
+            method: None
+        }))
     }
 }

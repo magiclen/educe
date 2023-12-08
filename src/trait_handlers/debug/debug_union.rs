@@ -1,92 +1,86 @@
-use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Data, DeriveInput, Generics, Meta};
+use syn::{Data, DeriveInput, Meta};
 
 use super::{
-    super::TraitHandler,
-    models::{FieldAttributeBuilder, FieldAttributeName, TypeAttributeBuilder, TypeAttributeName},
+    models::{FieldAttributeBuilder, FieldName, TypeAttributeBuilder, TypeName},
+    TraitHandler,
 };
-use crate::Trait;
+use crate::supported_traits::Trait;
 
-pub struct DebugUnionHandler;
+pub(crate) struct DebugUnionHandler;
 
 impl TraitHandler for DebugUnionHandler {
     fn trait_meta_handler(
-        ast: &DeriveInput,
-        tokens: &mut TokenStream,
+        ast: &mut DeriveInput,
+        token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
-    ) {
+    ) -> syn::Result<()> {
         let type_attribute = TypeAttributeBuilder {
             enable_flag:        true,
-            name:               TypeAttributeName::Default,
+            enable_unsafe:      true,
             enable_name:        true,
-            named_field:        false,
             enable_named_field: false,
-            enable_bound:       true,
+            enable_bound:       false,
+            name:               TypeName::Default,
+            named_field:        false,
         }
-        .from_debug_meta(meta);
+        .build_from_debug_meta(meta)?;
 
-        let name = type_attribute.name.into_string_by_ident(&ast.ident);
+        if !type_attribute.has_unsafe {
+            return Err(super::panic::union_without_unsafe(meta));
+        }
 
-        let bound = type_attribute
-            .bound
-            .into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
+        let name = type_attribute.name.to_ident_by_ident(&ast.ident);
 
-        let mut builder_tokens = TokenStream::new();
+        let mut builder_token_stream = proc_macro2::TokenStream::new();
 
         if let Data::Union(data) = &ast.data {
             for field in data.fields.named.iter() {
                 let _ = FieldAttributeBuilder {
-                    name:          FieldAttributeName::Default,
                     enable_name:   false,
                     enable_ignore: false,
-                    enable_impl:   false,
+                    enable_method: false,
+                    name:          FieldName::Default,
                 }
-                .from_attributes(&field.attrs, traits);
+                .build_from_attributes(&field.attrs, traits)?;
             }
 
-            if name.is_empty() {
-                builder_tokens.extend(quote!(
-                    let size = core::mem::size_of::<Self>();
-                    let data = unsafe {{ core::slice::from_raw_parts(self as *const Self as *const u8, size) }};
+            if let Some(name) = name {
+                builder_token_stream.extend(quote!(
+                    let mut builder = f.debug_tuple(stringify!(#name));
 
-                    core::fmt::Debug::fmt(data, formatter)
-                ));
-            } else {
-                builder_tokens.extend(quote!(
-                    let mut builder = formatter.debug_tuple(#name);
+                    let size = ::core::mem::size_of::<Self>();
 
-                    let size = core::mem::size_of::<Self>();
-
-                    let data = unsafe {{ core::slice::from_raw_parts(self as *const Self as *const u8, size) }};
+                    let data = unsafe { ::core::slice::from_raw_parts(self as *const Self as *const u8, size) };
 
                     builder.field(&data);
 
                     builder.finish()
+                ));
+            } else {
+                builder_token_stream.extend(quote!(
+                    let size = ::core::mem::size_of::<Self>();
+                    let data = unsafe { ::core::slice::from_raw_parts(self as *const Self as *const u8, size) };
+
+                    ::core::fmt::Debug::fmt(data, f)
                 ));
             }
         }
 
         let ident = &ast.ident;
 
-        let mut generics_cloned: Generics = ast.generics.clone();
+        let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
-        let where_clause = generics_cloned.make_where_clause();
-
-        where_clause.predicates.extend(bound.iter().cloned());
-
-        let (impl_generics, ty_generics, where_clause) = generics_cloned.split_for_impl();
-
-        let debug_impl = quote! {
-            impl #impl_generics core::fmt::Debug for #ident #ty_generics #where_clause {
+        token_stream.extend(quote! {
+            impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
                 #[inline]
-                fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
-                    #builder_tokens
+                fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                    #builder_token_stream
                 }
             }
-        };
+        });
 
-        tokens.extend(debug_impl);
+        Ok(())
     }
 }

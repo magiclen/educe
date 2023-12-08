@@ -1,290 +1,216 @@
-use std::{fmt::Write, str::FromStr};
-
-use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Data, DeriveInput, Fields, Generics, Meta};
+use syn::{Data, DeriveInput, Fields, Ident, Meta, Type};
 
 use super::{
-    super::TraitHandler,
     models::{FieldAttributeBuilder, TypeAttributeBuilder},
+    TraitHandler,
 };
 use crate::Trait;
 
-pub struct PartialEqEnumHandler;
+pub(crate) struct PartialEqEnumHandler;
 
 impl TraitHandler for PartialEqEnumHandler {
+    #[inline]
     fn trait_meta_handler(
-        ast: &DeriveInput,
-        tokens: &mut TokenStream,
+        ast: &mut DeriveInput,
+        token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
-    ) {
-        let type_attribute = TypeAttributeBuilder {
-            enable_flag: true, enable_bound: true
-        }
-        .from_partial_eq_meta(meta);
+    ) -> syn::Result<()> {
+        let type_attribute =
+            TypeAttributeBuilder {
+                enable_flag: true, enable_unsafe: false, enable_bound: true
+            }
+            .build_from_partial_eq_meta(meta)?;
 
-        let enum_name = ast.ident.to_string();
+        let mut partial_eq_types: Vec<&Type> = Vec::new();
 
-        let bound = type_attribute
-            .bound
-            .into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
+        let mut eq_token_stream = proc_macro2::TokenStream::new();
 
-        let mut comparer_tokens = TokenStream::new();
-
-        let mut match_tokens = String::from("match self {");
+        let mut arms_token_stream = proc_macro2::TokenStream::new();
 
         if let Data::Enum(data) = &ast.data {
             for variant in data.variants.iter() {
                 let _ = TypeAttributeBuilder {
-                    enable_flag: false, enable_bound: false
+                    enable_flag:   false,
+                    enable_unsafe: false,
+                    enable_bound:  false,
                 }
-                .from_attributes(&variant.attrs, traits);
+                .build_from_attributes(&variant.attrs, traits)?;
 
-                let variant_ident = variant.ident.to_string();
+                let variant_ident = &variant.ident;
 
                 match &variant.fields {
                     Fields::Unit => {
-                        // TODO Unit
-                        match_tokens
-                            .write_fmt(format_args!(
-                                "{enum_name}::{variant_ident} => {{ if let \
-                                 {enum_name}::{variant_ident} = other {{ }} else {{ return false; \
-                                 }} }}",
-                                enum_name = enum_name,
-                                variant_ident = variant_ident
-                            ))
-                            .unwrap();
+                        arms_token_stream.extend(quote! {
+                            Self::#variant_ident => {
+                                if let Self::#variant_ident = other {
+                                    // same
+                                } else {
+                                    return false;
+                                }
+                            }
+                        });
                     },
-                    Fields::Named(fields) => {
-                        // TODO Struct
-                        let mut pattern_tokens = String::new();
-                        let mut pattern_2_tokens = String::new();
-                        let mut block_tokens = String::new();
+                    Fields::Named(_) => {
+                        let mut pattern_token_stream = proc_macro2::TokenStream::new();
+                        let mut pattern2_token_stream = proc_macro2::TokenStream::new();
+                        let mut block_token_stream = proc_macro2::TokenStream::new();
 
-                        let mut field_attributes = Vec::new();
-                        let mut field_names = Vec::new();
-
-                        for field in fields.named.iter() {
+                        for field in variant.fields.iter() {
                             let field_attribute = FieldAttributeBuilder {
                                 enable_ignore: true,
-                                enable_impl:   true,
+                                enable_method: true,
                             }
-                            .from_attributes(&field.attrs, traits);
+                            .build_from_attributes(&field.attrs, traits)?;
 
-                            let field_name = field.ident.as_ref().unwrap().to_string();
+                            let field_name = field.ident.as_ref().unwrap();
 
                             if field_attribute.ignore {
-                                pattern_tokens
-                                    .write_fmt(format_args!(
-                                        "{field_name}: _,",
-                                        field_name = field_name
-                                    ))
-                                    .unwrap();
-                                pattern_2_tokens
-                                    .write_fmt(format_args!(
-                                        "{field_name}: _,",
-                                        field_name = field_name
-                                    ))
-                                    .unwrap();
+                                pattern_token_stream.extend(quote!(#field_name: _,));
+                                pattern2_token_stream.extend(quote!(#field_name: _,));
+
                                 continue;
                             }
 
-                            pattern_tokens
-                                .write_fmt(format_args!("{field_name},", field_name = field_name))
-                                .unwrap();
-                            pattern_2_tokens
-                                .write_fmt(format_args!(
-                                    "{field_name}: ___{field_name},",
-                                    field_name = field_name
-                                ))
-                                .unwrap();
+                            let field_name2: Ident =
+                                syn::parse_str(&format!("_{}", field_name)).unwrap();
 
-                            field_attributes.push(field_attribute);
-                            field_names.push(field_name);
-                        }
+                            pattern_token_stream.extend(quote!(#field_name,));
+                            pattern2_token_stream.extend(quote!(#field_name: #field_name2,));
 
-                        for (index, field_attribute) in field_attributes.into_iter().enumerate() {
-                            let field_name = &field_names[index];
+                            if let Some(method) = field_attribute.method {
+                                block_token_stream.extend(quote! {
+                                    if !#method(#field_name, #field_name2) {
+                                        return false;
+                                    }
+                                });
+                            } else {
+                                let ty = &field.ty;
 
-                            let compare_trait = field_attribute.compare_trait;
-                            let compare_method = field_attribute.compare_method;
+                                partial_eq_types.push(ty);
 
-                            match compare_trait {
-                                Some(compare_trait) => {
-                                    let compare_method = compare_method.unwrap();
-
-                                    block_tokens
-                                        .write_fmt(format_args!(
-                                            "if !{compare_trait}::{compare_method}({field_name}, \
-                                             ___{field_name}) {{ return false; }}",
-                                            compare_trait = compare_trait,
-                                            compare_method = compare_method,
-                                            field_name = field_name
-                                        ))
-                                        .unwrap();
-                                },
-                                None => match compare_method {
-                                    Some(compare_method) => {
-                                        block_tokens
-                                            .write_fmt(format_args!(
-                                                "if !{compare_method}({field_name}, \
-                                                 ___{field_name}) {{ return false; }}",
-                                                compare_method = compare_method,
-                                                field_name = field_name
-                                            ))
-                                            .unwrap();
-                                    },
-                                    None => {
-                                        block_tokens
-                                            .write_fmt(format_args!(
-                                                "if core::cmp::PartialEq::ne({field_name}, \
-                                                 ___{field_name}) {{ return false; }}",
-                                                field_name = field_name
-                                            ))
-                                            .unwrap();
-                                    },
-                                },
+                                block_token_stream.extend(quote! {
+                                    if ::core::cmp::PartialEq::ne(#field_name, #field_name2) {
+                                        return false;
+                                    }
+                                });
                             }
                         }
 
-                        match_tokens
-                            .write_fmt(format_args!(
-                                "{enum_name}::{variant_ident}{{ {pattern_tokens} }} => {{ if let \
-                                 {enum_name}::{variant_ident} {{ {pattern_2_tokens} }} = other {{ \
-                                 {block_tokens} }} else {{ return false; }} }}",
-                                enum_name = enum_name,
-                                variant_ident = variant_ident,
-                                pattern_tokens = pattern_tokens,
-                                pattern_2_tokens = pattern_2_tokens,
-                                block_tokens = block_tokens
-                            ))
-                            .unwrap();
+                        arms_token_stream.extend(quote! {
+                            Self::#variant_ident { #pattern_token_stream } => {
+                                if let Self::#variant_ident { #pattern2_token_stream } = other {
+                                    #block_token_stream
+                                } else {
+                                    return false;
+                                }
+                            }
+                        });
                     },
-                    Fields::Unnamed(fields) => {
-                        // TODO Tuple
-                        let mut pattern_tokens = String::new();
-                        let mut pattern_2_tokens = String::new();
-                        let mut block_tokens = String::new();
+                    Fields::Unnamed(_) => {
+                        let mut pattern_token_stream = proc_macro2::TokenStream::new();
+                        let mut pattern2_token_stream = proc_macro2::TokenStream::new();
+                        let mut block_token_stream = proc_macro2::TokenStream::new();
 
-                        let mut field_attributes = Vec::new();
-                        let mut field_names = Vec::new();
-
-                        for (index, field) in fields.unnamed.iter().enumerate() {
+                        for (index, field) in variant.fields.iter().enumerate() {
                             let field_attribute = FieldAttributeBuilder {
                                 enable_ignore: true,
-                                enable_impl:   true,
+                                enable_method: true,
                             }
-                            .from_attributes(&field.attrs, traits);
-
-                            let field_name = format!("{}", index);
+                            .build_from_attributes(&field.attrs, traits)?;
 
                             if field_attribute.ignore {
-                                pattern_tokens.push_str("_,");
-                                pattern_2_tokens.push_str("_,");
+                                pattern_token_stream.extend(quote!(_,));
+                                pattern2_token_stream.extend(quote!(_,));
+
                                 continue;
                             }
 
-                            pattern_tokens
-                                .write_fmt(format_args!("_{field_name},", field_name = field_name))
-                                .unwrap();
-                            pattern_2_tokens
-                                .write_fmt(format_args!("__{field_name},", field_name = field_name))
-                                .unwrap();
+                            let field_name: Ident = syn::parse_str(&format!("_{}", index)).unwrap();
 
-                            field_attributes.push(field_attribute);
-                            field_names.push(field_name);
-                        }
+                            let field_name2: Ident =
+                                syn::parse_str(&format!("_{}", field_name)).unwrap();
 
-                        for (index, field_attribute) in field_attributes.into_iter().enumerate() {
-                            let field_name = &field_names[index];
+                            pattern_token_stream.extend(quote!(#field_name,));
+                            pattern2_token_stream.extend(quote!(#field_name2,));
 
-                            let compare_trait = field_attribute.compare_trait;
-                            let compare_method = field_attribute.compare_method;
+                            if let Some(method) = field_attribute.method {
+                                block_token_stream.extend(quote! {
+                                    if !#method(#field_name, #field_name2) {
+                                        return false;
+                                    }
+                                });
+                            } else {
+                                let ty = &field.ty;
 
-                            match compare_trait {
-                                Some(compare_trait) => {
-                                    let compare_method = compare_method.unwrap();
+                                partial_eq_types.push(ty);
 
-                                    block_tokens
-                                        .write_fmt(format_args!(
-                                            "if !{compare_trait}::{compare_method}(_{field_name}, \
-                                             __{field_name}) {{ return false; }}",
-                                            compare_trait = compare_trait,
-                                            compare_method = compare_method,
-                                            field_name = field_name
-                                        ))
-                                        .unwrap();
-                                },
-                                None => match compare_method {
-                                    Some(compare_method) => {
-                                        block_tokens
-                                            .write_fmt(format_args!(
-                                                "if !{compare_method}(_{field_name}, \
-                                                 __{field_name}) {{ return false; }}",
-                                                compare_method = compare_method,
-                                                field_name = field_name
-                                            ))
-                                            .unwrap();
-                                    },
-                                    None => {
-                                        block_tokens
-                                            .write_fmt(format_args!(
-                                                "if core::cmp::PartialEq::ne(_{field_name}, \
-                                                 __{field_name}) {{ return false; }}",
-                                                field_name = field_name
-                                            ))
-                                            .unwrap();
-                                    },
-                                },
+                                block_token_stream.extend(quote! {
+                                    if ::core::cmp::PartialEq::ne(#field_name, #field_name2) {
+                                        return false;
+                                    }
+                                });
                             }
                         }
 
-                        match_tokens
-                            .write_fmt(format_args!(
-                                "{enum_name}::{variant_ident}( {pattern_tokens} ) => {{ if let \
-                                 {enum_name}::{variant_ident} ( {pattern_2_tokens} ) = other {{ \
-                                 {block_tokens} }} else {{ return false; }} }}",
-                                enum_name = enum_name,
-                                variant_ident = variant_ident,
-                                pattern_tokens = pattern_tokens,
-                                pattern_2_tokens = pattern_2_tokens,
-                                block_tokens = block_tokens
-                            ))
-                            .unwrap();
+                        arms_token_stream.extend(quote! {
+                            Self::#variant_ident ( #pattern_token_stream ) => {
+                                if let Self::#variant_ident ( #pattern2_token_stream ) = other {
+                                    #block_token_stream
+                                } else {
+                                    return false;
+                                }
+                            }
+                        });
                     },
                 }
             }
         }
 
-        match_tokens.push('}');
-
-        comparer_tokens.extend(TokenStream::from_str(&match_tokens).unwrap());
+        if !arms_token_stream.is_empty() {
+            eq_token_stream.extend(quote! {
+                match self {
+                    #arms_token_stream
+                }
+            });
+        }
 
         let ident = &ast.ident;
 
-        let mut generics_cloned: Generics = ast.generics.clone();
+        let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
+            &ast.generics.params,
+            &syn::parse2(quote!(::core::cmp::PartialEq)).unwrap(),
+            &partial_eq_types,
+        );
 
-        let where_clause = generics_cloned.make_where_clause();
+        let where_clause = ast.generics.make_where_clause();
 
         for where_predicate in bound {
             where_clause.predicates.push(where_predicate);
         }
 
-        let (impl_generics, ty_generics, where_clause) = generics_cloned.split_for_impl();
+        let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
-        let compare_impl = quote! {
-            impl #impl_generics core::cmp::PartialEq for #ident #ty_generics #where_clause {
+        token_stream.extend(quote! {
+            impl #impl_generics ::core::cmp::PartialEq for #ident #ty_generics #where_clause {
                 #[inline]
-                #[allow(clippy::unneeded_field_pattern)]
                 fn eq(&self, other: &Self) -> bool {
-                    #comparer_tokens
+                    #eq_token_stream
 
                     true
                 }
             }
-        };
+        });
 
-        tokens.extend(compare_impl);
+        #[cfg(feature = "Eq")]
+        if traits.contains(&Trait::Eq) {
+            token_stream.extend(quote! {
+                impl #impl_generics ::core::cmp::Eq for #ident #ty_generics #where_clause {
+                }
+            });
+        }
+
+        Ok(())
     }
 }

@@ -4,14 +4,13 @@
 #[macro_use]
 extern crate alloc;
 
-#[macro_use]
-extern crate educe;
+use educe::Educe;
 
-#[test]
 #[allow(dead_code)]
+#[test]
 fn name_1() {
     #[derive(Educe)]
-    #[educe(Debug)]
+    #[educe(Debug(unsafe))]
     union Union {
         f1: u8,
     }
@@ -24,11 +23,11 @@ fn name_1() {
     );
 }
 
-#[test]
 #[allow(dead_code)]
+#[test]
 fn name_2() {
     #[derive(Educe)]
-    #[educe(Debug = "A")]
+    #[educe(Debug(unsafe, name = A))]
     union Union {
         f1: u8,
     }
@@ -41,11 +40,11 @@ fn name_2() {
     );
 }
 
-#[test]
 #[allow(dead_code)]
+#[test]
 fn name_3() {
     #[derive(Educe)]
-    #[educe(Debug("A"))]
+    #[educe(Debug(unsafe, name(A)))]
     union Union {
         f1: u8,
     }
@@ -58,45 +57,11 @@ fn name_3() {
     );
 }
 
-#[test]
 #[allow(dead_code)]
-fn name_4() {
-    #[derive(Educe)]
-    #[educe(Debug(name = "A"))]
-    union Union {
-        f1: u8,
-    }
-
-    assert_eq!(
-        "A([1])",
-        format!("{:?}", Union {
-            f1: 1
-        })
-    );
-}
-
 #[test]
-#[allow(dead_code)]
-fn name_5() {
-    #[derive(Educe)]
-    #[educe(Debug(name("A")))]
-    union Union {
-        f1: u8,
-    }
-
-    assert_eq!(
-        "A([1])",
-        format!("{:?}", Union {
-            f1: 1
-        })
-    );
-}
-
-#[test]
-#[allow(dead_code)]
 fn unnamed_1() {
     #[derive(Educe)]
-    #[educe(Debug(name = false))]
+    #[educe(Debug(unsafe, name = false))]
     union Union {
         f1: u8,
     }
@@ -109,11 +74,11 @@ fn unnamed_1() {
     );
 }
 
-#[test]
 #[allow(dead_code)]
+#[test]
 fn unnamed_2() {
     #[derive(Educe)]
-    #[educe(Debug(name(false)))]
+    #[educe(Debug(unsafe, name(false)))]
     union Union {
         f1: u8,
     }
@@ -126,11 +91,11 @@ fn unnamed_2() {
     );
 }
 
-#[test]
 #[allow(dead_code)]
+#[test]
 fn unnamed_3() {
     #[derive(Educe)]
-    #[educe(Debug = "")]
+    #[educe(Debug(unsafe, name = ""))]
     union Union {
         f1: u8,
     }
@@ -143,11 +108,11 @@ fn unnamed_3() {
     );
 }
 
-#[test]
 #[allow(dead_code)]
+#[test]
 fn unnamed_4() {
     #[derive(Educe)]
-    #[educe(Debug(""))]
+    #[educe(Debug(unsafe, name("")))]
     union Union {
         f1: u8,
     }
@@ -160,79 +125,11 @@ fn unnamed_4() {
     );
 }
 
-#[test]
 #[allow(dead_code)]
-fn unnamed_5() {
-    #[derive(Educe)]
-    #[educe(Debug(name = ""))]
-    union Union {
-        f1: u8,
-    }
-
-    assert_eq!(
-        "[1]",
-        format!("{:?}", Union {
-            f1: 1
-        })
-    );
-}
-
 #[test]
-#[allow(dead_code)]
-fn unnamed_6() {
+fn bound() {
     #[derive(Educe)]
-    #[educe(Debug(name("")))]
-    union Union {
-        f1: u8,
-    }
-
-    assert_eq!(
-        "[1]",
-        format!("{:?}", Union {
-            f1: 1
-        })
-    );
-}
-
-#[test]
-#[allow(dead_code)]
-fn bound_1() {
-    #[derive(Educe)]
-    #[educe(Debug(bound))]
-    union Union<T: Copy> {
-        f1: T,
-    }
-
-    assert_eq!(
-        "Union([1])",
-        format!("{:?}", Union {
-            f1: 1u8
-        })
-    );
-}
-
-#[test]
-#[allow(dead_code)]
-fn bound_2() {
-    #[derive(Educe)]
-    #[educe(Debug(bound = "T: core::fmt::Debug"))]
-    union Union<T: Copy> {
-        f1: T,
-    }
-
-    assert_eq!(
-        "Union([1])",
-        format!("{:?}", Union {
-            f1: 1u8
-        })
-    );
-}
-
-#[test]
-#[allow(dead_code)]
-fn bound_3() {
-    #[derive(Educe)]
-    #[educe(Debug(bound("T: core::fmt::Debug")))]
+    #[educe(Debug(unsafe))]
     union Union<T: Copy> {
         f1: T,
     }

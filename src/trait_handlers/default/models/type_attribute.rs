@@ -1,61 +1,39 @@
-use quote::{quote, ToTokens};
-use syn::{
-    punctuated::Punctuated, token::Comma, Attribute, Expr, GenericParam, Lit, Meta, NestedMeta,
-    WherePredicate,
+use proc_macro2::Span;
+use syn::{punctuated::Punctuated, spanned::Spanned, Attribute, Expr, Meta, Token};
+
+use crate::{
+    common::{
+        bound::Bound,
+        expr::{auto_adjust_expr, meta_2_expr},
+        ident_bool::meta_2_bool_allow_path,
+    },
+    panic, Trait,
 };
 
-use super::super::super::{
-    create_expr_from_lit_str, create_where_predicates_from_generic_parameters,
-    create_where_predicates_from_lit_str,
-};
-use crate::{panic, Trait};
-
-#[derive(Clone)]
-pub enum TypeAttributeBound {
-    None,
-    Auto,
-    Custom(Punctuated<WherePredicate, Comma>),
+pub(crate) struct TypeAttribute {
+    pub(crate) flag:       bool,
+    pub(crate) new:        bool,
+    pub(crate) expression: Option<Expr>,
+    pub(crate) bound:      Bound,
+    pub(crate) span:       Span,
 }
 
-impl TypeAttributeBound {
-    pub fn into_punctuated_where_predicates_by_generic_parameters(
-        self,
-        params: &Punctuated<GenericParam, Comma>,
-    ) -> Punctuated<WherePredicate, Comma> {
-        match self {
-            TypeAttributeBound::None => Punctuated::new(),
-            TypeAttributeBound::Auto => create_where_predicates_from_generic_parameters(
-                params,
-                &syn::parse2(quote!(core::default::Default)).unwrap(),
-            ),
-            TypeAttributeBound::Custom(where_predicates) => where_predicates,
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct TypeAttribute {
-    pub flag:       bool,
-    pub new:        bool,
-    pub expression: Option<Expr>,
-    pub bound:      TypeAttributeBound,
-}
-
-#[derive(Debug, Clone)]
-pub struct TypeAttributeBuilder {
-    pub enable_flag:       bool,
-    pub enable_new:        bool,
-    pub enable_expression: bool,
-    pub enable_bound:      bool,
+#[derive(Debug)]
+pub(crate) struct TypeAttributeBuilder {
+    pub(crate) enable_flag:       bool,
+    pub(crate) enable_new:        bool,
+    pub(crate) enable_expression: bool,
+    pub(crate) enable_bound:      bool,
 }
 
 impl TypeAttributeBuilder {
-    #[allow(clippy::wrong_self_convention)]
-    pub fn from_default_meta(&self, meta: &Meta) -> TypeAttribute {
+    pub(crate) fn build_from_default_meta(&self, meta: &Meta) -> syn::Result<TypeAttribute> {
+        debug_assert!(meta.path().is_ident("Default"));
+
         let mut flag = false;
         let mut new = false;
-        let mut expression: Option<Expr> = None;
-        let mut bound = TypeAttributeBound::None;
+        let mut expression = None;
+        let mut bound = Bound::Auto;
 
         let correct_usage_for_default_attribute = {
             let mut usage = vec![];
@@ -68,292 +46,169 @@ impl TypeAttributeBuilder {
                 usage.push(stringify!(#[educe(Default(new))]));
             }
 
-            usage
-        };
+            if self.enable_expression {
+                usage.push(stringify!(#[educe(Default(expression = expr))]));
+            }
 
-        let correct_usage_for_new = {
-            let usage = vec![stringify!(#[educe(Default(new))])];
-
-            usage
-        };
-
-        let correct_usage_for_expression = {
-            let usage = vec![
-                stringify!(#[educe(Default(expression = "expression"))]),
-                stringify!(#[educe(Default(expression("expression")))]),
-            ];
-
-            usage
-        };
-
-        let correct_usage_for_bound = {
-            let usage = vec![
-                stringify!(#[educe(Default(bound))]),
-                stringify!(#[educe(Default(bound = "where_predicates"))]),
-                stringify!(#[educe(Default(bound("where_predicates")))]),
-            ];
+            if self.enable_bound {
+                usage.push(stringify!(#[educe(Default(bound(where_predicates)))]));
+                usage.push(stringify!(#[educe(Default(bound = false))]));
+            }
 
             usage
         };
 
         match meta {
-            Meta::List(list) => {
-                let mut new_is_set = false;
-                let mut bound_is_set = false;
-
-                for p in list.nested.iter() {
-                    match p {
-                        NestedMeta::Meta(meta) => {
-                            let meta_name = meta.path().into_token_stream().to_string();
-
-                            match meta_name.as_str() {
-                                "expression" | "expr" => {
-                                    if !self.enable_expression {
-                                        panic::unknown_parameter("Default", meta_name.as_str());
-                                    }
-
-                                    match meta {
-                                        Meta::List(list) => {
-                                            for p in list.nested.iter() {
-                                                match p {
-                                                    NestedMeta::Lit(Lit::Str(s)) => {
-                                                        if expression.is_some() {
-                                                            panic::reset_parameter(
-                                                                meta_name.as_str(),
-                                                            );
-                                                        }
-
-                                                        let s = create_expr_from_lit_str(s);
-
-                                                        if s.is_some() {
-                                                            expression = s;
-                                                        } else {
-                                                            panic::empty_parameter(
-                                                                meta_name.as_str(),
-                                                            )
-                                                        }
-                                                    },
-                                                    _ => panic::parameter_incorrect_format(
-                                                        meta_name.as_str(),
-                                                        &correct_usage_for_expression,
-                                                    ),
-                                                }
-                                            }
-                                        },
-                                        Meta::NameValue(named_value) => {
-                                            let lit = &named_value.lit;
-
-                                            match lit {
-                                                Lit::Str(s) => {
-                                                    if expression.is_some() {
-                                                        panic::reset_parameter(meta_name.as_str());
-                                                    }
-
-                                                    let s = create_expr_from_lit_str(s);
-
-                                                    if s.is_some() {
-                                                        expression = s;
-                                                    } else {
-                                                        panic::empty_parameter(meta_name.as_str())
-                                                    }
-                                                },
-                                                _ => panic::parameter_incorrect_format(
-                                                    meta_name.as_str(),
-                                                    &correct_usage_for_expression,
-                                                ),
-                                            }
-                                        },
-                                        _ => panic::parameter_incorrect_format(
-                                            meta_name.as_str(),
-                                            &correct_usage_for_expression,
-                                        ),
-                                    }
-                                },
-                                "bound" => {
-                                    if !self.enable_bound {
-                                        panic::unknown_parameter("Default", meta_name.as_str());
-                                    }
-
-                                    match meta {
-                                        Meta::List(list) => {
-                                            for p in list.nested.iter() {
-                                                match p {
-                                                    NestedMeta::Lit(Lit::Str(s)) => {
-                                                        if bound_is_set {
-                                                            panic::reset_parameter(
-                                                                meta_name.as_str(),
-                                                            );
-                                                        }
-
-                                                        bound_is_set = true;
-
-                                                        let where_predicates =
-                                                            create_where_predicates_from_lit_str(s);
-
-                                                        bound = match where_predicates {
-                                                            Some(where_predicates) => {
-                                                                TypeAttributeBound::Custom(
-                                                                    where_predicates,
-                                                                )
-                                                            },
-                                                            None => panic::empty_parameter(
-                                                                meta_name.as_str(),
-                                                            ),
-                                                        };
-                                                    },
-                                                    _ => panic::parameter_incorrect_format(
-                                                        meta_name.as_str(),
-                                                        &correct_usage_for_bound,
-                                                    ),
-                                                }
-                                            }
-                                        },
-                                        Meta::NameValue(named_value) => {
-                                            let lit = &named_value.lit;
-
-                                            match lit {
-                                                Lit::Str(s) => {
-                                                    if bound_is_set {
-                                                        panic::reset_parameter(meta_name.as_str());
-                                                    }
-
-                                                    bound_is_set = true;
-
-                                                    let where_predicates =
-                                                        create_where_predicates_from_lit_str(s);
-
-                                                    bound = match where_predicates {
-                                                        Some(where_predicates) => {
-                                                            TypeAttributeBound::Custom(
-                                                                where_predicates,
-                                                            )
-                                                        },
-                                                        None => panic::empty_parameter(
-                                                            meta_name.as_str(),
-                                                        ),
-                                                    };
-                                                },
-                                                _ => panic::parameter_incorrect_format(
-                                                    meta_name.as_str(),
-                                                    &correct_usage_for_bound,
-                                                ),
-                                            }
-                                        },
-                                        Meta::Path(_) => {
-                                            if bound_is_set {
-                                                panic::reset_parameter(meta_name.as_str());
-                                            }
-
-                                            bound_is_set = true;
-
-                                            bound = TypeAttributeBound::Auto;
-                                        },
-                                    }
-                                },
-                                "new" => {
-                                    if !self.enable_new {
-                                        panic::unknown_parameter("Default", meta_name.as_str());
-                                    }
-
-                                    match meta {
-                                        Meta::Path(_) => {
-                                            if new_is_set {
-                                                panic::reset_parameter(meta_name.as_str());
-                                            }
-
-                                            new_is_set = true;
-
-                                            new = true;
-                                        },
-                                        _ => panic::parameter_incorrect_format(
-                                            meta_name.as_str(),
-                                            &correct_usage_for_new,
-                                        ),
-                                    }
-                                },
-                                _ => panic::unknown_parameter("Default", meta_name.as_str()),
-                            }
-                        },
-                        _ => panic::attribute_incorrect_format(
-                            "Default",
-                            &correct_usage_for_default_attribute,
-                        ),
-                    }
-                }
-            },
-            Meta::NameValue(_) => {
-                panic::attribute_incorrect_format("Default", &correct_usage_for_default_attribute)
-            },
             Meta::Path(_) => {
                 if !self.enable_flag {
-                    panic::attribute_incorrect_format(
-                        "Default",
+                    return Err(panic::attribute_incorrect_format(
+                        meta.path().get_ident().unwrap(),
                         &correct_usage_for_default_attribute,
-                    );
+                    ));
                 }
 
                 flag = true;
             },
+            Meta::NameValue(_) => {
+                return Err(panic::attribute_incorrect_format(
+                    meta.path().get_ident().unwrap(),
+                    &correct_usage_for_default_attribute,
+                ));
+            },
+            Meta::List(list) => {
+                let result =
+                    list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
+
+                let mut new_is_set = false;
+                let mut expression_is_set = false;
+                let mut bound_is_set = false;
+
+                let mut handler = |meta: Meta| -> syn::Result<bool> {
+                    if let Some(ident) = meta.path().get_ident() {
+                        match ident.to_string().as_str() {
+                            "new" => {
+                                if !self.enable_new {
+                                    return Ok(false);
+                                }
+
+                                let v = meta_2_bool_allow_path(&meta)?;
+
+                                if new_is_set {
+                                    return Err(panic::parameter_reset(ident));
+                                }
+
+                                new_is_set = true;
+
+                                new = v;
+
+                                return Ok(true);
+                            },
+                            "expression" | "expr" => {
+                                if !self.enable_expression {
+                                    return Ok(false);
+                                }
+
+                                let v = meta_2_expr(&meta)?;
+
+                                if expression_is_set {
+                                    return Err(panic::parameter_reset(ident));
+                                }
+
+                                expression_is_set = true;
+
+                                expression = Some(auto_adjust_expr(v, None));
+
+                                return Ok(true);
+                            },
+                            "bound" => {
+                                if !self.enable_bound {
+                                    return Ok(false);
+                                }
+
+                                let v = Bound::from_meta(&meta)?;
+
+                                if bound_is_set {
+                                    return Err(panic::parameter_reset(ident));
+                                }
+
+                                bound_is_set = true;
+
+                                bound = v;
+
+                                return Ok(true);
+                            },
+                            _ => (),
+                        }
+                    }
+
+                    Ok(false)
+                };
+
+                for p in result {
+                    if !handler(p)? {
+                        return Err(panic::attribute_incorrect_format(
+                            meta.path().get_ident().unwrap(),
+                            &correct_usage_for_default_attribute,
+                        ));
+                    }
+                }
+            },
         }
 
-        if expression.is_some() {
-            if let TypeAttributeBound::None = &bound {
-            } else {
-                panic::set_expression_bound();
-            }
-        }
-
-        TypeAttribute {
+        Ok(TypeAttribute {
             flag,
             new,
             expression,
             bound,
-        }
+            span: meta.span(),
+        })
     }
 
-    #[allow(clippy::wrong_self_convention)]
-    pub fn from_attributes(self, attributes: &[Attribute], traits: &[Trait]) -> TypeAttribute {
-        let mut result = None;
+    pub(crate) fn build_from_attributes(
+        &self,
+        attributes: &[Attribute],
+        traits: &[Trait],
+    ) -> syn::Result<TypeAttribute> {
+        let mut output = None;
 
         for attribute in attributes.iter() {
-            if attribute.path.is_ident("educe") {
-                let meta = attribute.parse_meta().unwrap();
+            let path = attribute.path();
 
-                match meta {
-                    Meta::List(list) => {
-                        for p in list.nested.iter() {
-                            match p {
-                                NestedMeta::Meta(meta) => {
-                                    let meta_name = meta.path().into_token_stream().to_string();
+            if path.is_ident("educe") {
+                if let Meta::List(list) = &attribute.meta {
+                    let result =
+                        list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
 
-                                    let t = Trait::from_str(meta_name);
+                    for meta in result {
+                        let path = meta.path();
 
-                                    if traits.binary_search(&t).is_err() {
-                                        panic::trait_not_used(t);
-                                    }
+                        let t = match Trait::from_path(path) {
+                            Some(t) => t,
+                            None => return Err(panic::unsupported_trait(meta.path())),
+                        };
 
-                                    if t == Trait::Default {
-                                        if result.is_some() {
-                                            panic::reuse_a_trait(t);
-                                        }
-
-                                        result = Some(self.from_default_meta(meta));
-                                    }
-                                },
-                                _ => panic::educe_format_incorrect(),
-                            }
+                        if !traits.contains(&t) {
+                            return Err(panic::trait_not_used(path.get_ident().unwrap()));
                         }
-                    },
-                    _ => panic::educe_format_incorrect(),
+
+                        if t == Trait::Default {
+                            if output.is_some() {
+                                return Err(panic::reuse_a_trait(path.get_ident().unwrap()));
+                            }
+
+                            output = Some(self.build_from_default_meta(&meta)?);
+                        }
+                    }
                 }
             }
         }
 
-        result.unwrap_or(TypeAttribute {
+        Ok(output.unwrap_or(TypeAttribute {
             flag:       false,
             new:        false,
             expression: None,
-            bound:      TypeAttributeBound::None,
-        })
+            bound:      Bound::Auto,
+            span:       Span::call_site(),
+        }))
     }
 }

@@ -1,444 +1,273 @@
-use std::{collections::BTreeMap, fmt::Write, str::FromStr};
+use std::collections::BTreeMap;
 
-use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Data, DeriveInput, Fields, Generics, Meta};
+use syn::{spanned::Spanned, Data, DeriveInput, Field, Fields, Ident, Meta, Path, Type};
 
 use super::{
-    super::TraitHandler,
-    models::{FieldAttributeBuilder, TypeAttributeBuilder},
+    models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder},
+    TraitHandler,
 };
-use crate::{panic, Trait};
+use crate::{common::tools::DiscriminantType, Trait};
 
-pub struct OrdEnumHandler;
+pub(crate) struct OrdEnumHandler;
 
 impl TraitHandler for OrdEnumHandler {
+    #[inline]
     fn trait_meta_handler(
-        ast: &DeriveInput,
-        tokens: &mut TokenStream,
+        ast: &mut DeriveInput,
+        token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
-    ) {
+    ) -> syn::Result<()> {
         let type_attribute = TypeAttributeBuilder {
-            enable_flag:  true,
-            enable_bound: true,
-            rank:         0,
-            enable_rank:  false,
+            enable_flag: true, enable_bound: true
         }
-        .from_ord_meta(meta);
+        .build_from_ord_meta(meta)?;
 
-        let enum_name = ast.ident.to_string();
+        let mut ord_types: Vec<&Type> = Vec::new();
 
-        let bound = type_attribute
-            .bound
-            .into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
+        let mut cmp_token_stream = proc_macro2::TokenStream::new();
 
-        let mut comparer_tokens = TokenStream::new();
+        let discriminant_type = DiscriminantType::from_ast(ast)?;
 
-        let mut match_tokens = String::from("match self {");
+        let mut arms_token_stream = proc_macro2::TokenStream::new();
 
-        let mut has_non_unit_or_custom_value = false;
+        let mut all_unit = true;
 
         if let Data::Enum(data) = &ast.data {
-            let mut variant_values = Vec::new();
-            let mut variant_idents = Vec::new();
-            let mut variants = Vec::new();
-
-            let mut variant_to_integer =
-                String::from("let variant_to_integer = |other: &Self| match other {");
-            let mut unit_to_integer =
-                String::from("let unit_to_integer = |other: &Self| match other {");
-
-            for (index, variant) in data.variants.iter().enumerate() {
-                let variant_attribute = TypeAttributeBuilder {
-                    enable_flag:  false,
-                    enable_bound: false,
-                    rank:         isize::MIN + index as isize,
-                    enable_rank:  true,
+            for variant in data.variants.iter() {
+                let _ = TypeAttributeBuilder {
+                    enable_flag: false, enable_bound: false
                 }
-                .from_attributes(&variant.attrs, traits);
+                .build_from_attributes(&variant.attrs, traits)?;
 
-                let value = variant_attribute.rank;
+                let variant_ident = &variant.ident;
 
-                if variant_values.contains(&value) {
-                    panic::reuse_a_value(value);
-                }
-
-                if value >= 0 {
-                    has_non_unit_or_custom_value = true;
-                }
-
-                let variant_ident = variant.ident.to_string();
+                let built_in_cmp: Path = syn::parse2(quote!(::core::cmp::Ord::cmp)).unwrap();
 
                 match &variant.fields {
                     Fields::Unit => {
-                        // TODO Unit
-                        unit_to_integer
-                            .write_fmt(format_args!(
-                                "{enum_name}::{variant_ident} => {enum_name}::{variant_ident} as \
-                                 isize,",
-                                enum_name = enum_name,
-                                variant_ident = variant_ident
-                            ))
-                            .unwrap();
-                        variant_to_integer
-                            .write_fmt(format_args!(
-                                "{enum_name}::{variant_ident} => {value},",
-                                enum_name = enum_name,
-                                variant_ident = variant_ident,
-                                value = value
-                            ))
-                            .unwrap();
+                        arms_token_stream.extend(quote! {
+                            Self::#variant_ident => {
+                                return ::core::cmp::Ordering::Equal;
+                            }
+                        });
                     },
                     Fields::Named(_) => {
-                        // TODO Struct
-                        has_non_unit_or_custom_value = true;
+                        all_unit = false;
 
-                        variant_to_integer
-                            .write_fmt(format_args!(
-                                "{enum_name}::{variant_ident} {{ .. }} => {value},",
-                                enum_name = enum_name,
-                                variant_ident = variant_ident,
-                                value = value
-                            ))
-                            .unwrap();
-                    },
-                    Fields::Unnamed(fields) => {
-                        // TODO Tuple
-                        has_non_unit_or_custom_value = true;
+                        let mut pattern_token_stream = proc_macro2::TokenStream::new();
+                        let mut pattern2_token_stream = proc_macro2::TokenStream::new();
+                        let mut block_token_stream = proc_macro2::TokenStream::new();
 
-                        let mut pattern_tokens = String::new();
+                        let mut fields: BTreeMap<isize, (&Field, &Ident, Ident, FieldAttribute)> =
+                            BTreeMap::new();
 
-                        for _ in fields.unnamed.iter() {
-                            pattern_tokens.push_str("_,");
+                        for (index, field) in variant.fields.iter().enumerate() {
+                            let field_attribute = FieldAttributeBuilder {
+                                enable_ignore: true,
+                                enable_method: true,
+                                enable_rank:   true,
+                                rank:          isize::MIN + index as isize,
+                            }
+                            .build_from_attributes(&field.attrs, traits)?;
+
+                            let field_name = field.ident.as_ref().unwrap();
+
+                            if field_attribute.ignore {
+                                pattern_token_stream.extend(quote!(#field_name: _,));
+                                pattern2_token_stream.extend(quote!(#field_name: _,));
+
+                                continue;
+                            }
+
+                            let field_name2: Ident =
+                                syn::parse_str(&format!("_{}", field_name)).unwrap();
+
+                            pattern_token_stream.extend(quote!(#field_name,));
+                            pattern2_token_stream.extend(quote!(#field_name: #field_name2,));
+
+                            let rank = field_attribute.rank;
+
+                            if fields.contains_key(&rank) {
+                                return Err(super::panic::reuse_a_rank(
+                                    field_attribute.rank_span.unwrap_or_else(|| field.span()),
+                                    rank,
+                                ));
+                            }
+
+                            fields.insert(rank, (field, field_name, field_name2, field_attribute));
                         }
 
-                        variant_to_integer
-                            .write_fmt(format_args!(
-                                "{enum_name}::{variant_ident}( {pattern_tokens} ) => {value},",
-                                enum_name = enum_name,
-                                variant_ident = variant_ident,
-                                pattern_tokens = pattern_tokens,
-                                value = value
-                            ))
-                            .unwrap();
+                        for (field, field_name, field_name2, field_attribute) in fields.values() {
+                            let cmp = field_attribute.method.as_ref().unwrap_or_else(|| {
+                                ord_types.push(&field.ty);
+
+                                &built_in_cmp
+                            });
+
+                            block_token_stream.extend(quote! {
+                                match #cmp(#field_name, #field_name2) {
+                                    ::core::cmp::Ordering::Equal => (),
+                                    ::core::cmp::Ordering::Greater => return ::core::cmp::Ordering::Greater,
+                                    ::core::cmp::Ordering::Less => return ::core::cmp::Ordering::Less,
+                                }
+                            });
+                        }
+
+                        arms_token_stream.extend(quote! {
+                            Self::#variant_ident { #pattern_token_stream } => {
+                                if let Self::#variant_ident { #pattern2_token_stream } = other {
+                                    #block_token_stream
+                                }
+                            }
+                        });
                     },
-                }
+                    Fields::Unnamed(_) => {
+                        all_unit = false;
 
-                variant_values.push(value);
-                variant_idents.push(variant_ident);
-                variants.push(variant);
-            }
+                        let mut pattern_token_stream = proc_macro2::TokenStream::new();
+                        let mut pattern2_token_stream = proc_macro2::TokenStream::new();
+                        let mut block_token_stream = proc_macro2::TokenStream::new();
 
-            if has_non_unit_or_custom_value {
-                variant_to_integer.push_str("};");
+                        let mut fields: BTreeMap<isize, (&Field, Ident, Ident, FieldAttribute)> =
+                            BTreeMap::new();
 
-                comparer_tokens.extend(TokenStream::from_str(&variant_to_integer).unwrap());
+                        for (index, field) in variant.fields.iter().enumerate() {
+                            let field_attribute = FieldAttributeBuilder {
+                                enable_ignore: true,
+                                enable_method: true,
+                                enable_rank:   true,
+                                rank:          isize::MIN + index as isize,
+                            }
+                            .build_from_attributes(&field.attrs, traits)?;
 
-                for (index, variant) in variants.into_iter().enumerate() {
-                    let variant_value = variant_values[index];
-                    let variant_ident = &variant_idents[index];
+                            let field_name: Ident = syn::parse_str(&format!("_{}", index)).unwrap();
 
-                    match &variant.fields {
-                        Fields::Unit => {
-                            // TODO Unit
-                            match_tokens
-                                .write_fmt(format_args!(
-                                    "{enum_name}::{variant_ident} => {{ let other_value = \
-                                     variant_to_integer(other); return \
-                                     core::cmp::Ord::cmp(&{variant_value}, &other_value); }}",
-                                    enum_name = enum_name,
-                                    variant_ident = variant_ident,
-                                    variant_value = variant_value
-                                ))
-                                .unwrap();
-                        },
-                        Fields::Named(fields) => {
-                            // TODO Struct
-                            let mut pattern_tokens = String::new();
-                            let mut pattern_2_tokens = String::new();
-                            let mut block_tokens = String::new();
+                            if field_attribute.ignore {
+                                pattern_token_stream.extend(quote!(_,));
+                                pattern2_token_stream.extend(quote!(_,));
 
-                            let mut field_attributes = BTreeMap::new();
-                            let mut field_names = BTreeMap::new();
-
-                            for (index, field) in fields.named.iter().enumerate() {
-                                let field_attribute = FieldAttributeBuilder {
-                                    enable_ignore: true,
-                                    enable_impl:   true,
-                                    rank:          isize::MIN + index as isize,
-                                    enable_rank:   true,
-                                }
-                                .from_attributes(&field.attrs, traits);
-
-                                let field_name = field.ident.as_ref().unwrap().to_string();
-
-                                if field_attribute.ignore {
-                                    pattern_tokens
-                                        .write_fmt(format_args!(
-                                            "{field_name}: _,",
-                                            field_name = field_name
-                                        ))
-                                        .unwrap();
-                                    pattern_2_tokens
-                                        .write_fmt(format_args!(
-                                            "{field_name}: _,",
-                                            field_name = field_name
-                                        ))
-                                        .unwrap();
-                                    continue;
-                                }
-
-                                let rank = field_attribute.rank;
-
-                                if field_attributes.contains_key(&rank) {
-                                    panic::reuse_a_rank(rank);
-                                }
-
-                                pattern_tokens
-                                    .write_fmt(format_args!(
-                                        "{field_name},",
-                                        field_name = field_name
-                                    ))
-                                    .unwrap();
-                                pattern_2_tokens
-                                    .write_fmt(format_args!(
-                                        "{field_name}: ___{field_name},",
-                                        field_name = field_name
-                                    ))
-                                    .unwrap();
-
-                                field_attributes.insert(rank, field_attribute);
-                                field_names.insert(rank, field_name);
+                                continue;
                             }
 
-                            for (index, field_attribute) in field_attributes {
-                                let field_name = field_names.get(&index).unwrap();
+                            let field_name2: Ident =
+                                syn::parse_str(&format!("_{}", field_name)).unwrap();
 
-                                let compare_trait = field_attribute.compare_trait;
-                                let compare_method = field_attribute.compare_method;
+                            pattern_token_stream.extend(quote!(#field_name,));
+                            pattern2_token_stream.extend(quote!(#field_name2,));
 
-                                match compare_trait {
-                                    Some(compare_trait) => {
-                                        let compare_method = compare_method.unwrap();
+                            let rank = field_attribute.rank;
 
-                                        block_tokens.write_fmt(format_args!("match {compare_trait}::{compare_method}({field_name}, ___{field_name}) {{ core::cmp::Ordering::Equal => (), core::cmp::Ordering::Greater => {{ return core::cmp::Ordering::Greater; }}, core::cmp::Ordering::Less => {{ return core::cmp::Ordering::Less; }} }}", compare_trait = compare_trait, compare_method = compare_method, field_name = field_name)).unwrap();
-                                    },
-                                    None => match compare_method {
-                                        Some(compare_method) => {
-                                            block_tokens
-                                                .write_fmt(format_args!(
-                                                    "match {compare_method}({field_name}, \
-                                                     ___{field_name}) {{ \
-                                                     core::cmp::Ordering::Equal => (), \
-                                                     core::cmp::Ordering::Greater => {{ return \
-                                                     core::cmp::Ordering::Greater; }}, \
-                                                     core::cmp::Ordering::Less => {{ return \
-                                                     core::cmp::Ordering::Less; }} }}",
-                                                    compare_method = compare_method,
-                                                    field_name = field_name
-                                                ))
-                                                .unwrap();
-                                        },
-                                        None => {
-                                            block_tokens
-                                                .write_fmt(format_args!(
-                                                    "match core::cmp::Ord::cmp({field_name}, \
-                                                     ___{field_name}) {{ \
-                                                     core::cmp::Ordering::Equal => (), \
-                                                     core::cmp::Ordering::Greater => {{ return \
-                                                     core::cmp::Ordering::Greater; }}, \
-                                                     core::cmp::Ordering::Less => {{ return \
-                                                     core::cmp::Ordering::Less; }} }}",
-                                                    field_name = field_name
-                                                ))
-                                                .unwrap();
-                                        },
-                                    },
-                                }
+                            if fields.contains_key(&rank) {
+                                return Err(super::panic::reuse_a_rank(
+                                    field_attribute.rank_span.unwrap_or_else(|| field.span()),
+                                    rank,
+                                ));
                             }
 
-                            match_tokens
-                                .write_fmt(format_args!(
-                                    "{enum_name}::{variant_ident}{{ {pattern_tokens} }} => {{ if \
-                                     let {enum_name}::{variant_ident} {{ {pattern_2_tokens} }} = \
-                                     other {{ {block_tokens} }} else {{ let other_value = \
-                                     variant_to_integer(other); return \
-                                     core::cmp::Ord::cmp(&{variant_value}, &other_value); }} }}",
-                                    enum_name = enum_name,
-                                    variant_ident = variant_ident,
-                                    pattern_tokens = pattern_tokens,
-                                    pattern_2_tokens = pattern_2_tokens,
-                                    block_tokens = block_tokens,
-                                    variant_value = variant_value
-                                ))
-                                .unwrap();
-                        },
-                        Fields::Unnamed(fields) => {
-                            // TODO Tuple
-                            let mut pattern_tokens = String::new();
-                            let mut pattern_2_tokens = String::new();
-                            let mut block_tokens = String::new();
+                            fields.insert(rank, (field, field_name, field_name2, field_attribute));
+                        }
 
-                            let mut field_attributes = BTreeMap::new();
-                            let mut field_names = BTreeMap::new();
+                        for (field, field_name, field_name2, field_attribute) in fields.values() {
+                            let cmp = field_attribute.method.as_ref().unwrap_or_else(|| {
+                                ord_types.push(&field.ty);
 
-                            for (index, field) in fields.unnamed.iter().enumerate() {
-                                let field_attribute = FieldAttributeBuilder {
-                                    enable_ignore: true,
-                                    enable_impl:   true,
-                                    rank:          isize::MIN + index as isize,
-                                    enable_rank:   true,
+                                &built_in_cmp
+                            });
+
+                            block_token_stream.extend(quote! {
+                                match #cmp(#field_name, #field_name2) {
+                                    ::core::cmp::Ordering::Equal => (),
+                                    ::core::cmp::Ordering::Greater => return ::core::cmp::Ordering::Greater,
+                                    ::core::cmp::Ordering::Less => return ::core::cmp::Ordering::Less,
                                 }
-                                .from_attributes(&field.attrs, traits);
+                            });
+                        }
 
-                                let field_name = format!("{}", index);
-
-                                if field_attribute.ignore {
-                                    pattern_tokens.push_str("_,");
-                                    pattern_2_tokens.push_str("_,");
-                                    continue;
-                                }
-
-                                let rank = field_attribute.rank;
-
-                                if field_attributes.contains_key(&rank) {
-                                    panic::reuse_a_rank(rank);
-                                }
-
-                                pattern_tokens
-                                    .write_fmt(format_args!(
-                                        "_{field_name},",
-                                        field_name = field_name
-                                    ))
-                                    .unwrap();
-                                pattern_2_tokens
-                                    .write_fmt(format_args!(
-                                        "__{field_name},",
-                                        field_name = field_name
-                                    ))
-                                    .unwrap();
-
-                                field_attributes.insert(rank, field_attribute);
-                                field_names.insert(rank, field_name);
-                            }
-
-                            for (index, field_attribute) in field_attributes {
-                                let field_name = field_names.get(&index).unwrap();
-
-                                let compare_trait = field_attribute.compare_trait;
-                                let compare_method = field_attribute.compare_method;
-
-                                match compare_trait {
-                                    Some(compare_trait) => {
-                                        let compare_method = compare_method.unwrap();
-
-                                        block_tokens.write_fmt(format_args!("match {compare_trait}::{compare_method}(_{field_name}, __{field_name}) {{ core::cmp::Ordering::Equal => (), core::cmp::Ordering::Greater => {{ return core::cmp::Ordering::Greater; }}, core::cmp::Ordering::Less => {{ return core::cmp::Ordering::Less; }} }}", compare_trait = compare_trait, compare_method = compare_method, field_name = field_name)).unwrap();
-                                    },
-                                    None => match compare_method {
-                                        Some(compare_method) => {
-                                            block_tokens
-                                                .write_fmt(format_args!(
-                                                    "match {compare_method}(_{field_name}, \
-                                                     __{field_name}) {{ \
-                                                     core::cmp::Ordering::Equal => (), \
-                                                     core::cmp::Ordering::Greater => {{ return \
-                                                     core::cmp::Ordering::Greater; }}, \
-                                                     core::cmp::Ordering::Less => {{ return \
-                                                     core::cmp::Ordering::Less; }} }}",
-                                                    compare_method = compare_method,
-                                                    field_name = field_name
-                                                ))
-                                                .unwrap();
-                                        },
-                                        None => {
-                                            block_tokens
-                                                .write_fmt(format_args!(
-                                                    "match core::cmp::Ord::cmp(_{field_name}, \
-                                                     __{field_name}) {{ \
-                                                     core::cmp::Ordering::Equal => (), \
-                                                     core::cmp::Ordering::Greater => {{ return \
-                                                     core::cmp::Ordering::Greater; }}, \
-                                                     core::cmp::Ordering::Less => {{ return \
-                                                     core::cmp::Ordering::Less; }} }}",
-                                                    field_name = field_name
-                                                ))
-                                                .unwrap();
-                                        },
-                                    },
+                        arms_token_stream.extend(quote! {
+                            Self::#variant_ident ( #pattern_token_stream ) => {
+                                if let Self::#variant_ident ( #pattern2_token_stream ) = other {
+                                    #block_token_stream
                                 }
                             }
-
-                            match_tokens
-                                .write_fmt(format_args!(
-                                    "{enum_name}::{variant_ident}( {pattern_tokens} ) => {{ if \
-                                     let {enum_name}::{variant_ident} ( {pattern_2_tokens} ) = \
-                                     other {{ {block_tokens} }} else {{ let other_value = \
-                                     variant_to_integer(other); return \
-                                     core::cmp::Ord::cmp(&{variant_value}, &other_value); }} }}",
-                                    enum_name = enum_name,
-                                    variant_ident = variant_ident,
-                                    pattern_tokens = pattern_tokens,
-                                    pattern_2_tokens = pattern_2_tokens,
-                                    block_tokens = block_tokens,
-                                    variant_value = variant_value
-                                ))
-                                .unwrap();
-                        },
-                    }
-                }
-            } else {
-                unit_to_integer.push_str("};");
-
-                comparer_tokens.extend(TokenStream::from_str(&unit_to_integer).unwrap());
-
-                for (index, _) in variants.into_iter().enumerate() {
-                    let variant_ident = &variant_idents[index];
-
-                    match_tokens
-                        .write_fmt(format_args!(
-                            "{enum_name}::{variant_ident} => {{ let other_value = \
-                             unit_to_integer(other); return \
-                             core::cmp::Ord::cmp(&({enum_name}::{variant_ident} as isize), \
-                             &other_value); }}",
-                            enum_name = enum_name,
-                            variant_ident = variant_ident
-                        ))
-                        .unwrap();
+                        });
+                    },
                 }
             }
         }
 
-        match_tokens.push('}');
+        if arms_token_stream.is_empty() {
+            cmp_token_stream.extend(quote!(::core::cmp::Ordering::Equal));
+        } else {
+            let discriminant_cmp = quote! {
+                unsafe {
+                    ::core::cmp::Ord::cmp(&*<*const _>::from(self).cast::<#discriminant_type>(), &*<*const _>::from(other).cast::<#discriminant_type>())
+                }
+            };
 
-        comparer_tokens.extend(TokenStream::from_str(&match_tokens).unwrap());
+            cmp_token_stream.extend(if all_unit {
+                quote! {
+                    match #discriminant_cmp {
+                        ::core::cmp::Ordering::Equal => ::core::cmp::Ordering::Equal,
+                        ::core::cmp::Ordering::Greater => ::core::cmp::Ordering::Greater,
+                        ::core::cmp::Ordering::Less => ::core::cmp::Ordering::Less,
+                    }
+                }
+            } else {
+                quote! {
+                    match #discriminant_cmp {
+                        ::core::cmp::Ordering::Equal => {
+                            match self {
+                                #arms_token_stream
+                            }
 
-        if has_non_unit_or_custom_value {
-            comparer_tokens.extend(quote!(core::cmp::Ordering::Equal));
+                            ::core::cmp::Ordering::Equal
+                        },
+                        ::core::cmp::Ordering::Greater => ::core::cmp::Ordering::Greater,
+                        ::core::cmp::Ordering::Less => ::core::cmp::Ordering::Less,
+                    }
+                }
+            });
         }
 
         let ident = &ast.ident;
 
-        let mut generics_cloned: Generics = ast.generics.clone();
+        let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
+            &ast.generics.params,
+            &syn::parse2(quote!(::core::cmp::Ord)).unwrap(),
+            &ord_types,
+        );
 
-        let where_clause = generics_cloned.make_where_clause();
+        let where_clause = ast.generics.make_where_clause();
 
         for where_predicate in bound {
             where_clause.predicates.push(where_predicate);
         }
 
-        let (impl_generics, ty_generics, where_clause) = generics_cloned.split_for_impl();
+        let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
-        let compare_impl = quote! {
-            impl #impl_generics core::cmp::Ord for #ident #ty_generics #where_clause {
+        token_stream.extend(quote! {
+            impl #impl_generics ::core::cmp::Ord for #ident #ty_generics #where_clause {
                 #[inline]
-                #[allow(unreachable_code, clippy::unneeded_field_pattern)]
-                fn cmp(&self, other: &Self) -> core::cmp::Ordering {
-                    #comparer_tokens
+                fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
+                    #cmp_token_stream
                 }
             }
-        };
+        });
 
-        tokens.extend(compare_impl);
+        #[cfg(feature = "PartialOrd")]
+        if traits.contains(&Trait::PartialOrd) {
+            token_stream.extend(quote! {
+                impl #impl_generics ::core::cmp::PartialOrd for #ident #ty_generics #where_clause {
+                    #[inline]
+                    fn partial_cmp(&self, other: &Self) -> Option<::core::cmp::Ordering> {
+                        Some(::core::cmp::Ord::cmp(self, other))
+                    }
+                }
+            });
+        }
+
+        Ok(())
     }
 }

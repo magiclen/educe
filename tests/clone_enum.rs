@@ -1,9 +1,27 @@
-#![allow(clippy::trivially_copy_pass_by_ref)]
 #![cfg(feature = "Clone")]
 #![no_std]
 
-#[macro_use]
-extern crate educe;
+use educe::Educe;
+
+#[test]
+fn empty() {
+    #[derive(Educe)]
+    #[educe(Clone)]
+    enum Enum {}
+
+    #[derive(Educe)]
+    #[educe(Clone)]
+    enum Enum2 {
+        Struct {},
+        Tuple(),
+    }
+
+    let s = Enum2::Struct {}.clone();
+    let t = Enum2::Tuple().clone();
+
+    assert!(matches!(s, Enum2::Struct {}));
+    assert!(matches!(t, Enum2::Tuple()));
+}
 
 #[test]
 fn basic() {
@@ -41,7 +59,7 @@ fn basic() {
 }
 
 #[test]
-fn clone_without_trait_1() {
+fn method_1() {
     fn clone(v: &u8) -> u8 {
         v + 100
     }
@@ -50,10 +68,10 @@ fn clone_without_trait_1() {
     #[educe(Clone)]
     enum Enum {
         Struct {
-            #[educe(Clone(method = "clone"))]
+            #[educe(Clone(method = clone))]
             f1: u8,
         },
-        Tuple(#[educe(Clone(method = "clone"))] u8),
+        Tuple(#[educe(Clone(method = clone))] u8),
     }
 
     let s = Enum::Struct {
@@ -79,7 +97,7 @@ fn clone_without_trait_1() {
 }
 
 #[test]
-fn clone_without_trait_2() {
+fn method_2() {
     fn clone(v: &u8) -> u8 {
         v + 100
     }
@@ -88,186 +106,10 @@ fn clone_without_trait_2() {
     #[educe(Clone)]
     enum Enum {
         Struct {
-            #[educe(Clone(method("clone")))]
+            #[educe(Clone(method(clone)))]
             f1: u8,
         },
-        Tuple(#[educe(Clone(method("clone")))] u8),
-    }
-
-    let s = Enum::Struct {
-        f1: 1
-    }
-    .clone();
-    let t = Enum::Tuple(1).clone();
-
-    if let Enum::Struct {
-        f1,
-    } = s
-    {
-        assert_eq!(101, f1);
-    } else {
-        panic!();
-    }
-
-    if let Enum::Tuple(f1) = t {
-        assert_eq!(101, f1);
-    } else {
-        panic!();
-    }
-}
-
-#[test]
-fn clone_with_trait_1() {
-    trait A {
-        fn clone(&self) -> Self;
-    }
-
-    impl A for u8 {
-        fn clone(&self) -> u8 {
-            self + 100
-        }
-    }
-
-    #[derive(Educe)]
-    #[educe(Clone)]
-    enum Enum {
-        Struct {
-            #[educe(Clone(trait = "A"))]
-            f1: u8,
-        },
-        Tuple(#[educe(Clone(trait = "A"))] u8),
-    }
-
-    let s = Enum::Struct {
-        f1: 1
-    }
-    .clone();
-    let t = Enum::Tuple(1).clone();
-
-    if let Enum::Struct {
-        f1,
-    } = s
-    {
-        assert_eq!(101, f1);
-    } else {
-        panic!();
-    }
-
-    if let Enum::Tuple(f1) = t {
-        assert_eq!(101, f1);
-    } else {
-        panic!();
-    }
-}
-
-#[test]
-fn clone_with_trait_2() {
-    trait A {
-        fn clone(&self) -> Self;
-    }
-
-    impl A for u8 {
-        fn clone(&self) -> u8 {
-            self + 100
-        }
-    }
-
-    #[derive(Educe)]
-    #[educe(Clone)]
-    enum Enum {
-        Struct {
-            #[educe(Clone(trait("A")))]
-            f1: u8,
-        },
-        Tuple(#[educe(Clone(trait("A")))] u8),
-    }
-
-    let s = Enum::Struct {
-        f1: 1
-    }
-    .clone();
-    let t = Enum::Tuple(1).clone();
-
-    if let Enum::Struct {
-        f1,
-    } = s
-    {
-        assert_eq!(101, f1);
-    } else {
-        panic!();
-    }
-
-    if let Enum::Tuple(f1) = t {
-        assert_eq!(101, f1);
-    } else {
-        panic!();
-    }
-}
-
-#[test]
-fn clone_with_trait_3() {
-    trait A {
-        fn cloner(&self) -> Self;
-    }
-
-    impl A for u8 {
-        fn cloner(&self) -> u8 {
-            self + 100
-        }
-    }
-
-    #[derive(Educe)]
-    #[educe(Clone)]
-    enum Enum {
-        Struct {
-            #[educe(Clone(trait = "A", method = "cloner"))]
-            f1: u8,
-        },
-        Tuple(#[educe(Clone(trait = "A", method = "cloner"))] u8),
-    }
-
-    let s = Enum::Struct {
-        f1: 1
-    }
-    .clone();
-    let t = Enum::Tuple(1).clone();
-
-    if let Enum::Struct {
-        f1,
-    } = s
-    {
-        assert_eq!(101, f1);
-    } else {
-        panic!();
-    }
-
-    if let Enum::Tuple(f1) = t {
-        assert_eq!(101, f1);
-    } else {
-        panic!();
-    }
-}
-
-#[test]
-fn clone_with_trait_4() {
-    trait A {
-        fn cloner(&self) -> Self;
-    }
-
-    impl A for u8 {
-        fn cloner(&self) -> u8 {
-            self + 100
-        }
-    }
-
-    #[derive(Educe)]
-    #[educe(Clone)]
-    enum Enum {
-        Struct {
-            #[educe(Clone(trait("A"), method("cloner")))]
-            f1: u8,
-        },
-        Tuple(#[educe(Clone(trait("A"), method("cloner")))] u8),
+        Tuple(#[educe(Clone(method(clone)))] u8),
     }
 
     let s = Enum::Struct {
@@ -295,7 +137,7 @@ fn clone_with_trait_4() {
 #[test]
 fn bound_1() {
     #[derive(Educe)]
-    #[educe(Clone(bound))]
+    #[educe(Clone)]
     enum Enum<T> {
         Struct { f1: T },
         Tuple(T),
@@ -357,7 +199,7 @@ fn bound_2() {
 #[test]
 fn bound_3() {
     #[derive(Educe)]
-    #[educe(Clone(bound("T: core::clone::Clone")))]
+    #[educe(Clone(bound(T: core::clone::Clone)))]
     enum Enum<T> {
         Struct { f1: T },
         Tuple(T),

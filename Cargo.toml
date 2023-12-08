@@ -1,6 +1,6 @@
 [package]
 name = "educe"
-version = "0.4.23"
+version = "0.5.0-beta.1"
 authors = ["Magic Len <len@magiclen.org>"]
 edition = "2021"
 rust-version = "1.56"
@@ -8,7 +8,7 @@ repository = "https://github.com/magiclen/educe"
 homepage = "https://magiclen.org/educe"
 keywords = ["derive", "macro", "trait", "field", "procedural"]
 categories = ["no-std", "rust-patterns"]
-description = "This crate provides procedural macros to help you implement Rust-built-in traits quickly."
+description = "This crate offers procedural macros designed to facilitate the swift implementation of Rust's built-in traits."
 license = "MIT"
 include = ["src/**/*", "Cargo.toml", "README.md", "LICENSE"]
 
@@ -16,25 +16,34 @@ include = ["src/**/*", "Cargo.toml", "README.md", "LICENSE"]
 proc-macro = true
 
 [dependencies]
-proc-macro2 = "1"
-syn = { version = "1", features = ["full"] }
+syn = "2"
 quote = "1"
+proc-macro2 = "1"
 
-enum-ordinalize = "3.1"
+enum-ordinalize = { version = "4.2", default-features = false, features = ["derive"] }
 
 [dev-dependencies]
+syn = { version = "2", features = ["full"] }
 assert-eq-float = "0.1"
+rustversion = "1"
 
 [features]
-default = ["Debug", "PartialEq", "Eq", "PartialOrd", "Ord", "Hash", "Default", "Clone", "Copy", "Deref", "DerefMut"]
+default = ["Debug", "Clone", "Copy", "PartialEq", "Eq", "PartialOrd", "Ord", "Hash", "Default", "Deref", "DerefMut"]
+
+full = ["syn/full"]
+
 Debug = []
+Clone = []
+Copy = []
 PartialEq = []
 Eq = []
 PartialOrd = []
 Ord = []
 Hash = []
 Default = []
-Clone = []
-Copy = []
 Deref = []
 DerefMut = []
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

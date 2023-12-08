@@ -1,355 +1,217 @@
-use quote::ToTokens;
-use syn::{Attribute, Lit, Meta, NestedMeta};
+use proc_macro2::Span;
+use syn::{punctuated::Punctuated, spanned::Spanned, Attribute, Meta, Path, Token};
 
-use super::super::super::create_path_string_from_lit_str;
-use crate::{panic, Trait};
+use crate::{
+    common::{
+        ident_bool::{meta_2_bool_allow_path, meta_name_value_2_bool},
+        int::meta_2_isize,
+        path::meta_2_path,
+    },
+    panic,
+    supported_traits::Trait,
+};
 
-#[derive(Debug, Clone)]
-pub struct FieldAttribute {
-    pub ignore:         bool,
-    pub compare_method: Option<String>,
-    pub compare_trait:  Option<String>,
-    pub rank:           isize,
+pub(crate) struct FieldAttribute {
+    pub(crate) ignore:    bool,
+    pub(crate) method:    Option<Path>,
+    pub(crate) rank:      isize,
+    pub(crate) rank_span: Option<Span>,
 }
 
-#[derive(Debug, Clone)]
-pub struct FieldAttributeBuilder {
-    pub enable_ignore: bool,
-    pub enable_impl:   bool,
-    pub rank:          isize,
-    pub enable_rank:   bool,
+pub(crate) struct FieldAttributeBuilder {
+    pub(crate) enable_ignore: bool,
+    pub(crate) enable_method: bool,
+    pub(crate) enable_rank:   bool,
+    pub(crate) rank:          isize,
 }
 
 impl FieldAttributeBuilder {
-    #[allow(clippy::wrong_self_convention)]
-    pub fn from_ord_meta(&self, meta: &Meta) -> FieldAttribute {
+    pub(crate) fn build_from_ord_meta(&self, meta: &Meta) -> syn::Result<FieldAttribute> {
+        debug_assert!(meta.path().is_ident("Ord") || meta.path().is_ident("PartialOrd"));
+
         let mut ignore = false;
-
-        let mut compare_method = None;
-        let mut compare_trait = None;
-
+        let mut method = None;
         let mut rank = self.rank;
+        let mut rank_span = None;
 
-        let correct_usage_for_ord_attribute = {
+        let correct_usage_for_partial_eq_attribute = {
             let mut usage = vec![];
 
             if self.enable_ignore {
                 usage.push(stringify!(#[educe(Ord = false)]));
-                usage.push(stringify!(#[educe(Ord(false))]));
+                usage.push(stringify!(#[educe(Ord(ignore))]));
+            }
+
+            if self.enable_method {
+                usage.push(stringify!(#[educe(Ord(method(path_to_method)))]));
+            }
+
+            if self.enable_rank {
+                usage.push(stringify!(#[educe(Ord(rank = integer))]));
             }
 
             usage
         };
 
-        let correct_usage_for_ignore = {
-            let usage = vec![stringify!(#[educe(Ord(ignore))])];
-
-            usage
-        };
-
-        let correct_usage_for_impl = {
-            let usage = vec![
-                stringify!(#[educe(Ord(method = "path_to_method"))]),
-                stringify!(#[educe(Ord(trait = "path_to_trait"))]),
-                stringify!(#[educe(Ord(trait = "path_to_trait", method = "path_to_method_in_trait"))]),
-                stringify!(#[educe(Ord(method("path_to_method")))]),
-                stringify!(#[educe(Ord(trait("path_to_trait")))]),
-                stringify!(#[educe(Ord(trait("path_to_trait"), method("path_to_method_in_trait")))]),
-            ];
-
-            usage
-        };
-
-        let correct_usage_for_rank = {
-            let usage = vec![
-                stringify!(#[educe(Ord(rank = priority_value))]),
-                stringify!(#[educe(Ord(rank(priority_value)))]),
-            ];
-
-            usage
-        };
-
-        let mut rank_is_set = false;
-
         match meta {
+            Meta::Path(_) => {
+                return Err(panic::attribute_incorrect_format(
+                    meta.path().get_ident().unwrap(),
+                    &correct_usage_for_partial_eq_attribute,
+                ));
+            },
+            Meta::NameValue(name_value) => {
+                if self.enable_ignore {
+                    ignore = !meta_name_value_2_bool(name_value)?;
+                } else {
+                    return Err(panic::attribute_incorrect_format(
+                        meta.path().get_ident().unwrap(),
+                        &correct_usage_for_partial_eq_attribute,
+                    ));
+                }
+            },
             Meta::List(list) => {
+                let result =
+                    list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
+
                 let mut ignore_is_set = false;
+                let mut method_is_set = false;
+                let mut rank_is_set = false;
 
-                for p in list.nested.iter() {
-                    match p {
-                        NestedMeta::Meta(meta) => {
-                            let meta_name = meta.path().into_token_stream().to_string();
+                let mut handler = |meta: Meta| -> syn::Result<bool> {
+                    if let Some(ident) = meta.path().get_ident() {
+                        match ident.to_string().as_str() {
+                            "ignore" => {
+                                if !self.enable_ignore {
+                                    return Ok(false);
+                                }
 
-                            match meta_name.as_str() {
-                                "ignore" => {
-                                    if !self.enable_ignore {
-                                        panic::unknown_parameter("Ord", meta_name.as_str());
-                                    }
+                                let v = meta_2_bool_allow_path(&meta)?;
 
-                                    match meta {
-                                        Meta::Path(_) => {
-                                            if ignore_is_set {
-                                                panic::reset_parameter(meta_name.as_str());
-                                            }
+                                if ignore_is_set {
+                                    return Err(panic::parameter_reset(ident));
+                                }
 
-                                            ignore_is_set = true;
+                                ignore_is_set = true;
 
-                                            ignore = true;
-                                        },
-                                        _ => panic::parameter_incorrect_format(
-                                            meta_name.as_str(),
-                                            &correct_usage_for_ignore,
-                                        ),
-                                    }
-                                },
-                                "method" => {
-                                    if !self.enable_impl {
-                                        panic::unknown_parameter("Ord", meta_name.as_str());
-                                    }
+                                ignore = v;
 
-                                    match meta {
-                                        Meta::List(list) => {
-                                            for p in list.nested.iter() {
-                                                match p {
-                                                    NestedMeta::Lit(Lit::Str(s)) => {
-                                                        if compare_method.is_some() {
-                                                            panic::reset_parameter(
-                                                                meta_name.as_str(),
-                                                            );
-                                                        }
+                                return Ok(true);
+                            },
+                            "method" => {
+                                if !self.enable_method {
+                                    return Ok(false);
+                                }
 
-                                                        let s = create_path_string_from_lit_str(s);
+                                let v = meta_2_path(&meta)?;
 
-                                                        if let Some(s) = s {
-                                                            compare_method = Some(s);
-                                                        } else {
-                                                            panic::empty_parameter(
-                                                                meta_name.as_str(),
-                                                            );
-                                                        }
-                                                    },
-                                                    _ => panic::parameter_incorrect_format(
-                                                        meta_name.as_str(),
-                                                        &correct_usage_for_impl,
-                                                    ),
-                                                }
-                                            }
-                                        },
-                                        Meta::NameValue(named_value) => {
-                                            let lit = &named_value.lit;
+                                if method_is_set {
+                                    return Err(panic::parameter_reset(ident));
+                                }
 
-                                            match lit {
-                                                Lit::Str(s) => {
-                                                    if compare_method.is_some() {
-                                                        panic::reset_parameter(meta_name.as_str());
-                                                    }
+                                method_is_set = true;
 
-                                                    let s = create_path_string_from_lit_str(s);
+                                method = Some(v);
 
-                                                    if let Some(s) = s {
-                                                        compare_method = Some(s);
-                                                    } else {
-                                                        panic::empty_parameter(meta_name.as_str());
-                                                    }
-                                                },
-                                                _ => panic::parameter_incorrect_format(
-                                                    meta_name.as_str(),
-                                                    &correct_usage_for_impl,
-                                                ),
-                                            }
-                                        },
-                                        _ => panic::parameter_incorrect_format(
-                                            meta_name.as_str(),
-                                            &correct_usage_for_impl,
-                                        ),
-                                    }
-                                },
-                                "trait" => {
-                                    if !self.enable_impl {
-                                        panic::unknown_parameter("Ord", meta_name.as_str());
-                                    }
+                                return Ok(true);
+                            },
+                            "rank" => {
+                                if !self.enable_rank {
+                                    return Ok(false);
+                                }
 
-                                    match meta {
-                                        Meta::List(list) => {
-                                            for p in list.nested.iter() {
-                                                match p {
-                                                    NestedMeta::Lit(Lit::Str(s)) => {
-                                                        if compare_trait.is_some() {
-                                                            panic::reset_parameter(
-                                                                meta_name.as_str(),
-                                                            );
-                                                        }
+                                let v = meta_2_isize(&meta)?;
 
-                                                        let s = create_path_string_from_lit_str(s);
+                                if rank_is_set {
+                                    return Err(panic::parameter_reset(ident));
+                                }
 
-                                                        if let Some(s) = s {
-                                                            compare_trait = Some(s);
-                                                        } else {
-                                                            panic::empty_parameter(
-                                                                meta_name.as_str(),
-                                                            );
-                                                        }
-                                                    },
-                                                    _ => panic::parameter_incorrect_format(
-                                                        meta_name.as_str(),
-                                                        &correct_usage_for_impl,
-                                                    ),
-                                                }
-                                            }
-                                        },
-                                        Meta::NameValue(named_value) => {
-                                            let lit = &named_value.lit;
+                                rank_is_set = true;
 
-                                            match lit {
-                                                Lit::Str(s) => {
-                                                    if compare_trait.is_some() {
-                                                        panic::reset_parameter(meta_name.as_str());
-                                                    }
+                                rank = v;
+                                rank_span = Some(meta.span());
 
-                                                    let s = create_path_string_from_lit_str(s);
+                                return Ok(true);
+                            },
+                            _ => (),
+                        }
+                    }
 
-                                                    if let Some(s) = s {
-                                                        compare_trait = Some(s);
-                                                    } else {
-                                                        panic::empty_parameter(meta_name.as_str());
-                                                    }
-                                                },
-                                                _ => panic::parameter_incorrect_format(
-                                                    meta_name.as_str(),
-                                                    &correct_usage_for_impl,
-                                                ),
-                                            }
-                                        },
-                                        _ => panic::parameter_incorrect_format(
-                                            meta_name.as_str(),
-                                            &correct_usage_for_impl,
-                                        ),
-                                    }
-                                },
-                                "rank" => {
-                                    if !self.enable_rank {
-                                        panic::unknown_parameter("Ord", meta_name.as_str());
-                                    }
+                    Ok(false)
+                };
 
-                                    match meta {
-                                        Meta::List(list) => {
-                                            for p in list.nested.iter() {
-                                                match p {
-                                                    NestedMeta::Lit(Lit::Int(i)) => {
-                                                        if rank_is_set {
-                                                            panic::reset_parameter(
-                                                                meta_name.as_str(),
-                                                            );
-                                                        }
-
-                                                        rank_is_set = true;
-
-                                                        rank = i.base10_parse().unwrap();
-                                                    },
-                                                    _ => panic::parameter_incorrect_format(
-                                                        meta_name.as_str(),
-                                                        &correct_usage_for_rank,
-                                                    ),
-                                                }
-                                            }
-                                        },
-                                        Meta::NameValue(named_value) => {
-                                            let lit = &named_value.lit;
-
-                                            match lit {
-                                                Lit::Int(i) => {
-                                                    if rank_is_set {
-                                                        panic::reset_parameter(meta_name.as_str());
-                                                    }
-
-                                                    rank_is_set = true;
-
-                                                    rank = i.base10_parse().unwrap();
-                                                },
-                                                _ => panic::parameter_incorrect_format(
-                                                    meta_name.as_str(),
-                                                    &correct_usage_for_rank,
-                                                ),
-                                            }
-                                        },
-                                        _ => panic::parameter_incorrect_format(
-                                            meta_name.as_str(),
-                                            &correct_usage_for_rank,
-                                        ),
-                                    }
-                                },
-                                _ => panic::unknown_parameter("Ord", meta_name.as_str()),
-                            }
-                        },
-                        _ => panic::attribute_incorrect_format(
-                            "Ord",
-                            &correct_usage_for_ord_attribute,
-                        ),
+                for p in result {
+                    if !handler(p)? {
+                        return Err(panic::attribute_incorrect_format(
+                            meta.path().get_ident().unwrap(),
+                            &correct_usage_for_partial_eq_attribute,
+                        ));
                     }
                 }
             },
-            _ => panic::attribute_incorrect_format("Ord", &correct_usage_for_ord_attribute),
         }
 
-        if compare_trait.is_some() && compare_method.is_none() {
-            compare_method = Some("cmp".to_string());
-        }
-
-        if ignore && rank_is_set {
-            panic::ignore_ranked_field();
-        }
-
-        FieldAttribute {
+        Ok(FieldAttribute {
             ignore,
-            compare_method,
-            compare_trait,
+            method,
             rank,
-        }
+            rank_span,
+        })
     }
 
-    #[allow(clippy::wrong_self_convention)]
-    pub fn from_attributes(self, attributes: &[Attribute], traits: &[Trait]) -> FieldAttribute {
-        let mut result = None;
+    pub(crate) fn build_from_attributes(
+        &self,
+        attributes: &[Attribute],
+        traits: &[Trait],
+    ) -> syn::Result<FieldAttribute> {
+        let mut output = None;
 
         for attribute in attributes.iter() {
-            if attribute.path.is_ident("educe") {
-                let meta = attribute.parse_meta().unwrap();
+            let path = attribute.path();
 
-                match meta {
-                    Meta::List(list) => {
-                        for p in list.nested.iter() {
-                            match p {
-                                NestedMeta::Meta(meta) => {
-                                    let meta_name = meta.path().into_token_stream().to_string();
+            if path.is_ident("educe") {
+                if let Meta::List(list) = &attribute.meta {
+                    let result =
+                        list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
 
-                                    let t = Trait::from_str(meta_name);
+                    for meta in result {
+                        let path = meta.path();
 
-                                    if traits.binary_search(&t).is_err() {
-                                        panic::trait_not_used(t);
-                                    }
+                        let t = match Trait::from_path(path) {
+                            Some(t) => t,
+                            None => return Err(panic::unsupported_trait(meta.path())),
+                        };
 
-                                    if t == Trait::Ord {
-                                        if result.is_some() {
-                                            panic::reuse_a_trait(t);
-                                        }
-
-                                        result = Some(self.from_ord_meta(meta));
-                                    }
-                                },
-                                _ => panic::educe_format_incorrect(),
-                            }
+                        if !traits.contains(&t) {
+                            return Err(panic::trait_not_used(path.get_ident().unwrap()));
                         }
-                    },
-                    _ => panic::educe_format_incorrect(),
+
+                        if t == Trait::Ord {
+                            if output.is_some() {
+                                return Err(panic::reuse_a_trait(path.get_ident().unwrap()));
+                            }
+
+                            output = Some(self.build_from_ord_meta(&meta)?);
+                        }
+
+                        #[cfg(feature = "PartialOrd")]
+                        if traits.contains(&Trait::PartialOrd) && t == Trait::PartialOrd {
+                            if output.is_some() {
+                                return Err(panic::reuse_a_trait(path.get_ident().unwrap()));
+                            }
+
+                            output = Some(self.build_from_ord_meta(&meta)?);
+                        }
+                    }
                 }
             }
         }
 
-        result.unwrap_or(FieldAttribute {
-            ignore:         false,
-            compare_method: None,
-            compare_trait:  None,
-            rank:           self.rank,
-        })
+        Ok(output.unwrap_or(FieldAttribute {
+            ignore:    false,
+            method:    None,
+            rank:      self.rank,
+            rank_span: None,
+        }))
     }
 }

@@ -1,104 +1,110 @@
-use std::str::FromStr;
-
-use proc_macro2::TokenStream;
-use quote::{quote, ToTokens};
-use syn::{Data, DeriveInput, Meta};
+use quote::quote;
+use syn::{spanned::Spanned, Data, DeriveInput, Field, Meta};
 
 use super::{
-    super::TraitHandler,
     models::{FieldAttributeBuilder, TypeAttributeBuilder},
+    TraitHandler,
 };
-use crate::{panic, Trait};
+use crate::{
+    common::{ident_index::IdentOrIndex, r#type::dereference_changed},
+    Trait,
+};
 
-pub struct DerefStructHandler;
+pub(crate) struct DerefStructHandler;
 
 impl TraitHandler for DerefStructHandler {
+    #[inline]
     fn trait_meta_handler(
-        ast: &DeriveInput,
-        tokens: &mut TokenStream,
+        ast: &mut DeriveInput,
+        token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
-    ) {
+    ) -> syn::Result<()> {
         let _ = TypeAttributeBuilder {
             enable_flag: true
         }
-        .from_deref_meta(meta);
+        .build_from_deref_meta(meta)?;
 
-        let mut ty = TokenStream::new();
-        let mut deref_tokens = TokenStream::new();
+        let mut target_token_stream = proc_macro2::TokenStream::new();
+        let mut deref_token_stream = proc_macro2::TokenStream::new();
 
         if let Data::Struct(data) = &ast.data {
-            let mut counter = 0;
+            let mut index_counter = 0;
 
-            for (index, field) in data.fields.iter().enumerate() {
-                let field_attribute = FieldAttributeBuilder {
-                    enable_flag: true
-                }
-                .from_attributes(&field.attrs, traits);
+            let field = {
+                let fields = &data.fields;
 
-                if field_attribute.flag {
-                    if !ty.is_empty() {
-                        panic::multiple_deref_fields();
+                if fields.len() == 1 {
+                    let field = fields.into_iter().next().unwrap();
+
+                    let _ = FieldAttributeBuilder {
+                        enable_flag: true
+                    }
+                    .build_from_attributes(&field.attrs, traits)?;
+
+                    index_counter += 1;
+
+                    field
+                } else {
+                    let mut deref_field: Option<&Field> = None;
+
+                    for field in fields {
+                        let field_attribute = FieldAttributeBuilder {
+                            enable_flag: true
+                        }
+                        .build_from_attributes(&field.attrs, traits)?;
+
+                        if field_attribute.flag {
+                            if deref_field.is_some() {
+                                return Err(super::panic::multiple_deref_fields(
+                                    field_attribute.span,
+                                ));
+                            }
+
+                            deref_field = Some(field);
+                        }
+
+                        index_counter += 1;
                     }
 
-                    let field_name = if let Some(ident) = field.ident.as_ref() {
-                        ident.to_string()
+                    if let Some(deref_field) = deref_field {
+                        deref_field
                     } else {
-                        format!("{}", index)
-                    };
-
-                    ty.extend(field.ty.clone().into_token_stream());
-                    deref_tokens.extend(
-                        TokenStream::from_str(&format!(
-                            "&self.{field_name}",
-                            field_name = field_name
-                        ))
-                        .unwrap(),
-                    );
+                        return Err(super::panic::no_deref_field(meta.span()));
+                    }
                 }
+            };
 
-                counter += 1;
-            }
+            let ty = &field.ty;
+            let (dereference_ty, is_ref) = dereference_changed(ty);
 
-            if ty.is_empty() {
-                if counter == 1 {
-                    let field = data.fields.iter().next().unwrap();
+            target_token_stream.extend(quote!(#dereference_ty));
 
-                    let field_name = if let Some(ident) = field.ident.as_ref() {
-                        ident.to_string()
-                    } else {
-                        String::from("0")
-                    };
+            let field_name =
+                IdentOrIndex::from_ident_with_index(field.ident.as_ref(), index_counter - 1);
 
-                    ty.extend(field.ty.clone().into_token_stream());
-                    deref_tokens.extend(
-                        TokenStream::from_str(&format!(
-                            "&self.{field_name}",
-                            field_name = field_name
-                        ))
-                        .unwrap(),
-                    );
-                } else {
-                    panic::no_deref_field();
-                }
-            }
+            deref_token_stream.extend(if is_ref {
+                quote! (self.#field_name)
+            } else {
+                quote! (&self.#field_name)
+            });
         }
 
         let ident = &ast.ident;
 
         let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
-        let deref_impl = quote! {
-            impl #impl_generics core::ops::Deref for #ident #ty_generics #where_clause {
-                type Target = #ty;
+        token_stream.extend(quote! {
+            impl #impl_generics ::core::ops::Deref for #ident #ty_generics #where_clause {
+                type Target = #target_token_stream;
 
                 #[inline]
                 fn deref(&self) -> &Self::Target {
-                    #deref_tokens
+                    #deref_token_stream
                 }
             }
-        };
+        });
 
-        tokens.extend(deref_impl);
+        Ok(())
     }
 }

@@ -1,33 +1,36 @@
-mod models;
-
 mod deref_enum;
 mod deref_struct;
+mod models;
+mod panic;
 
-use deref_enum::DerefEnumHandler;
-use deref_struct::DerefStructHandler;
-use proc_macro2::TokenStream;
 use syn::{Data, DeriveInput, Meta};
 
 use super::TraitHandler;
-use crate::{panic, Trait};
+use crate::Trait;
 
-pub struct DerefHandler;
+pub(crate) struct DerefHandler;
 
 impl TraitHandler for DerefHandler {
+    #[inline]
     fn trait_meta_handler(
-        ast: &DeriveInput,
-        tokens: &mut TokenStream,
+        ast: &mut DeriveInput,
+        token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
-    ) {
+    ) -> syn::Result<()> {
         match ast.data {
-            Data::Struct(_) => {
-                DerefStructHandler::trait_meta_handler(ast, tokens, traits, meta);
-            },
+            Data::Struct(_) => deref_struct::DerefStructHandler::trait_meta_handler(
+                ast,
+                token_stream,
+                traits,
+                meta,
+            ),
             Data::Enum(_) => {
-                DerefEnumHandler::trait_meta_handler(ast, tokens, traits, meta);
+                deref_enum::DerefEnumHandler::trait_meta_handler(ast, token_stream, traits, meta)
             },
-            Data::Union(_) => panic::trait_not_support_union(Trait::Deref),
+            Data::Union(_) => {
+                Err(crate::panic::trait_not_support_union(meta.path().get_ident().unwrap()))
+            },
         }
     }
 }

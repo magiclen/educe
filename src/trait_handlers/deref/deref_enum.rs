@@ -1,247 +1,154 @@
-use std::{fmt::Write, str::FromStr};
-
-use proc_macro2::TokenStream;
-use quote::{quote, ToTokens};
-use syn::{Data, DeriveInput, Fields, Meta};
+use quote::quote;
+use syn::{spanned::Spanned, Data, DeriveInput, Field, Fields, Ident, Meta, Type};
 
 use super::{
-    super::TraitHandler,
     models::{FieldAttributeBuilder, TypeAttributeBuilder},
+    TraitHandler,
 };
-use crate::{panic, Trait};
+use crate::{common::r#type::dereference, panic, supported_traits::Trait};
 
-pub struct DerefEnumHandler;
+pub(crate) struct DerefEnumHandler;
 
 impl TraitHandler for DerefEnumHandler {
+    #[inline]
     fn trait_meta_handler(
-        ast: &DeriveInput,
-        tokens: &mut TokenStream,
+        ast: &mut DeriveInput,
+        token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
-    ) {
+    ) -> syn::Result<()> {
         let _ = TypeAttributeBuilder {
             enable_flag: true
         }
-        .from_deref_meta(meta);
+        .build_from_deref_meta(meta)?;
 
-        let enum_name = ast.ident.to_string();
-
-        let mut ty_all = TokenStream::new();
-        let mut deref_tokens = TokenStream::new();
-
-        let mut match_tokens = String::from("match self {");
+        let mut target_token_stream = proc_macro2::TokenStream::new();
+        let mut arms_token_stream = proc_macro2::TokenStream::new();
 
         if let Data::Enum(data) = &ast.data {
+            type Variants<'a> = Vec<(&'a Ident, bool, usize, Ident, &'a Type)>;
+
+            let mut variants: Variants = Vec::new();
+
             for variant in data.variants.iter() {
                 let _ = TypeAttributeBuilder {
                     enable_flag: false
                 }
-                .from_attributes(&variant.attrs, traits);
+                .build_from_attributes(&variant.attrs, traits)?;
 
-                let variant_ident = variant.ident.to_string();
+                if let Fields::Unit = &variant.fields {
+                    return Err(panic::trait_not_support_unit_variant(
+                        meta.path().get_ident().unwrap(),
+                        variant,
+                    ));
+                }
 
-                match &variant.fields {
-                    Fields::Unit => {
-                        // TODO Unit
-                        panic::deref_cannot_support_unit_variant();
-                    },
-                    Fields::Named(fields) => {
-                        // TODO Struct
-                        let mut pattern_tokens = String::new();
-                        let mut block_tokens = String::new();
+                let mut index_counter = 0;
 
-                        let mut ty = TokenStream::new();
+                let fields = &variant.fields;
 
-                        let mut counter = 0;
+                let field = if fields.len() == 1 {
+                    let field = fields.into_iter().next().unwrap();
 
-                        for field in fields.named.iter() {
-                            let field_attribute = FieldAttributeBuilder {
-                                enable_flag: true
-                            }
-                            .from_attributes(&field.attrs, traits);
+                    let _ = FieldAttributeBuilder {
+                        enable_flag: true
+                    }
+                    .build_from_attributes(&field.attrs, traits)?;
 
-                            if field_attribute.flag {
-                                if !ty.is_empty() {
-                                    panic::multiple_deref_fields_of_variant(&variant_ident);
-                                }
+                    index_counter += 1;
 
-                                let field_name = field.ident.as_ref().unwrap().to_string();
+                    field
+                } else {
+                    let mut deref_field: Option<&Field> = None;
 
-                                ty.extend(field.ty.clone().into_token_stream());
+                    for field in variant.fields.iter() {
+                        let field_attribute = FieldAttributeBuilder {
+                            enable_flag: true
+                        }
+                        .build_from_attributes(&field.attrs, traits)?;
 
-                                if ty_all.is_empty() {
-                                    ty_all.extend(field.ty.clone().into_token_stream());
-                                }
-
-                                block_tokens
-                                    .write_fmt(format_args!(
-                                        "return {field_name};",
-                                        field_name = field_name
-                                    ))
-                                    .unwrap();
-                                pattern_tokens
-                                    .write_fmt(format_args!(
-                                        "{field_name}, ..",
-                                        field_name = field_name
-                                    ))
-                                    .unwrap();
+                        if field_attribute.flag {
+                            if deref_field.is_some() {
+                                return Err(super::panic::multiple_deref_fields_of_variant(
+                                    field_attribute.span,
+                                    variant,
+                                ));
                             }
 
-                            counter += 1;
+                            deref_field = Some(field);
                         }
 
-                        if ty.is_empty() {
-                            if counter == 1 {
-                                let field = fields.named.iter().next().unwrap();
+                        index_counter += 1;
+                    }
 
-                                let field_name = field.ident.as_ref().unwrap().to_string();
+                    if let Some(deref_field) = deref_field {
+                        deref_field
+                    } else {
+                        return Err(super::panic::no_deref_field_of_variant(meta.span(), variant));
+                    }
+                };
 
-                                ty.extend(field.ty.clone().into_token_stream());
+                index_counter -= 1;
 
-                                if ty_all.is_empty() {
-                                    ty_all.extend(field.ty.clone().into_token_stream());
-                                }
+                let (field_name, is_tuple): (Ident, bool) = match field.ident.as_ref() {
+                    Some(ident) => (ident.clone(), false),
+                    None => (syn::parse_str(&format!("_{}", index_counter)).unwrap(), true),
+                };
 
-                                block_tokens
-                                    .write_fmt(format_args!(
-                                        "return {field_name};",
-                                        field_name = field_name
-                                    ))
-                                    .unwrap();
-                                pattern_tokens
-                                    .write_fmt(format_args!(
-                                        "{field_name}, ..",
-                                        field_name = field_name
-                                    ))
-                                    .unwrap();
-                            } else {
-                                panic::no_deref_field_of_variant(&variant_ident);
-                            }
-                        }
+                variants.push((&variant.ident, is_tuple, index_counter, field_name, &field.ty));
+            }
 
-                        match_tokens
-                            .write_fmt(format_args!(
-                                "{enum_name}::{variant_ident} {{ {pattern_tokens} }} => {{ \
-                                 {block_tokens} }}",
-                                enum_name = enum_name,
-                                variant_ident = variant_ident,
-                                pattern_tokens = pattern_tokens,
-                                block_tokens = block_tokens
-                            ))
-                            .unwrap();
-                    },
-                    Fields::Unnamed(fields) => {
-                        // TODO Tuple
-                        let mut pattern_tokens = String::new();
-                        let mut block_tokens = String::new();
+            if variants.is_empty() {
+                return Err(super::panic::no_deref_field(meta.span()));
+            }
 
-                        let mut ty = TokenStream::new();
+            if target_token_stream.is_empty() {
+                let ty = variants[0].4;
+                let dereference_ty = dereference(ty);
 
-                        let mut counter = 0;
+                target_token_stream.extend(quote!(#dereference_ty));
+            }
 
-                        for (index, field) in fields.unnamed.iter().enumerate() {
-                            let field_attribute = FieldAttributeBuilder {
-                                enable_flag: true
-                            }
-                            .from_attributes(&field.attrs, traits);
+            for (variant_ident, is_tuple, index, field_name, _) in variants {
+                let mut pattern_token_stream = proc_macro2::TokenStream::new();
 
-                            if field_attribute.flag {
-                                if !ty.is_empty() {
-                                    panic::multiple_deref_fields_of_variant(&variant_ident);
-                                }
+                if is_tuple {
+                    for _ in 0..index {
+                        pattern_token_stream.extend(quote!(_,));
+                    }
 
-                                let field_name = format!("{}", index);
+                    pattern_token_stream.extend(quote!( #field_name, .. ));
 
-                                ty.extend(field.ty.clone().into_token_stream());
+                    arms_token_stream.extend(
+                        quote!( Self::#variant_ident ( #pattern_token_stream ) => #field_name, ),
+                    );
+                } else {
+                    pattern_token_stream.extend(quote!( #field_name, .. ));
 
-                                if ty_all.is_empty() {
-                                    ty_all.extend(field.ty.clone().into_token_stream());
-                                }
-
-                                block_tokens
-                                    .write_fmt(format_args!(
-                                        "return _{field_name};",
-                                        field_name = field_name
-                                    ))
-                                    .unwrap();
-                                pattern_tokens
-                                    .write_fmt(format_args!(
-                                        "_{field_name},",
-                                        field_name = field_name
-                                    ))
-                                    .unwrap();
-                            } else {
-                                pattern_tokens.push_str("_,");
-                            }
-
-                            counter += 1;
-                        }
-
-                        if ty.is_empty() {
-                            if counter == 1 {
-                                let field = fields.unnamed.iter().next().unwrap();
-
-                                let field_name = String::from("0");
-
-                                ty.extend(field.ty.clone().into_token_stream());
-
-                                if ty_all.is_empty() {
-                                    ty_all.extend(field.ty.clone().into_token_stream());
-                                }
-
-                                block_tokens
-                                    .write_fmt(format_args!(
-                                        "return _{field_name};",
-                                        field_name = field_name
-                                    ))
-                                    .unwrap();
-
-                                pattern_tokens.clear();
-                                pattern_tokens
-                                    .write_fmt(format_args!(
-                                        "_{field_name}",
-                                        field_name = field_name
-                                    ))
-                                    .unwrap();
-                            } else {
-                                panic::no_deref_field_of_variant(&variant_ident);
-                            }
-                        }
-
-                        match_tokens
-                            .write_fmt(format_args!(
-                                "{enum_name}::{variant_ident}( {pattern_tokens} ) => {{ \
-                                 {block_tokens} }}",
-                                enum_name = enum_name,
-                                variant_ident = variant_ident,
-                                pattern_tokens = pattern_tokens,
-                                block_tokens = block_tokens
-                            ))
-                            .unwrap();
-                    },
+                    arms_token_stream.extend(
+                        quote!( Self::#variant_ident { #pattern_token_stream } => #field_name, ),
+                    );
                 }
             }
         }
-
-        match_tokens.push('}');
-
-        deref_tokens.extend(TokenStream::from_str(&match_tokens).unwrap());
 
         let ident = &ast.ident;
 
         let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
-        let deref_impl = quote! {
-            impl #impl_generics core::ops::Deref for #ident #ty_generics #where_clause {
-                type Target = #ty_all;
+        token_stream.extend(quote! {
+            impl #impl_generics ::core::ops::Deref for #ident #ty_generics #where_clause {
+                type Target = #target_token_stream;
 
                 #[inline]
                 fn deref(&self) -> &Self::Target {
-                    #deref_tokens
+                    match self {
+                        #arms_token_stream
+                    }
                 }
             }
-        };
+        });
 
-        tokens.extend(deref_impl);
+        Ok(())
     }
 }

@@ -1,17 +1,34 @@
 #![cfg(feature = "Default")]
 #![no_std]
+#![allow(clippy::default_constructed_unit_structs)]
 
 extern crate alloc;
-
-#[macro_use]
-extern crate educe;
 
 use alloc::string::String;
 
 use assert_eq_float::assert_eq_float;
+use educe::Educe;
 
 #[test]
-#[allow(irrefutable_let_patterns, dead_code)]
+fn empty() {
+    #[derive(Educe)]
+    #[educe(Default)]
+    enum Enum {
+        Struct {},
+    }
+
+    #[derive(Educe)]
+    #[educe(Default)]
+    enum Enum2 {
+        Tuple(),
+    }
+
+    assert!(matches!(Enum::default(), Enum::Struct {}));
+    assert!(matches!(Enum2::default(), Enum2::Tuple {}));
+}
+
+#[allow(dead_code)]
+#[test]
 fn basic() {
     #[derive(Educe)]
     #[educe(Default)]
@@ -56,11 +73,11 @@ fn basic() {
     }));
 }
 
-#[test]
 #[allow(dead_code)]
-fn type_default_1() {
+#[test]
+fn type_expression_1() {
     #[derive(Educe)]
-    #[educe(Default(expression = "Enum::Struct { f1: 1 }"))]
+    #[educe(Default(expression = Enum::Struct { f1: 1 }))]
     enum Enum {
         Unit,
         Struct { f1: u8 },
@@ -79,11 +96,11 @@ fn type_default_1() {
     }
 }
 
-#[test]
 #[allow(dead_code)]
-fn type_default_2() {
+#[test]
+fn type_expression_2() {
     #[derive(Educe)]
-    #[educe(Default(expression("Enum::Struct { f1: 1 }")))]
+    #[educe(Default(expression(Enum::Struct { f1: 1 })))]
     enum Enum {
         Unit,
         Struct { f1: u8 },
@@ -102,9 +119,9 @@ fn type_default_2() {
     }
 }
 
-#[test]
 #[allow(irrefutable_let_patterns, dead_code)]
-fn field_default_1() {
+#[test]
+fn field_expression_1() {
     #[derive(Educe)]
     #[educe(Default)]
     enum Enum1 {
@@ -179,26 +196,26 @@ fn field_default_1() {
     }
 }
 
-#[test]
 #[allow(irrefutable_let_patterns, dead_code)]
-fn field_default_2() {
+#[test]
+fn field_expression_2() {
     #[derive(Educe)]
     #[educe(Default)]
     enum Enum1 {
         Struct {
-            #[educe(Default = 1)]
+            #[educe(Default(expression = 1))]
             f1: u8,
-            #[educe(Default = 11111111111111111111111111111)]
+            #[educe(Default(expression = 11111111111111111111111111111))]
             f2: i128,
-            #[educe(Default = 1.1)]
+            #[educe(Default(expression = 1.1))]
             f3: f64,
-            #[educe(Default = true)]
+            #[educe(Default(expression = true))]
             f4: bool,
-            #[educe(Default = "Hi")]
+            #[educe(Default(expression = "Hi"))]
             f5: &'static str,
-            #[educe(Default = "Hello")]
+            #[educe(Default(expression = "Hello"))]
             f6: String,
-            #[educe(Default = 'M')]
+            #[educe(Default(expression = 'M'))]
             f7: char,
         },
     }
@@ -209,13 +226,13 @@ fn field_default_2() {
         Unit,
         #[educe(Default)]
         Tuple(
-            #[educe(Default = 1)] u8,
-            #[educe(Default = 11111111111111111111111111111)] i128,
-            #[educe(Default = 1.1)] f64,
-            #[educe(Default = true)] bool,
-            #[educe(Default = "Hi")] &'static str,
-            #[educe(Default = "Hello")] String,
-            #[educe(Default = 'M')] char,
+            #[educe(Default(expression = 1))] u8,
+            #[educe(Default(expression = 11111111111111111111111111111))] i128,
+            #[educe(Default(expression = 1.1))] f64,
+            #[educe(Default(expression = true))] bool,
+            #[educe(Default(expression = "Hi"))] &'static str,
+            #[educe(Default(expression = "Hello"))] String,
+            #[educe(Default(expression = 'M'))] char,
         ),
     }
 
@@ -256,26 +273,26 @@ fn field_default_2() {
     }
 }
 
-#[test]
 #[allow(irrefutable_let_patterns, dead_code)]
-fn field_default_3() {
+#[test]
+fn field_expression_3() {
     #[derive(Educe)]
     #[educe(Default)]
     enum Enum1 {
         Struct {
-            #[educe(Default(expression = "0 + 1"))]
+            #[educe(Default(expression(1)))]
             f1: u8,
-            #[educe(Default(expression = "-11111111111111111111111111111 * -1"))]
+            #[educe(Default(expression(11111111111111111111111111111)))]
             f2: i128,
-            #[educe(Default(expression = "1.0 + 0.1"))]
+            #[educe(Default(expression(1.1)))]
             f3: f64,
-            #[educe(Default(expression = "!false"))]
+            #[educe(Default(expression(true)))]
             f4: bool,
-            #[educe(Default(expression = "\"Hi\""))]
+            #[educe(Default(expression("Hi")))]
             f5: &'static str,
-            #[educe(Default(expression = "String::from(\"Hello\")"))]
+            #[educe(Default(expression("Hello")))]
             f6: String,
-            #[educe(Default(expression = "'M'"))]
+            #[educe(Default(expression('M')))]
             f7: char,
         },
     }
@@ -286,13 +303,13 @@ fn field_default_3() {
         Unit,
         #[educe(Default)]
         Tuple(
-            #[educe(Default(expression = "0 + 1"))] u8,
-            #[educe(Default(expression = "-11111111111111111111111111111 * -1"))] i128,
-            #[educe(Default(expression = "1.0 + 0.1"))] f64,
-            #[educe(Default(expression = "!false"))] bool,
-            #[educe(Default(expression = "\"Hi\""))] &'static str,
-            #[educe(Default(expression = "String::from(\"Hello\")"))] String,
-            #[educe(Default(expression = "'M'"))] char,
+            #[educe(Default(expression(1)))] u8,
+            #[educe(Default(expression(11111111111111111111111111111)))] i128,
+            #[educe(Default(expression(1.1)))] f64,
+            #[educe(Default(expression(true)))] bool,
+            #[educe(Default(expression("Hi")))] &'static str,
+            #[educe(Default(expression("Hello")))] String,
+            #[educe(Default(expression('M')))] char,
         ),
     }
 
@@ -333,26 +350,32 @@ fn field_default_3() {
     }
 }
 
+#[allow(
+    irrefutable_let_patterns,
+    dead_code,
+    clippy::identity_op,
+    clippy::nonminimal_bool,
+    clippy::useless_conversion
+)]
 #[test]
-#[allow(irrefutable_let_patterns, dead_code)]
-fn field_default_4() {
+fn field_expression_4() {
     #[derive(Educe)]
     #[educe(Default)]
     enum Enum1 {
         Struct {
-            #[educe(Default(expression("0 + 1")))]
+            #[educe(Default(expression = 0 + 1))]
             f1: u8,
-            #[educe(Default(expression("-11111111111111111111111111111 * -1")))]
+            #[educe(Default(expression = -11111111111111111111111111111 * -1))]
             f2: i128,
-            #[educe(Default(expression("1.0 + 0.1")))]
+            #[educe(Default(expression = 1.0 + 0.1))]
             f3: f64,
-            #[educe(Default(expression("!false")))]
+            #[educe(Default(expression = !false))]
             f4: bool,
-            #[educe(Default(expression("\"Hi\"")))]
+            #[educe(Default(expression = "Hi".into()))]
             f5: &'static str,
-            #[educe(Default(expression("String::from(\"Hello\")")))]
+            #[educe(Default(expression = String::from("Hello")))]
             f6: String,
-            #[educe(Default(expression("'M'")))]
+            #[educe(Default(expression = 'M'.into()))]
             f7: char,
         },
     }
@@ -363,13 +386,13 @@ fn field_default_4() {
         Unit,
         #[educe(Default)]
         Tuple(
-            #[educe(Default(expression("0 + 1")))] u8,
-            #[educe(Default(expression("-11111111111111111111111111111 * -1")))] i128,
-            #[educe(Default(expression("1.0 + 0.1")))] f64,
-            #[educe(Default(expression("!false")))] bool,
-            #[educe(Default(expression("\"Hi\"")))] &'static str,
-            #[educe(Default(expression("String::from(\"Hello\")")))] String,
-            #[educe(Default(expression("'M'")))] char,
+            #[educe(Default(expression = 0 + 1))] u8,
+            #[educe(Default(expression = -11111111111111111111111111111 * -1))] i128,
+            #[educe(Default(expression = 1.0 + 0.1))] f64,
+            #[educe(Default(expression = !false))] bool,
+            #[educe(Default(expression = "Hi".into()))] &'static str,
+            #[educe(Default(expression = String::from("Hello")))] String,
+            #[educe(Default(expression = 'M'.into()))] char,
         ),
     }
 
@@ -410,11 +433,11 @@ fn field_default_4() {
     }
 }
 
-#[test]
 #[allow(dead_code)]
+#[test]
 fn bound_1() {
     #[derive(Educe)]
-    #[educe(Default(bound))]
+    #[educe(Default)]
     enum Enum<T> {
         Unit,
         #[educe(Default)]
@@ -429,8 +452,8 @@ fn bound_1() {
     }));
 }
 
-#[test]
 #[allow(dead_code)]
+#[test]
 fn bound_2() {
     #[derive(Educe)]
     #[educe(Default(bound = "T: core::default::Default"))]
@@ -448,11 +471,11 @@ fn bound_2() {
     }));
 }
 
-#[test]
 #[allow(dead_code)]
+#[test]
 fn bound_3() {
     #[derive(Educe)]
-    #[educe(Default(bound("T: core::default::Default")))]
+    #[educe(Default(bound(T: core::default::Default)))]
     enum Enum<T> {
         Unit,
         #[educe(Default)]
@@ -467,8 +490,8 @@ fn bound_3() {
     }));
 }
 
+#[allow(dead_code)]
 #[test]
-#[allow(irrefutable_let_patterns, dead_code)]
 fn new() {
     #[derive(Educe)]
     #[educe(Default(new))]

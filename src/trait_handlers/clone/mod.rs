@@ -1,36 +1,35 @@
-mod models;
-
 mod clone_enum;
 mod clone_struct;
 mod clone_union;
+mod models;
 
-use clone_enum::CloneEnumHandler;
-use clone_struct::CloneStructHandler;
-use clone_union::CloneUnionHandler;
-use proc_macro2::TokenStream;
 use syn::{Data, DeriveInput, Meta};
 
 use super::TraitHandler;
 use crate::Trait;
 
-pub struct CloneHandler;
+pub(crate) struct CloneHandler;
 
 impl TraitHandler for CloneHandler {
+    #[inline]
     fn trait_meta_handler(
-        ast: &DeriveInput,
-        tokens: &mut TokenStream,
+        ast: &mut DeriveInput,
+        token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
-    ) {
+    ) -> syn::Result<()> {
         match ast.data {
-            Data::Struct(_) => {
-                CloneStructHandler::trait_meta_handler(ast, tokens, traits, meta);
-            },
+            Data::Struct(_) => clone_struct::CloneStructHandler::trait_meta_handler(
+                ast,
+                token_stream,
+                traits,
+                meta,
+            ),
             Data::Enum(_) => {
-                CloneEnumHandler::trait_meta_handler(ast, tokens, traits, meta);
+                clone_enum::CloneEnumHandler::trait_meta_handler(ast, token_stream, traits, meta)
             },
             Data::Union(_) => {
-                CloneUnionHandler::trait_meta_handler(ast, tokens, traits, meta);
+                clone_union::CloneUnionHandler::trait_meta_handler(ast, token_stream, traits, meta)
             },
         }
     }

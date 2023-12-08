@@ -1,48 +1,85 @@
 mod models;
 
-use models::TypeAttributeBuilder;
-use proc_macro2::TokenStream;
+use models::{FieldAttributeBuilder, TypeAttributeBuilder};
 use quote::quote;
-use syn::{DeriveInput, Generics, Meta};
+use syn::{Data, DeriveInput, Meta};
 
 use super::TraitHandler;
 use crate::Trait;
 
-pub struct EqHandler;
+pub(crate) struct EqHandler;
 
 impl TraitHandler for EqHandler {
+    #[inline]
     fn trait_meta_handler(
-        ast: &DeriveInput,
-        tokens: &mut TokenStream,
-        _traits: &[Trait],
+        ast: &mut DeriveInput,
+        token_stream: &mut proc_macro2::TokenStream,
+        traits: &[Trait],
         meta: &Meta,
-    ) {
+    ) -> syn::Result<()> {
+        #[cfg(feature = "PartialEq")]
+        let contains_partial_eq = traits.contains(&Trait::PartialEq);
+
+        #[cfg(not(feature = "PartialEq"))]
+        let contains_partial_eq = false;
+
         let type_attribute = TypeAttributeBuilder {
-            enable_bound: true
+            enable_flag:  true,
+            enable_bound: !contains_partial_eq,
         }
-        .from_eq_meta(meta);
+        .build_from_eq_meta(meta)?;
 
-        let bound = type_attribute
-            .bound
-            .into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
+        // if `contains_partial_eq` is true, the implementation is handled by the `PartialEq` attribute, and field attributes is also handled by the `PartialEq` attribute
+        if !contains_partial_eq {
+            match &ast.data {
+                Data::Struct(data) => {
+                    for field in data.fields.iter() {
+                        let _ =
+                            FieldAttributeBuilder.build_from_attributes(&field.attrs, traits)?;
+                    }
+                },
+                Data::Enum(data) => {
+                    for variant in data.variants.iter() {
+                        let _ = TypeAttributeBuilder {
+                            enable_flag: false, enable_bound: false
+                        }
+                        .build_from_attributes(&variant.attrs, traits)?;
 
-        let ident = &ast.ident;
-
-        let mut generics_cloned: Generics = ast.generics.clone();
-
-        let where_clause = generics_cloned.make_where_clause();
-
-        for where_predicate in bound {
-            where_clause.predicates.push(where_predicate);
-        }
-
-        let (impl_generics, ty_generics, where_clause) = generics_cloned.split_for_impl();
-
-        let compare_impl = quote! {
-            impl #impl_generics core::cmp::Eq for #ident #ty_generics #where_clause {
+                        for field in variant.fields.iter() {
+                            let _ = FieldAttributeBuilder
+                                .build_from_attributes(&field.attrs, traits)?;
+                        }
+                    }
+                },
+                Data::Union(data) => {
+                    for field in data.fields.named.iter() {
+                        let _ =
+                            FieldAttributeBuilder.build_from_attributes(&field.attrs, traits)?;
+                    }
+                },
             }
-        };
 
-        tokens.extend(compare_impl);
+            let ident = &ast.ident;
+
+            let bound = type_attribute.bound.into_where_predicates_by_generic_parameters(
+                &ast.generics.params,
+                &syn::parse2(quote!(::core::cmp::PartialEq)).unwrap(),
+            );
+
+            let where_clause = ast.generics.make_where_clause();
+
+            for where_predicate in bound {
+                where_clause.predicates.push(where_predicate);
+            }
+
+            let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
+
+            token_stream.extend(quote! {
+                impl #impl_generics ::core::cmp::Eq for #ident #ty_generics #where_clause {
+                }
+            });
+        }
+
+        Ok(())
     }
 }

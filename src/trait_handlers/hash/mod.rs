@@ -1,33 +1,34 @@
-mod models;
-
 mod hash_enum;
 mod hash_struct;
+mod hash_union;
+mod models;
+mod panic;
 
-use hash_enum::HashEnumHandler;
-use hash_struct::HashStructHandler;
-use proc_macro2::TokenStream;
 use syn::{Data, DeriveInput, Meta};
 
 use super::TraitHandler;
-use crate::{panic, Trait};
+use crate::Trait;
 
-pub struct HashHandler;
+pub(crate) struct HashHandler;
 
 impl TraitHandler for HashHandler {
+    #[inline]
     fn trait_meta_handler(
-        ast: &DeriveInput,
-        tokens: &mut TokenStream,
+        ast: &mut DeriveInput,
+        token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
-    ) {
+    ) -> syn::Result<()> {
         match ast.data {
             Data::Struct(_) => {
-                HashStructHandler::trait_meta_handler(ast, tokens, traits, meta);
+                hash_struct::HashStructHandler::trait_meta_handler(ast, token_stream, traits, meta)
             },
             Data::Enum(_) => {
-                HashEnumHandler::trait_meta_handler(ast, tokens, traits, meta);
+                hash_enum::HashEnumHandler::trait_meta_handler(ast, token_stream, traits, meta)
             },
-            Data::Union(_) => panic::trait_not_support_union(Trait::Hash),
+            Data::Union(_) => {
+                hash_union::HashUnionHandler::trait_meta_handler(ast, token_stream, traits, meta)
+            },
         }
     }
 }

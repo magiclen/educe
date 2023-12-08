@@ -1,24 +1,21 @@
-use std::str::FromStr;
-
-use proc_macro2::TokenStream;
-use quote::{quote, ToTokens};
-use syn::{Data, DeriveInput, Fields, Generics, Meta};
+use quote::quote;
+use syn::{Data, DeriveInput, Fields, Meta, Type};
 
 use super::{
-    super::TraitHandler,
-    models::{FieldAttributeBuilder, FieldAttributeName, TypeAttributeBuilder, TypeAttributeName},
+    models::{FieldAttributeBuilder, FieldName, TypeAttributeBuilder, TypeName},
+    TraitHandler,
 };
-use crate::{panic, Trait};
+use crate::{common::ident_index::IdentOrIndex, Trait};
 
 pub struct DebugStructHandler;
 
 impl TraitHandler for DebugStructHandler {
     fn trait_meta_handler(
-        ast: &DeriveInput,
-        tokens: &mut TokenStream,
+        ast: &mut DeriveInput,
+        token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
-    ) {
+    ) -> syn::Result<()> {
         let is_tuple = {
             if let Data::Struct(data) = &ast.data {
                 matches!(data.fields, Fields::Unnamed(_))
@@ -29,267 +26,123 @@ impl TraitHandler for DebugStructHandler {
 
         let type_attribute = TypeAttributeBuilder {
             enable_flag:        true,
-            name:               TypeAttributeName::Default,
+            enable_unsafe:      false,
             enable_name:        true,
-            named_field:        !is_tuple,
             enable_named_field: true,
             enable_bound:       true,
+            name:               TypeName::Default,
+            named_field:        !is_tuple,
         }
-        .from_debug_meta(meta);
+        .build_from_debug_meta(meta)?;
 
-        let name = type_attribute.name.into_string_by_ident(&ast.ident);
+        let name = type_attribute.name.to_ident_by_ident(&ast.ident);
 
-        let named_field = type_attribute.named_field;
+        let mut debug_types: Vec<&Type> = Vec::new();
 
-        let bound = type_attribute
-            .bound
-            .into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
-
-        let mut builder_tokens = TokenStream::new();
+        let mut builder_token_stream = proc_macro2::TokenStream::new();
         let mut has_fields = false;
 
-        if named_field {
-            if name.is_empty() {
-                builder_tokens.extend(quote!(
-                    struct RawString(&'static str);
-
-                    impl core::fmt::Debug for RawString {
-                        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                            f.write_str(self.0)
-                        }
-                    }
-                ));
-                builder_tokens.extend(quote!(let mut builder = formatter.debug_map();));
+        if type_attribute.named_field {
+            builder_token_stream.extend(if let Some(name) = name {
+                quote!(let mut builder = f.debug_struct(stringify!(#name));)
             } else {
-                builder_tokens.extend(quote!(let mut builder = formatter.debug_struct(#name);));
-            }
+                super::common::create_debug_map_builder()
+            });
 
             if let Data::Struct(data) = &ast.data {
                 for (index, field) in data.fields.iter().enumerate() {
                     let field_attribute = FieldAttributeBuilder {
-                        name:          FieldAttributeName::Default,
                         enable_name:   true,
                         enable_ignore: true,
-                        enable_impl:   true,
+                        enable_method: true,
+                        name:          FieldName::Default,
                     }
-                    .from_attributes(&field.attrs, traits);
+                    .build_from_attributes(&field.attrs, traits)?;
 
                     if field_attribute.ignore {
                         continue;
                     }
 
-                    let rename = field_attribute.name.into_option_string();
-
-                    let format_trait = field_attribute.format_trait;
-                    let format_method = field_attribute.format_method;
-
-                    let (key, field_name) = match rename {
-                        Some(rename) => {
-                            if let Some(ident) = field.ident.as_ref() {
-                                (rename, ident.to_string())
-                            } else {
-                                (rename, format!("{}", index))
-                            }
+                    let (key, field_name) = match field_attribute.name {
+                        FieldName::Custom(name) => {
+                            (name, IdentOrIndex::from_ident_with_index(field.ident.as_ref(), index))
                         },
-                        None => {
+                        FieldName::Default => {
                             if let Some(ident) = field.ident.as_ref() {
-                                (ident.to_string(), ident.to_string())
+                                (ident.clone(), IdentOrIndex::from(ident))
                             } else {
-                                (format!("_{}", index), format!("{}", index))
+                                (
+                                    syn::parse_str(&format!("_{}", index)).unwrap(),
+                                    IdentOrIndex::from(index),
+                                )
                             }
                         },
                     };
 
-                    match format_trait {
-                        Some(format_trait) => {
-                            let format_method = format_method.unwrap();
+                    let ty = &field.ty;
 
-                            builder_tokens.extend(
-                                TokenStream::from_str(&format!(
-                                    "
-                                let arg = {{
-                                    struct MyDebug<'a, T: {format_trait}>(&'a T);
+                    if let Some(method) = field_attribute.method {
+                        builder_token_stream.extend(super::common::create_format_arg(
+                            &ast.generics.params,
+                            ty,
+                            &method,
+                            quote!(&self.#field_name),
+                        ));
 
-                                    impl<'a, T: {format_trait}> core::fmt::Debug for MyDebug<'a, \
-                                     T> {{
-                                        fn fmt(&self, formatter: &mut core::fmt::Formatter) -> \
-                                     core::fmt::Result {{
-                                            {format_trait}::{format_method}(self.0, formatter)
-                                        }}
-                                    }}
+                        builder_token_stream.extend(if name.is_some() {
+                            quote! (builder.field(stringify!(#key), &arg);)
+                        } else {
+                            quote! (builder.entry(&RawString(stringify!(#key)), &arg);)
+                        });
+                    } else {
+                        debug_types.push(ty);
 
-                                    MyDebug(&self.{field_name})
-                                }};
-                            ",
-                                    format_trait = format_trait,
-                                    format_method = format_method,
-                                    field_name = field_name
-                                ))
-                                .unwrap(),
-                            );
-
-                            let statement = if name.is_empty() {
-                                format!("builder.entry(&RawString({key:?}), &arg);", key = key)
-                            } else {
-                                format!("builder.field({key:?}, &arg);", key = key)
-                            };
-
-                            builder_tokens.extend(TokenStream::from_str(&statement).unwrap());
-                        },
-                        None => match format_method {
-                            Some(format_method) => {
-                                let ty = field.ty.clone().into_token_stream().to_string();
-
-                                builder_tokens.extend(
-                                    TokenStream::from_str(&format!(
-                                        "
-                                        let arg = {{
-                                            struct MyDebug<'a>(&'a {ty});
-
-                                            impl<'a> core::fmt::Debug for MyDebug<'a> {{
-                                                fn fmt(&self, formatter: &mut \
-                                         core::fmt::Formatter) -> core::fmt::Result {{
-                                                    {format_method}(self.0, formatter)
-                                                }}
-                                            }}
-
-                                            MyDebug(&self.{field_name})
-                                        }};
-                                    ",
-                                        ty = ty,
-                                        format_method = format_method,
-                                        field_name = field_name
-                                    ))
-                                    .unwrap(),
-                                );
-
-                                let statement = if name.is_empty() {
-                                    format!("builder.entry(&RawString({key:?}), &arg);", key = key)
-                                } else {
-                                    format!("builder.field({key:?}, &arg);", key = key)
-                                };
-
-                                builder_tokens.extend(TokenStream::from_str(&statement).unwrap());
-                            },
-                            None => {
-                                let statement = if name.is_empty() {
-                                    format!(
-                                        "builder.entry(&RawString({key:?}), &self.{field_name});",
-                                        key = key,
-                                        field_name = field_name
-                                    )
-                                } else {
-                                    format!(
-                                        "builder.field({key:?}, &self.{field_name});",
-                                        key = key,
-                                        field_name = field_name
-                                    )
-                                };
-
-                                builder_tokens.extend(TokenStream::from_str(&statement).unwrap());
-                            },
-                        },
+                        builder_token_stream.extend(if name.is_some() {
+                            quote! (builder.field(stringify!(#key), &self.#field_name);)
+                        } else {
+                            quote! (builder.entry(&RawString(stringify!(#key)), &self.#field_name);)
+                        });
                     }
 
                     has_fields = true;
                 }
             }
         } else {
-            builder_tokens.extend(quote!(let mut builder = formatter.debug_tuple(#name);));
+            builder_token_stream
+                .extend(quote!(let mut builder = f.debug_tuple(stringify!(#name));));
 
             if let Data::Struct(data) = &ast.data {
                 for (index, field) in data.fields.iter().enumerate() {
                     let field_attribute = FieldAttributeBuilder {
-                        name:          FieldAttributeName::Default,
                         enable_name:   false,
                         enable_ignore: true,
-                        enable_impl:   true,
+                        enable_method: true,
+                        name:          FieldName::Default,
                     }
-                    .from_attributes(&field.attrs, traits);
+                    .build_from_attributes(&field.attrs, traits)?;
 
                     if field_attribute.ignore {
                         continue;
                     }
 
-                    let format_trait = field_attribute.format_trait;
-                    let format_method = field_attribute.format_method;
+                    let field_name =
+                        IdentOrIndex::from_ident_with_index(field.ident.as_ref(), index);
 
-                    let field_name = if let Some(ident) = field.ident.as_ref() {
-                        ident.to_string()
+                    let ty = &field.ty;
+
+                    if let Some(method) = field_attribute.method {
+                        builder_token_stream.extend(super::common::create_format_arg(
+                            &ast.generics.params,
+                            ty,
+                            &method,
+                            quote!(&self.#field_name),
+                        ));
+
+                        builder_token_stream.extend(quote! (builder.field(&arg);));
                     } else {
-                        format!("{}", index)
-                    };
+                        debug_types.push(ty);
 
-                    match format_trait {
-                        Some(format_trait) => {
-                            let format_method = format_method.unwrap();
-
-                            builder_tokens.extend(
-                                TokenStream::from_str(&format!(
-                                    "
-                                let arg = {{
-                                    struct MyDebug<'a, T: {format_trait}>(&'a T);
-
-                                    impl<'a, T: {format_trait}> core::fmt::Debug for MyDebug<'a, \
-                                     T> {{
-                                        fn fmt(&self, formatter: &mut core::fmt::Formatter) -> \
-                                     core::fmt::Result {{
-                                            {format_trait}::{format_method}(self.0, formatter)
-                                        }}
-                                    }}
-
-                                    MyDebug(&self.{field_name})
-                                }};
-                            ",
-                                    format_trait = format_trait,
-                                    format_method = format_method,
-                                    field_name = field_name
-                                ))
-                                .unwrap(),
-                            );
-
-                            builder_tokens
-                                .extend(TokenStream::from_str("builder.field(&arg);").unwrap());
-                        },
-                        None => match format_method {
-                            Some(format_method) => {
-                                let ty = field.ty.clone().into_token_stream().to_string();
-
-                                builder_tokens.extend(
-                                    TokenStream::from_str(&format!(
-                                        "
-                                        let arg = {{
-                                            struct MyDebug<'a>(&'a {ty});
-
-                                            impl<'a> core::fmt::Debug for MyDebug<'a> {{
-                                                fn fmt(&self, formatter: &mut \
-                                         core::fmt::Formatter) -> core::fmt::Result {{
-                                                    {format_method}(self.0, formatter)
-                                                }}
-                                            }}
-
-                                            MyDebug(&self.{field_name})
-                                        }};
-                                    ",
-                                        ty = ty,
-                                        format_method = format_method,
-                                        field_name = field_name
-                                    ))
-                                    .unwrap(),
-                                );
-
-                                builder_tokens
-                                    .extend(TokenStream::from_str("builder.field(&arg);").unwrap());
-                            },
-                            None => {
-                                let statement = format!(
-                                    "builder.field(&self.{field_name});",
-                                    field_name = field_name
-                                );
-
-                                builder_tokens.extend(TokenStream::from_str(&statement).unwrap());
-                            },
-                        },
+                        builder_token_stream.extend(quote! (builder.field(&self.#field_name);));
                     }
 
                     has_fields = true;
@@ -297,32 +150,37 @@ impl TraitHandler for DebugStructHandler {
             }
         }
 
-        if name.is_empty() && !has_fields {
-            panic::unit_struct_need_name();
-        }
-
         let ident = &ast.ident;
 
-        let mut generics_cloned: Generics = ast.generics.clone();
+        if !has_fields && name.is_none() {
+            return Err(super::panic::unit_struct_need_name(ident));
+        }
 
-        let where_clause = generics_cloned.make_where_clause();
+        let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
+            &ast.generics.params,
+            &syn::parse2(quote!(::core::fmt::Debug)).unwrap(),
+            &debug_types,
+        );
+
+        let where_clause = ast.generics.make_where_clause();
 
         for where_predicate in bound {
             where_clause.predicates.push(where_predicate);
         }
 
-        let (impl_generics, ty_generics, where_clause) = generics_cloned.split_for_impl();
+        let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
-        let debug_impl = quote! {
-            impl #impl_generics core::fmt::Debug for #ident #ty_generics #where_clause {
+        token_stream.extend(quote! {
+            impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
                 #[inline]
-                fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
-                    #builder_tokens
+                fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+                    #builder_token_stream
+
                     builder.finish()
                 }
             }
-        };
+        });
 
-        tokens.extend(debug_impl);
+        Ok(())
     }
 }

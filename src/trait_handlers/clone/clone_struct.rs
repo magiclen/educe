@@ -1,286 +1,172 @@
-use std::{fmt::Write, str::FromStr};
-
-use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{punctuated::Punctuated, Data, DeriveInput, Fields, Generics, Meta};
+use syn::{punctuated::Punctuated, Data, DeriveInput, Field, Fields, Index, Meta, Type};
 
-use super::{
-    super::TraitHandler,
-    models::{FieldAttributeBuilder, TypeAttributeBuilder},
+use super::models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder};
+use crate::{
+    common::where_predicates_bool::WherePredicates, supported_traits::Trait, TraitHandler,
 };
-use crate::Trait;
 
-pub struct CloneStructHandler;
+pub(crate) struct CloneStructHandler;
 
 impl TraitHandler for CloneStructHandler {
+    #[inline]
     fn trait_meta_handler(
-        ast: &DeriveInput,
-        tokens: &mut TokenStream,
+        ast: &mut DeriveInput,
+        token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
-    ) {
+    ) -> syn::Result<()> {
         let type_attribute = TypeAttributeBuilder {
             enable_flag: true, enable_bound: true
         }
-        .from_clone_meta(meta);
+        .build_from_clone_meta(meta)?;
 
-        let mut bound = Punctuated::new();
+        let mut bound: WherePredicates = Punctuated::new();
 
-        let mut clone_tokens = TokenStream::new();
-        let mut clone_from_tokens = TokenStream::new();
+        let mut clone_token_stream = proc_macro2::TokenStream::new();
+        let mut clone_from_token_stream = proc_macro2::TokenStream::new();
 
         if let Data::Struct(data) = &ast.data {
-            let mut field_attributes = Vec::new();
-            let mut field_names = Vec::new();
+            let mut fields: Vec<(&Field, FieldAttribute)> = Vec::new();
 
             #[cfg(feature = "Copy")]
-            let mut has_custom_clone_method = false;
-
-            for (index, field) in data.fields.iter().enumerate() {
-                let field_attribute = FieldAttributeBuilder {
-                    enable_impl: true
-                }
-                .from_attributes(&field.attrs, traits);
-
-                let field_name = if let Some(ident) = field.ident.as_ref() {
-                    ident.to_string()
-                } else {
-                    format!("{}", index)
-                };
-
-                #[cfg(feature = "Copy")]
-                if field_attribute.clone_method.is_some() {
-                    has_custom_clone_method = true;
-                }
-
-                field_attributes.push(field_attribute);
-                field_names.push(field_name);
-            }
-
-            #[cfg(feature = "Copy")]
-            let contains_copy = !has_custom_clone_method && traits.contains(&Trait::Copy);
+            let contains_copy = traits.contains(&Trait::Copy);
 
             #[cfg(not(feature = "Copy"))]
             let contains_copy = false;
 
-            if contains_copy {
-                bound = type_attribute
-                    .bound
-                    .into_punctuated_where_predicates_by_generic_parameters_with_copy(
-                        &ast.generics.params,
-                    );
-
-                clone_tokens.extend(quote!(*self));
-
-                let mut clone_from = String::new();
-
-                for field_name in field_names {
-                    clone_from
-                        .write_fmt(format_args!(
-                            "core::clone::Clone::clone_from(&mut self.{field_name}, \
-                             &_source.{field_name});",
-                            field_name = field_name
-                        ))
-                        .unwrap();
+            for field in data.fields.iter() {
+                let field_attribute = FieldAttributeBuilder {
+                    enable_method: !contains_copy
                 }
+                .build_from_attributes(&field.attrs, traits)?;
 
-                clone_from_tokens.extend(TokenStream::from_str(&clone_from).unwrap());
+                fields.push((field, field_attribute));
+            }
+
+            if contains_copy {
+                bound = type_attribute.bound.into_where_predicates_by_generic_parameters(
+                    &ast.generics.params,
+                    &syn::parse2(quote!(::core::marker::Copy)).unwrap(),
+                );
+
+                clone_token_stream.extend(quote!(*self));
             } else {
-                bound = type_attribute
-                    .bound
-                    .into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
+                let mut clone_types: Vec<&Type> = Vec::new();
 
                 match &data.fields {
                     Fields::Unit => {
-                        let ident = &ast.ident;
-
-                        clone_tokens.extend(quote!(#ident));
-                    },
-                    Fields::Unnamed(_) => {
-                        let mut clone = ast.ident.to_string();
-                        let mut clone_from = String::new();
-
-                        clone.push('(');
-
-                        for (index, field_attribute) in field_attributes.into_iter().enumerate() {
-                            let field_name = &field_names[index];
-
-                            let clone_trait = field_attribute.clone_trait;
-                            let clone_method = field_attribute.clone_method;
-
-                            match clone_trait {
-                                Some(clone_trait) => {
-                                    let clone_method = clone_method.unwrap();
-
-                                    clone
-                                        .write_fmt(format_args!(
-                                            "{clone_trait}::{clone_method}(&self.{field_name}),",
-                                            clone_trait = clone_trait,
-                                            clone_method = clone_method,
-                                            field_name = field_name
-                                        ))
-                                        .unwrap();
-                                    clone_from
-                                        .write_fmt(format_args!(
-                                            "self.{field_name} = \
-                                             {clone_trait}::{clone_method}(&_source.{field_name});",
-                                            clone_trait = clone_trait,
-                                            clone_method = clone_method,
-                                            field_name = field_name
-                                        ))
-                                        .unwrap();
-                                },
-                                None => match clone_method {
-                                    Some(clone_method) => {
-                                        clone
-                                            .write_fmt(format_args!(
-                                                "{clone_method}(&self.{field_name}),",
-                                                clone_method = clone_method,
-                                                field_name = field_name
-                                            ))
-                                            .unwrap();
-                                        clone_from
-                                            .write_fmt(format_args!(
-                                                "self.{field_name} = \
-                                                 {clone_method}(&_source.{field_name});",
-                                                clone_method = clone_method,
-                                                field_name = field_name
-                                            ))
-                                            .unwrap();
-                                    },
-                                    None => {
-                                        clone
-                                            .write_fmt(format_args!(
-                                                "core::clone::Clone::clone(&self.{field_name}),",
-                                                field_name = field_name
-                                            ))
-                                            .unwrap();
-                                        clone_from
-                                            .write_fmt(format_args!(
-                                                "core::clone::Clone::clone_from(&mut \
-                                                 self.{field_name}, &_source.{field_name});",
-                                                field_name = field_name
-                                            ))
-                                            .unwrap();
-                                    },
-                                },
-                            }
-                        }
-
-                        clone.push(')');
-
-                        clone_tokens.extend(TokenStream::from_str(&clone).unwrap());
-                        clone_from_tokens.extend(TokenStream::from_str(&clone_from).unwrap());
+                        clone_token_stream.extend(quote!(Self));
+                        clone_from_token_stream.extend(quote!(let _ = source;));
                     },
                     Fields::Named(_) => {
-                        let mut clone = ast.ident.to_string();
-                        let mut clone_from = String::new();
+                        let mut fields_token_stream = proc_macro2::TokenStream::new();
 
-                        clone.push('{');
+                        if fields.is_empty() {
+                            clone_from_token_stream.extend(quote!(let _ = source;));
+                        } else {
+                            for (field, field_attribute) in fields {
+                                let field_name = field.ident.as_ref().unwrap();
 
-                        for (index, field_attribute) in field_attributes.into_iter().enumerate() {
-                            let field_name = &field_names[index];
+                                if let Some(clone) = field_attribute.method.as_ref() {
+                                    fields_token_stream.extend(quote! {
+                                        #field_name: #clone(&self.#field_name),
+                                    });
+                                    clone_from_token_stream.extend(
+                                        quote!(self.#field_name = #clone(&source.#field_name);),
+                                    );
+                                } else {
+                                    clone_types.push(&field.ty);
 
-                            let clone_trait = field_attribute.clone_trait;
-                            let clone_method = field_attribute.clone_method;
-
-                            match clone_trait {
-                                Some(clone_trait) => {
-                                    let clone_method = clone_method.unwrap();
-
-                                    clone
-                                        .write_fmt(format_args!(
-                                            "{field_name}: \
-                                             {clone_trait}::{clone_method}(&self.{field_name}),",
-                                            clone_trait = clone_trait,
-                                            clone_method = clone_method,
-                                            field_name = field_name
-                                        ))
-                                        .unwrap();
-                                    clone_from
-                                        .write_fmt(format_args!(
-                                            "self.{field_name} = \
-                                             {clone_trait}::{clone_method}(&_source.{field_name});",
-                                            clone_trait = clone_trait,
-                                            clone_method = clone_method,
-                                            field_name = field_name
-                                        ))
-                                        .unwrap();
-                                },
-                                None => match clone_method {
-                                    Some(clone_method) => {
-                                        clone
-                                            .write_fmt(format_args!(
-                                                "{field_name}: {clone_method}(&self.{field_name}),",
-                                                clone_method = clone_method,
-                                                field_name = field_name
-                                            ))
-                                            .unwrap();
-                                        clone_from
-                                            .write_fmt(format_args!(
-                                                "self.{field_name} = \
-                                                 {clone_method}(&_source.{field_name});",
-                                                clone_method = clone_method,
-                                                field_name = field_name
-                                            ))
-                                            .unwrap();
-                                    },
-                                    None => {
-                                        clone
-                                            .write_fmt(format_args!(
-                                                "{field_name}: \
-                                                 core::clone::Clone::clone(&self.{field_name}),",
-                                                field_name = field_name
-                                            ))
-                                            .unwrap();
-                                        clone_from
-                                            .write_fmt(format_args!(
-                                                "core::clone::Clone::clone_from(&mut \
-                                                 self.{field_name}, &_source.{field_name});",
-                                                field_name = field_name
-                                            ))
-                                            .unwrap();
-                                    },
-                                },
+                                    fields_token_stream.extend(quote! {
+                                        #field_name: ::core::clone::Clone::clone(&self.#field_name),
+                                    });
+                                    clone_from_token_stream.extend(
+                                        quote!( ::core::clone::Clone::clone_from(&mut self.#field_name, &source.#field_name); ),
+                                    );
+                                }
                             }
                         }
 
-                        clone.push('}');
+                        clone_token_stream.extend(quote! {
+                            Self {
+                                #fields_token_stream
+                            }
+                        });
+                    },
+                    Fields::Unnamed(_) => {
+                        let mut fields_token_stream = proc_macro2::TokenStream::new();
 
-                        clone_tokens.extend(TokenStream::from_str(&clone).unwrap());
-                        clone_from_tokens.extend(TokenStream::from_str(&clone_from).unwrap());
+                        if fields.is_empty() {
+                            clone_from_token_stream.extend(quote!(let _ = source;));
+                        } else {
+                            for (index, (field, field_attribute)) in fields.into_iter().enumerate()
+                            {
+                                let field_name = Index::from(index);
+
+                                if let Some(clone) = field_attribute.method.as_ref() {
+                                    fields_token_stream.extend(quote!(#clone(&self.#field_name),));
+                                    clone_from_token_stream.extend(
+                                        quote!(self.#field_name = #clone(&source.#field_name);),
+                                    );
+                                } else {
+                                    clone_types.push(&field.ty);
+
+                                    fields_token_stream.extend(
+                                        quote! ( ::core::clone::Clone::clone(&self.#field_name), ),
+                                    );
+                                    clone_from_token_stream.extend(
+                                        quote!( ::core::clone::Clone::clone_from(&mut self.#field_name, &source.#field_name); ),
+                                    );
+                                }
+                            }
+                        }
+
+                        clone_token_stream.extend(quote!(Self ( #fields_token_stream )));
                     },
                 }
+
+                bound =
+                    type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
+                        &ast.generics.params,
+                        &syn::parse2(quote!(::core::clone::Clone)).unwrap(),
+                        &clone_types,
+                    );
             }
         }
 
+        let clone_from_fn_token_stream = if clone_from_token_stream.is_empty() {
+            None
+        } else {
+            Some(quote! {
+                #[inline]
+                fn clone_from(&mut self, source: &Self) {
+                    #clone_from_token_stream
+                }
+            })
+        };
+
         let ident = &ast.ident;
 
-        let mut generics_cloned: Generics = ast.generics.clone();
-
-        let where_clause = generics_cloned.make_where_clause();
+        let where_clause = ast.generics.make_where_clause();
 
         for where_predicate in bound {
             where_clause.predicates.push(where_predicate);
         }
 
-        let (impl_generics, ty_generics, where_clause) = generics_cloned.split_for_impl();
+        let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
-        let compare_impl = quote! {
-            impl #impl_generics core::clone::Clone for #ident #ty_generics #where_clause {
+        token_stream.extend(quote! {
+            impl #impl_generics ::core::clone::Clone for #ident #ty_generics #where_clause {
                 #[inline]
                 fn clone(&self) -> Self {
-                    #clone_tokens
+                    #clone_token_stream
                 }
 
-                #[allow(clippy::incorrect_clone_impl_on_copy_type)]
-                #[inline]
-                fn clone_from(&mut self, _source: &Self) {
-                    #clone_from_tokens
-                }
+                #clone_from_fn_token_stream
             }
-        };
+        });
 
-        tokens.extend(compare_impl);
+        Ok(())
     }
 }

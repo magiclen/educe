@@ -22,6 +22,21 @@ jobs:
           - nightly
         features:
           -
+          - --no-default-features --features Debug
+          - --no-default-features --features Clone
+          - --no-default-features --features Copy
+          - --no-default-features --features Clone --features Copy
+          - --no-default-features --features PartialEq
+          - --no-default-features --features Eq
+          - --no-default-features --features PartialEq --features Eq
+          - --no-default-features --features PartialOrd
+          - --no-default-features --features Ord
+          - --no-default-features --features PartialOrd --features Ord
+          - --no-default-features --features Hash
+          - --no-default-features --features Default
+          - --no-default-features --features Deref
+          - --no-default-features --features DerefMut
+          - --no-default-features --features Deref --features DerefMut
     name: Test ${{ matrix.toolchain }} on ${{ matrix.os }} (${{ matrix.features }})
     runs-on: ${{ matrix.os }}
     steps:
@@ -44,6 +59,21 @@ jobs:
           - 1.56
         features:
           -
+          - --no-default-features --features Debug
+          - --no-default-features --features Clone
+          - --no-default-features --features Copy
+          - --no-default-features --features Clone --features Copy
+          - --no-default-features --features PartialEq
+          - --no-default-features --features Eq
+          - --no-default-features --features PartialEq --features Eq
+          - --no-default-features --features PartialOrd
+          - --no-default-features --features Ord
+          - --no-default-features --features PartialOrd --features Ord
+          - --no-default-features --features Hash
+          - --no-default-features --features Default
+          - --no-default-features --features Deref
+          - --no-default-features --features DerefMut
+          - --no-default-features --features Deref --features DerefMut
     name: Test ${{ matrix.toolchain }} on ${{ matrix.os }} (${{ matrix.features }})
     runs-on: ${{ matrix.os }}
     steps:

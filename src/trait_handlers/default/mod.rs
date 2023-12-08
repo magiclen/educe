@@ -1,37 +1,43 @@
-mod models;
-
 mod default_enum;
 mod default_struct;
 mod default_union;
+mod models;
+mod panic;
 
-use default_enum::DefaultEnumHandler;
-use default_struct::DefaultStructHandler;
-use default_union::DefaultUnionHandler;
-use proc_macro2::TokenStream;
 use syn::{Data, DeriveInput, Meta};
 
 use super::TraitHandler;
 use crate::Trait;
 
-pub struct DefaultHandler;
+pub(crate) struct DefaultHandler;
 
 impl TraitHandler for DefaultHandler {
+    #[inline]
     fn trait_meta_handler(
-        ast: &DeriveInput,
-        tokens: &mut TokenStream,
+        ast: &mut DeriveInput,
+        token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
-    ) {
+    ) -> syn::Result<()> {
         match ast.data {
-            Data::Struct(_) => {
-                DefaultStructHandler::trait_meta_handler(ast, tokens, traits, meta);
-            },
-            Data::Enum(_) => {
-                DefaultEnumHandler::trait_meta_handler(ast, tokens, traits, meta);
-            },
-            Data::Union(_) => {
-                DefaultUnionHandler::trait_meta_handler(ast, tokens, traits, meta);
-            },
+            Data::Struct(_) => default_struct::DefaultStructHandler::trait_meta_handler(
+                ast,
+                token_stream,
+                traits,
+                meta,
+            ),
+            Data::Enum(_) => default_enum::DefaultEnumHandler::trait_meta_handler(
+                ast,
+                token_stream,
+                traits,
+                meta,
+            ),
+            Data::Union(_) => default_union::DefaultUnionHandler::trait_meta_handler(
+                ast,
+                token_stream,
+                traits,
+                meta,
+            ),
         }
     }
 }

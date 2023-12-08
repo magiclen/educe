@@ -1,36 +1,37 @@
-mod models;
-
+mod common;
 mod debug_enum;
 mod debug_struct;
 mod debug_union;
+mod models;
+mod panic;
 
-use debug_enum::DebugEnumHandler;
-use debug_struct::DebugStructHandler;
-use debug_union::DebugUnionHandler;
-use proc_macro2::TokenStream;
 use syn::{Data, DeriveInput, Meta};
 
 use super::TraitHandler;
 use crate::Trait;
 
-pub struct DebugHandler;
+pub(crate) struct DebugHandler;
 
 impl TraitHandler for DebugHandler {
+    #[inline]
     fn trait_meta_handler(
-        ast: &DeriveInput,
-        tokens: &mut TokenStream,
+        ast: &mut DeriveInput,
+        token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
-    ) {
+    ) -> syn::Result<()> {
         match ast.data {
-            Data::Struct(_) => {
-                DebugStructHandler::trait_meta_handler(ast, tokens, traits, meta);
-            },
+            Data::Struct(_) => debug_struct::DebugStructHandler::trait_meta_handler(
+                ast,
+                token_stream,
+                traits,
+                meta,
+            ),
             Data::Enum(_) => {
-                DebugEnumHandler::trait_meta_handler(ast, tokens, traits, meta);
+                debug_enum::DebugEnumHandler::trait_meta_handler(ast, token_stream, traits, meta)
             },
             Data::Union(_) => {
-                DebugUnionHandler::trait_meta_handler(ast, tokens, traits, meta);
+                debug_union::DebugUnionHandler::trait_meta_handler(ast, token_stream, traits, meta)
             },
         }
     }

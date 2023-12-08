@@ -1,69 +1,56 @@
-#![cfg(all(feature = "PartialEq", feature = "Eq"))]
+#![cfg(all(feature = "Eq", feature = "PartialEq"))]
 #![no_std]
 
-#[macro_use]
-extern crate educe;
+use educe::Educe;
 
-#[test]
 #[allow(dead_code)]
+#[test]
 fn basic() {
     #[derive(Educe)]
-    #[educe(Eq)]
+    #[educe(PartialEq(unsafe), Eq)]
     union Union {
         f1: u8,
     }
 
-    impl core::cmp::PartialEq for Union {
-        fn eq(&self, _other: &Union) -> bool {
-            true
+    assert!(
+        Union {
+            f1: 1
+        } == Union {
+            f1: 1
         }
-    }
+    );
+
+    assert!(
+        Union {
+            f1: 1
+        } != Union {
+            f1: 2
+        }
+    );
 }
 
-#[test]
 #[allow(dead_code)]
-fn bound_1() {
+#[test]
+fn bound() {
     #[derive(Educe)]
-    #[educe(Eq(bound))]
+    #[educe(PartialEq(unsafe))]
     union Union<T: Copy> {
         f1: T,
     }
 
-    impl<T: Copy> core::cmp::PartialEq for Union<T> {
-        fn eq(&self, _other: &Union<T>) -> bool {
-            true
+    assert!(
+        Union {
+            f1: 1
+        } == Union {
+            f1: 1
         }
-    }
-}
+    );
 
-#[test]
-#[allow(dead_code)]
-fn bound_2() {
-    #[derive(Educe)]
-    #[educe(Eq(bound = "T: core::cmp::Eq"))]
-    union Union<T: Copy> {
-        f1: T,
-    }
-
-    impl<T: Copy> core::cmp::PartialEq for Union<T> {
-        fn eq(&self, _other: &Union<T>) -> bool {
-            true
+    assert!(
+        Union {
+            f1: 1
+        } != Union {
+            f1: 2
         }
-    }
-}
-
-#[test]
-#[allow(dead_code)]
-fn bound_3() {
-    #[derive(Educe)]
-    #[educe(Eq(bound = "T: core::cmp::PartialEq"))]
-    union Union<T: Copy> {
-        f1: T,
-    }
-
-    impl<T: Copy> core::cmp::PartialEq for Union<T> {
-        fn eq(&self, _other: &Union<T>) -> bool {
-            true
-        }
-    }
+    );
 }

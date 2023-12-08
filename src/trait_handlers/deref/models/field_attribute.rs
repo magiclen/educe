@@ -1,22 +1,20 @@
-use quote::ToTokens;
-use syn::{Attribute, Meta, NestedMeta};
+use proc_macro2::Span;
+use syn::{punctuated::Punctuated, spanned::Spanned, Attribute, Meta, Token};
 
-use crate::{panic, Trait};
+use crate::{panic, supported_traits::Trait};
 
-#[derive(Clone)]
-pub struct FieldAttribute {
-    pub flag: bool,
+pub(crate) struct FieldAttribute {
+    pub(crate) flag: bool,
+    pub(crate) span: Span,
 }
 
-#[derive(Debug, Clone)]
-pub struct FieldAttributeBuilder {
-    pub enable_flag: bool,
+pub(crate) struct FieldAttributeBuilder {
+    pub(crate) enable_flag: bool,
 }
 
 impl FieldAttributeBuilder {
-    #[allow(clippy::wrong_self_convention)]
-    pub fn from_deref_meta(&self, meta: &Meta) -> FieldAttribute {
-        let flag;
+    pub(crate) fn build_from_deref_meta(&self, meta: &Meta) -> syn::Result<FieldAttribute> {
+        debug_assert!(meta.path().is_ident("Deref"));
 
         let correct_usage_for_deref_attribute = {
             let mut usage = vec![];
@@ -29,66 +27,68 @@ impl FieldAttributeBuilder {
         };
 
         match meta {
-            Meta::List(_) => {
-                panic::attribute_incorrect_format("Deref", &correct_usage_for_deref_attribute)
-            },
-            Meta::NameValue(_) => {
-                panic::attribute_incorrect_format("Deref", &correct_usage_for_deref_attribute)
-            },
             Meta::Path(_) => {
                 if !self.enable_flag {
-                    panic::attribute_incorrect_format("Deref", &correct_usage_for_deref_attribute);
+                    return Err(panic::attribute_incorrect_format(
+                        meta.path().get_ident().unwrap(),
+                        &correct_usage_for_deref_attribute,
+                    ));
                 }
-
-                flag = true;
+            },
+            Meta::NameValue(_) | Meta::List(_) => {
+                return Err(panic::attribute_incorrect_format(
+                    meta.path().get_ident().unwrap(),
+                    &correct_usage_for_deref_attribute,
+                ));
             },
         }
 
-        FieldAttribute {
-            flag,
-        }
+        Ok(FieldAttribute {
+            flag: true, span: meta.span()
+        })
     }
 
-    #[allow(clippy::wrong_self_convention)]
-    pub fn from_attributes(self, attributes: &[Attribute], traits: &[Trait]) -> FieldAttribute {
-        let mut result = None;
+    pub(crate) fn build_from_attributes(
+        &self,
+        attributes: &[Attribute],
+        traits: &[Trait],
+    ) -> syn::Result<FieldAttribute> {
+        let mut output = None;
 
         for attribute in attributes.iter() {
-            if attribute.path.is_ident("educe") {
-                let meta = attribute.parse_meta().unwrap();
+            let path = attribute.path();
 
-                match meta {
-                    Meta::List(list) => {
-                        for p in list.nested.iter() {
-                            match p {
-                                NestedMeta::Meta(meta) => {
-                                    let meta_name = meta.path().into_token_stream().to_string();
+            if path.is_ident("educe") {
+                if let Meta::List(list) = &attribute.meta {
+                    let result =
+                        list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
 
-                                    let t = Trait::from_str(meta_name);
+                    for meta in result {
+                        let path = meta.path();
 
-                                    if traits.binary_search(&t).is_err() {
-                                        panic::trait_not_used(t);
-                                    }
+                        let t = match Trait::from_path(path) {
+                            Some(t) => t,
+                            None => return Err(panic::unsupported_trait(meta.path())),
+                        };
 
-                                    if t == Trait::Deref {
-                                        if result.is_some() {
-                                            panic::reuse_a_trait(t);
-                                        }
-
-                                        result = Some(self.from_deref_meta(meta));
-                                    }
-                                },
-                                _ => panic::educe_format_incorrect(),
-                            }
+                        if !traits.contains(&t) {
+                            return Err(panic::trait_not_used(path.get_ident().unwrap()));
                         }
-                    },
-                    _ => panic::educe_format_incorrect(),
+
+                        if t == Trait::Deref {
+                            if output.is_some() {
+                                return Err(panic::reuse_a_trait(path.get_ident().unwrap()));
+                            }
+
+                            output = Some(self.build_from_deref_meta(&meta)?);
+                        }
+                    }
                 }
             }
         }
 
-        result.unwrap_or(FieldAttribute {
-            flag: false
-        })
+        Ok(output.unwrap_or(FieldAttribute {
+            flag: false, span: Span::call_site()
+        }))
     }
 }

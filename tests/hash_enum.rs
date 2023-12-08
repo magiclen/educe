@@ -1,10 +1,11 @@
 #![cfg(feature = "Hash")]
 
-#[macro_use]
-extern crate educe;
+use std::{
+    collections::hash_map::DefaultHasher,
+    hash::{Hash, Hasher},
+};
 
-use core::hash::{Hash, Hasher};
-use std::collections::hash_map::DefaultHasher;
+use educe::Educe;
 
 #[test]
 fn basic_1() {
@@ -96,9 +97,9 @@ fn basic_2() {
     assert_ne!(unit2_hash, unit3_hash);
 }
 
-#[test]
 #[allow(dead_code)]
-fn ignore() {
+#[test]
+fn ignore_2() {
     #[derive(Educe)]
     #[educe(Hash)]
     enum Enum<T> {
@@ -141,23 +142,18 @@ fn ignore() {
     assert_ne!(struct_hash, tuple_hash);
 }
 
+#[allow(dead_code)]
 #[test]
-fn hash_without_trait_1() {
-    use core::hash::Hasher;
-
-    fn hash<H: Hasher, T>(_s: &T, state: &mut H) {
-        100.hash(state)
-    }
-
+fn ignore() {
     #[derive(Educe)]
     #[educe(Hash)]
     enum Enum<T> {
         Unit,
         Struct {
-            #[educe(Hash(method = "hash"))]
+            #[educe(Hash = false)]
             f1: T,
         },
-        Tuple(#[educe(Hash(method = "hash"))] T),
+        Tuple(#[educe(Hash = false)] T),
     }
 
     let unit_hash = {
@@ -192,9 +188,7 @@ fn hash_without_trait_1() {
 }
 
 #[test]
-fn hash_without_trait_2() {
-    use core::hash::Hasher;
-
+fn method_1() {
     fn hash<H: Hasher, T>(_s: &T, state: &mut H) {
         100.hash(state)
     }
@@ -204,10 +198,10 @@ fn hash_without_trait_2() {
     enum Enum<T> {
         Unit,
         Struct {
-            #[educe(Hash(method("hash")))]
+            #[educe(Hash(method = hash))]
             f1: T,
         },
-        Tuple(#[educe(Hash(method("hash")))] T),
+        Tuple(#[educe(Hash(method = hash))] T),
     }
 
     let unit_hash = {
@@ -242,194 +236,26 @@ fn hash_without_trait_2() {
 }
 
 #[test]
-fn hash_with_trait_1() {
-    use core::hash::{Hash, Hasher};
-
-    trait A {
-        fn hash<H: Hasher>(&self, state: &mut H) {
-            Hash::hash(&100, state)
-        }
+fn method_2() {
+    fn hash<H: Hasher, T>(_s: &T, state: &mut H) {
+        100.hash(state)
     }
-
-    impl A for u8 {}
 
     #[derive(Educe)]
     #[educe(Hash)]
-    enum Enum {
+    enum Enum<T> {
         Unit,
         Struct {
-            #[educe(Hash(trait = "A"))]
-            f1: u8,
+            #[educe(Hash(method(hash)))]
+            f1: T,
         },
-        Tuple(#[educe(Hash(trait = "A"))] u8),
+        Tuple(#[educe(Hash(method(hash)))] T),
     }
 
     let unit_hash = {
         let mut hasher = DefaultHasher::new();
 
-        Enum::Unit.hash(&mut hasher);
-
-        hasher.finish()
-    };
-
-    let struct_hash = {
-        let mut hasher = DefaultHasher::new();
-
-        Enum::Struct {
-            f1: 1
-        }
-        .hash(&mut hasher);
-
-        hasher.finish()
-    };
-
-    let tuple_hash = {
-        let mut hasher = DefaultHasher::new();
-
-        Enum::Tuple(1).hash(&mut hasher);
-
-        hasher.finish()
-    };
-
-    assert_ne!(unit_hash, struct_hash);
-    assert_ne!(struct_hash, tuple_hash);
-}
-
-#[test]
-fn hash_with_trait_2() {
-    use core::hash::{Hash, Hasher};
-
-    trait A {
-        fn hash<H: Hasher>(&self, state: &mut H) {
-            Hash::hash(&100, state)
-        }
-    }
-
-    impl A for u8 {}
-
-    #[derive(Educe)]
-    #[educe(Hash)]
-    enum Enum {
-        Unit,
-        Struct {
-            #[educe(Hash(trait("A")))]
-            f1: u8,
-        },
-        Tuple(#[educe(Hash(trait("A")))] u8),
-    }
-
-    let unit_hash = {
-        let mut hasher = DefaultHasher::new();
-
-        Enum::Unit.hash(&mut hasher);
-
-        hasher.finish()
-    };
-
-    let struct_hash = {
-        let mut hasher = DefaultHasher::new();
-
-        Enum::Struct {
-            f1: 1
-        }
-        .hash(&mut hasher);
-
-        hasher.finish()
-    };
-
-    let tuple_hash = {
-        let mut hasher = DefaultHasher::new();
-
-        Enum::Tuple(1).hash(&mut hasher);
-
-        hasher.finish()
-    };
-
-    assert_ne!(unit_hash, struct_hash);
-    assert_ne!(struct_hash, tuple_hash);
-}
-
-#[test]
-fn hash_with_trait_3() {
-    use core::hash::{Hash, Hasher};
-
-    trait A {
-        fn my_hash<H: Hasher>(&self, state: &mut H) {
-            Hash::hash(&100, state)
-        }
-    }
-
-    impl A for u8 {}
-
-    #[derive(Educe)]
-    #[educe(Hash)]
-    enum Enum {
-        Unit,
-        Struct {
-            #[educe(Hash(trait = "A", method = "my_hash"))]
-            f1: u8,
-        },
-        Tuple(#[educe(Hash(trait = "A", method = "my_hash"))] u8),
-    }
-
-    let unit_hash = {
-        let mut hasher = DefaultHasher::new();
-
-        Enum::Unit.hash(&mut hasher);
-
-        hasher.finish()
-    };
-
-    let struct_hash = {
-        let mut hasher = DefaultHasher::new();
-
-        Enum::Struct {
-            f1: 1
-        }
-        .hash(&mut hasher);
-
-        hasher.finish()
-    };
-
-    let tuple_hash = {
-        let mut hasher = DefaultHasher::new();
-
-        Enum::Tuple(1).hash(&mut hasher);
-
-        hasher.finish()
-    };
-
-    assert_ne!(unit_hash, struct_hash);
-    assert_ne!(struct_hash, tuple_hash);
-}
-
-#[test]
-fn hash_with_trait_4() {
-    use core::hash::{Hash, Hasher};
-
-    trait A {
-        fn my_hash<H: Hasher>(&self, state: &mut H) {
-            Hash::hash(&100, state)
-        }
-    }
-
-    impl A for u8 {}
-
-    #[derive(Educe)]
-    #[educe(Hash)]
-    enum Enum {
-        Unit,
-        Struct {
-            #[educe(Hash(trait("A"), method("my_hash")))]
-            f1: u8,
-        },
-        Tuple(#[educe(Hash(trait("A"), method("my_hash")))] u8),
-    }
-
-    let unit_hash = {
-        let mut hasher = DefaultHasher::new();
-
-        Enum::Unit.hash(&mut hasher);
+        Enum::<u8>::Unit.hash(&mut hasher);
 
         hasher.finish()
     };
@@ -460,7 +286,7 @@ fn hash_with_trait_4() {
 #[test]
 fn bound_1() {
     #[derive(Educe)]
-    #[educe(Hash(bound))]
+    #[educe(Hash)]
     enum Enum<T> {
         Unit,
         Struct { f1: T },
@@ -542,7 +368,7 @@ fn bound_2() {
 #[test]
 fn bound_3() {
     #[derive(Educe)]
-    #[educe(Hash(bound("T: core::hash::Hash")))]
+    #[educe(Hash(bound(T: core::hash::Hash)))]
     enum Enum<T> {
         Unit,
         Struct { f1: T },

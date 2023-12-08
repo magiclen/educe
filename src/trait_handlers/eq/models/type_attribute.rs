@@ -1,175 +1,140 @@
-use quote::{quote, ToTokens};
-use syn::{
-    punctuated::Punctuated, token::Comma, GenericParam, Lit, Meta, NestedMeta, WherePredicate,
-};
+use syn::{punctuated::Punctuated, Attribute, Meta, Token};
 
-use super::super::super::{
-    create_where_predicates_from_generic_parameters, create_where_predicates_from_lit_str,
-};
-use crate::panic;
+use crate::{common::bound::Bound, panic, Trait};
 
-#[derive(Clone)]
-pub enum TypeAttributeBound {
-    None,
-    Auto,
-    Custom(Punctuated<WherePredicate, Comma>),
+pub(crate) struct TypeAttribute {
+    pub(crate) bound: Bound,
 }
 
-impl TypeAttributeBound {
-    pub fn into_punctuated_where_predicates_by_generic_parameters(
-        self,
-        params: &Punctuated<GenericParam, Comma>,
-    ) -> Punctuated<WherePredicate, Comma> {
-        match self {
-            TypeAttributeBound::None => Punctuated::new(),
-            TypeAttributeBound::Auto => create_where_predicates_from_generic_parameters(
-                params,
-                &syn::parse2(quote!(core::cmp::Eq)).unwrap(),
-            ),
-            TypeAttributeBound::Custom(where_predicates) => where_predicates,
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct TypeAttribute {
-    pub bound: TypeAttributeBound,
-}
-
-#[derive(Debug, Clone)]
-pub struct TypeAttributeBuilder {
-    pub enable_bound: bool,
+#[derive(Debug)]
+pub(crate) struct TypeAttributeBuilder {
+    pub(crate) enable_flag:  bool,
+    pub(crate) enable_bound: bool,
 }
 
 impl TypeAttributeBuilder {
-    #[allow(clippy::wrong_self_convention)]
-    pub fn from_eq_meta(&self, meta: &Meta) -> TypeAttribute {
-        let mut bound = TypeAttributeBound::None;
+    pub(crate) fn build_from_eq_meta(&self, meta: &Meta) -> syn::Result<TypeAttribute> {
+        debug_assert!(meta.path().is_ident("Eq"));
 
-        let correct_usage_for_eq_attribute = {
-            let usage = vec![stringify!(#[educe(Eq)])];
+        let mut bound = Bound::Auto;
 
-            usage
-        };
+        let correct_usage_for_copy_attribute = {
+            let mut usage = vec![];
 
-        let correct_usage_for_bound = {
-            let usage = vec![
-                stringify!(#[educe(Eq(bound))]),
-                stringify!(#[educe(Eq(bound = "where_predicates"))]),
-                stringify!(#[educe(Eq(bound("where_predicates")))]),
-            ];
+            if self.enable_flag {
+                usage.push(stringify!(#[educe(Eq)]));
+            }
+
+            if self.enable_bound {
+                usage.push(stringify!(#[educe(Eq(bound(where_predicates)))]));
+                usage.push(stringify!(#[educe(Eq(bound = false))]));
+            }
 
             usage
         };
 
         match meta {
-            Meta::List(list) => {
-                let mut bound_is_set = false;
-
-                for p in list.nested.iter() {
-                    match p {
-                        NestedMeta::Meta(meta) => {
-                            let meta_name = meta.path().into_token_stream().to_string();
-
-                            match meta_name.as_str() {
-                                "bound" => {
-                                    if !self.enable_bound {
-                                        panic::unknown_parameter("Eq", meta_name.as_str());
-                                    }
-
-                                    match meta {
-                                        Meta::List(list) => {
-                                            for p in list.nested.iter() {
-                                                match p {
-                                                    NestedMeta::Lit(Lit::Str(s)) => {
-                                                        if bound_is_set {
-                                                            panic::reset_parameter(
-                                                                meta_name.as_str(),
-                                                            );
-                                                        }
-
-                                                        bound_is_set = true;
-
-                                                        let where_predicates =
-                                                            create_where_predicates_from_lit_str(s);
-
-                                                        bound = match where_predicates {
-                                                            Some(where_predicates) => {
-                                                                TypeAttributeBound::Custom(
-                                                                    where_predicates,
-                                                                )
-                                                            },
-                                                            None => panic::empty_parameter(
-                                                                meta_name.as_str(),
-                                                            ),
-                                                        };
-                                                    },
-                                                    _ => panic::parameter_incorrect_format(
-                                                        meta_name.as_str(),
-                                                        &correct_usage_for_bound,
-                                                    ),
-                                                }
-                                            }
-                                        },
-                                        Meta::NameValue(named_value) => {
-                                            let lit = &named_value.lit;
-
-                                            match lit {
-                                                Lit::Str(s) => {
-                                                    if bound_is_set {
-                                                        panic::reset_parameter(meta_name.as_str());
-                                                    }
-
-                                                    bound_is_set = true;
-
-                                                    let where_predicates =
-                                                        create_where_predicates_from_lit_str(s);
-
-                                                    bound = match where_predicates {
-                                                        Some(where_predicates) => {
-                                                            TypeAttributeBound::Custom(
-                                                                where_predicates,
-                                                            )
-                                                        },
-                                                        None => panic::empty_parameter(
-                                                            meta_name.as_str(),
-                                                        ),
-                                                    };
-                                                },
-                                                _ => panic::parameter_incorrect_format(
-                                                    meta_name.as_str(),
-                                                    &correct_usage_for_bound,
-                                                ),
-                                            }
-                                        },
-                                        Meta::Path(_) => {
-                                            if bound_is_set {
-                                                panic::reset_parameter(meta_name.as_str());
-                                            }
-
-                                            bound_is_set = true;
-
-                                            bound = TypeAttributeBound::Auto;
-                                        },
-                                    }
-                                },
-                                _ => panic::unknown_parameter("Eq", meta_name.as_str()),
-                            }
-                        },
-                        _ => {
-                            panic::attribute_incorrect_format("Eq", &correct_usage_for_eq_attribute)
-                        },
-                    }
+            Meta::Path(_) => {
+                if !self.enable_flag {
+                    return Err(panic::attribute_incorrect_format(
+                        meta.path().get_ident().unwrap(),
+                        &correct_usage_for_copy_attribute,
+                    ));
                 }
             },
             Meta::NameValue(_) => {
-                panic::attribute_incorrect_format("Eq", &correct_usage_for_eq_attribute)
+                return Err(panic::attribute_incorrect_format(
+                    meta.path().get_ident().unwrap(),
+                    &correct_usage_for_copy_attribute,
+                ));
             },
-            Meta::Path(_) => (),
+            Meta::List(list) => {
+                let result =
+                    list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
+
+                let mut bound_is_set = false;
+
+                let mut handler = |meta: Meta| -> syn::Result<bool> {
+                    if let Some(ident) = meta.path().get_ident() {
+                        if ident == "bound" {
+                            if !self.enable_bound {
+                                return Ok(false);
+                            }
+
+                            let v = Bound::from_meta(&meta)?;
+
+                            if bound_is_set {
+                                return Err(panic::parameter_reset(ident));
+                            }
+
+                            bound_is_set = true;
+
+                            bound = v;
+
+                            return Ok(true);
+                        }
+                    }
+
+                    Ok(false)
+                };
+
+                for p in result {
+                    if !handler(p)? {
+                        return Err(panic::attribute_incorrect_format(
+                            meta.path().get_ident().unwrap(),
+                            &correct_usage_for_copy_attribute,
+                        ));
+                    }
+                }
+            },
         }
 
-        TypeAttribute {
+        Ok(TypeAttribute {
             bound,
+        })
+    }
+
+    pub(crate) fn build_from_attributes(
+        &self,
+        attributes: &[Attribute],
+        traits: &[Trait],
+    ) -> syn::Result<TypeAttribute> {
+        let mut output = None;
+
+        for attribute in attributes.iter() {
+            let path = attribute.path();
+
+            if path.is_ident("educe") {
+                if let Meta::List(list) = &attribute.meta {
+                    let result =
+                        list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
+
+                    for meta in result {
+                        let path = meta.path();
+
+                        let t = match Trait::from_path(path) {
+                            Some(t) => t,
+                            None => return Err(panic::unsupported_trait(meta.path())),
+                        };
+
+                        if !traits.contains(&t) {
+                            return Err(panic::trait_not_used(path.get_ident().unwrap()));
+                        }
+
+                        if t == Trait::Eq {
+                            if output.is_some() {
+                                return Err(panic::reuse_a_trait(path.get_ident().unwrap()));
+                            }
+
+                            output = Some(self.build_from_eq_meta(&meta)?);
+                        }
+                    }
+                }
+            }
         }
+
+        Ok(output.unwrap_or(TypeAttribute {
+            bound: Bound::Auto
+        }))
     }
 }

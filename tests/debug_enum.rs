@@ -1,15 +1,29 @@
-#![allow(clippy::trivially_copy_pass_by_ref)]
 #![cfg(feature = "Debug")]
 #![no_std]
 
 #[macro_use]
 extern crate alloc;
 
-#[macro_use]
-extern crate educe;
+use educe::Educe;
 
 #[test]
-#[allow(dead_code)]
+fn empty() {
+    #[derive(Educe)]
+    #[educe(Debug = Enum)]
+    enum Enum {}
+
+    #[derive(Educe)]
+    #[educe(Debug)]
+    enum Enum2 {
+        Struct {},
+        Tuple(),
+    }
+
+    assert_eq!("Struct", format!("{:?}", Enum2::Struct {}));
+    assert_eq!("Tuple", format!("{:?}", Enum2::Tuple()));
+}
+
+#[test]
 fn name_1() {
     #[derive(Educe)]
     #[educe(Debug)]
@@ -30,10 +44,9 @@ fn name_1() {
 }
 
 #[test]
-#[allow(dead_code)]
 fn name_2() {
     #[derive(Educe)]
-    #[educe(Debug = "Hi")]
+    #[educe(Debug = Hi)]
     enum Enum {
         Unit,
         Struct { f1: u8 },
@@ -51,10 +64,9 @@ fn name_2() {
 }
 
 #[test]
-#[allow(dead_code)]
 fn name_3() {
     #[derive(Educe)]
-    #[educe(Debug("Hi"))]
+    #[educe(Debug(name = Hi))]
     enum Enum {
         Unit,
         Struct { f1: u8 },
@@ -72,10 +84,9 @@ fn name_3() {
 }
 
 #[test]
-#[allow(dead_code)]
 fn name_4() {
     #[derive(Educe)]
-    #[educe(Debug(name = "Hi"))]
+    #[educe(Debug(name(Hi)))]
     enum Enum {
         Unit,
         Struct { f1: u8 },
@@ -93,29 +104,7 @@ fn name_4() {
 }
 
 #[test]
-#[allow(dead_code)]
 fn name_5() {
-    #[derive(Educe)]
-    #[educe(Debug(name("Hi")))]
-    enum Enum {
-        Unit,
-        Struct { f1: u8 },
-        Tuple(u8),
-    }
-
-    assert_eq!("Hi::Unit", format!("{:?}", Enum::Unit));
-    assert_eq!(
-        "Hi::Struct { f1: 1 }",
-        format!("{:?}", Enum::Struct {
-            f1: 1
-        })
-    );
-    assert_eq!("Hi::Tuple(1)", format!("{:?}", Enum::Tuple(1)));
-}
-
-#[test]
-#[allow(dead_code)]
-fn name_7() {
     #[derive(Educe)]
     #[educe(Debug(name = true))]
     enum Enum {
@@ -135,8 +124,7 @@ fn name_7() {
 }
 
 #[test]
-#[allow(dead_code)]
-fn name_8() {
+fn name_6() {
     #[derive(Educe)]
     #[educe(Debug(name(true)))]
     enum Enum {
@@ -156,7 +144,6 @@ fn name_8() {
 }
 
 #[test]
-#[allow(dead_code)]
 fn unnamed_variant_1() {
     #[derive(Educe)]
     #[educe(Debug(name = true))]
@@ -180,7 +167,6 @@ fn unnamed_variant_1() {
 }
 
 #[test]
-#[allow(dead_code)]
 fn unnamed_variant_2() {
     #[derive(Educe)]
     #[educe(Debug(name = true))]
@@ -204,7 +190,6 @@ fn unnamed_variant_2() {
 }
 
 #[test]
-#[allow(dead_code)]
 fn unnamed_variant_3() {
     #[derive(Educe)]
     #[educe(Debug(name = true))]
@@ -228,7 +213,6 @@ fn unnamed_variant_3() {
 }
 
 #[test]
-#[allow(dead_code)]
 fn unnamed_variant_4() {
     #[derive(Educe)]
     #[educe(Debug(name = true))]
@@ -252,55 +236,6 @@ fn unnamed_variant_4() {
 }
 
 #[test]
-#[allow(dead_code)]
-fn unnamed_variant_5() {
-    #[derive(Educe)]
-    #[educe(Debug(name = true))]
-    enum Enum {
-        #[educe(Debug = "")]
-        Unit,
-        #[educe(Debug = "")]
-        Struct { f1: u8 },
-        #[educe(Debug = "")]
-        Tuple(u8),
-    }
-
-    assert_eq!("Enum", format!("{:?}", Enum::Unit));
-    assert_eq!(
-        "Enum { f1: 1 }",
-        format!("{:?}", Enum::Struct {
-            f1: 1
-        })
-    );
-    assert_eq!("Enum(1)", format!("{:?}", Enum::Tuple(1)));
-}
-
-#[test]
-#[allow(dead_code)]
-fn unnamed_variant_6() {
-    #[derive(Educe)]
-    #[educe(Debug(name = true))]
-    enum Enum {
-        #[educe(Debug(""))]
-        Unit,
-        #[educe(Debug(""))]
-        Struct { f1: u8 },
-        #[educe(Debug(""))]
-        Tuple(u8),
-    }
-
-    assert_eq!("Enum", format!("{:?}", Enum::Unit));
-    assert_eq!(
-        "Enum { f1: 1 }",
-        format!("{:?}", Enum::Struct {
-            f1: 1
-        })
-    );
-    assert_eq!("Enum(1)", format!("{:?}", Enum::Tuple(1)));
-}
-
-#[test]
-#[allow(dead_code)]
 fn named_field_1() {
     #[derive(Educe)]
     #[educe(Debug)]
@@ -321,7 +256,6 @@ fn named_field_1() {
 }
 
 #[test]
-#[allow(dead_code)]
 fn named_field_2() {
     #[derive(Educe)]
     #[educe(Debug)]
@@ -342,7 +276,6 @@ fn named_field_2() {
 }
 
 #[test]
-#[allow(dead_code)]
 fn named_field_3() {
     use core::fmt::{self, Formatter};
 
@@ -355,11 +288,11 @@ fn named_field_3() {
     enum Enum {
         #[educe(Debug(named_field = false))]
         Struct {
-            #[educe(Debug(method = "fmt"))]
+            #[educe(Debug(method = fmt))]
             f1: u8,
         },
         #[educe(Debug(named_field = true))]
-        Tuple(#[educe(Debug(method = "fmt"))] u8),
+        Tuple(#[educe(Debug(method = fmt))] u8),
     }
 
     assert_eq!(
@@ -372,50 +305,15 @@ fn named_field_3() {
 }
 
 #[test]
-#[allow(dead_code)]
-fn named_field_4() {
-    use core::fmt::{self, Formatter};
-
-    trait A {
-        fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-            f.write_str("Hi")
-        }
-    }
-
-    impl A for u8 {}
-
-    #[derive(Educe)]
-    #[educe(Debug)]
-    enum Enum<T: A> {
-        #[educe(Debug(named_field = false))]
-        Struct {
-            #[educe(Debug(trait = "A"))]
-            f1: T,
-        },
-        #[educe(Debug(named_field = true))]
-        Tuple(#[educe(Debug(trait = "A"))] T),
-    }
-
-    assert_eq!(
-        "Struct(Hi)",
-        format!("{:?}", Enum::Struct {
-            f1: 1
-        })
-    );
-    assert_eq!("Tuple { _0: Hi }", format!("{:?}", Enum::Tuple(1)));
-}
-
-#[test]
-#[allow(dead_code)]
 fn rename_variant_1() {
     #[derive(Educe)]
     #[educe(Debug)]
     enum Enum {
-        #[educe(Debug = "Hi")]
+        #[educe(Debug = Hi)]
         Unit,
-        #[educe(Debug = "Hi")]
+        #[educe(Debug = Hi)]
         Struct { f1: u8 },
-        #[educe(Debug = "Hi")]
+        #[educe(Debug = Hi)]
         Tuple(u8),
     }
 
@@ -430,16 +328,15 @@ fn rename_variant_1() {
 }
 
 #[test]
-#[allow(dead_code)]
 fn rename_variant_2() {
     #[derive(Educe)]
     #[educe(Debug)]
     enum Enum {
-        #[educe(Debug("Hi"))]
+        #[educe(Debug(name = Hi))]
         Unit,
-        #[educe(Debug("Hi"))]
+        #[educe(Debug(name = Hi))]
         Struct { f1: u8 },
-        #[educe(Debug("Hi"))]
+        #[educe(Debug(name = Hi))]
         Tuple(u8),
     }
 
@@ -454,16 +351,15 @@ fn rename_variant_2() {
 }
 
 #[test]
-#[allow(dead_code)]
 fn rename_variant_3() {
     #[derive(Educe)]
     #[educe(Debug)]
     enum Enum {
-        #[educe(Debug(name = "Hi"))]
+        #[educe(Debug(name(Hi)))]
         Unit,
-        #[educe(Debug(name = "Hi"))]
+        #[educe(Debug(name(Hi)))]
         Struct { f1: u8 },
-        #[educe(Debug(name = "Hi"))]
+        #[educe(Debug(name(Hi)))]
         Tuple(u8),
     }
 
@@ -477,41 +373,17 @@ fn rename_variant_3() {
     assert_eq!("Hi(1)", format!("{:?}", Enum::Tuple(1)));
 }
 
-#[test]
 #[allow(dead_code)]
+#[test]
 fn rename_variant_4() {
     #[derive(Educe)]
-    #[educe(Debug)]
-    enum Enum {
-        #[educe(Debug(name("Hi")))]
-        Unit,
-        #[educe(Debug(name("Hi")))]
-        Struct { f1: u8 },
-        #[educe(Debug(name("Hi")))]
-        Tuple(u8),
-    }
-
-    assert_eq!("Hi", format!("{:?}", Enum::Unit));
-    assert_eq!(
-        "Hi { f1: 1 }",
-        format!("{:?}", Enum::Struct {
-            f1: 1
-        })
-    );
-    assert_eq!("Hi(1)", format!("{:?}", Enum::Tuple(1)));
-}
-
-#[test]
-#[allow(dead_code)]
-fn rename_variant_5() {
-    #[derive(Educe)]
     #[educe(Debug(name = true))]
     enum Enum {
-        #[educe(Debug(name("Hi")))]
+        #[educe(Debug(name(Hi)))]
         Unit,
-        #[educe(Debug(name("Hi")))]
+        #[educe(Debug(name(Hi)))]
         Struct { f1: u8 },
-        #[educe(Debug(name("Hi")))]
+        #[educe(Debug(name(Hi)))]
         Tuple(u8),
     }
 
@@ -526,41 +398,16 @@ fn rename_variant_5() {
 }
 
 #[test]
-#[allow(dead_code)]
-fn rename_variant_6() {
-    #[derive(Educe)]
-    #[educe(Debug(name = true))]
-    enum Enum {
-        #[educe(Debug(name("::Hi")))]
-        Unit,
-        #[educe(Debug(name("::Hi")))]
-        Struct { f1: u8 },
-        #[educe(Debug(name("::Hi")))]
-        Tuple(u8),
-    }
-
-    assert_eq!("Enum::Hi", format!("{:?}", Enum::Unit));
-    assert_eq!(
-        "Enum::Hi { f1: 1 }",
-        format!("{:?}", Enum::Struct {
-            f1: 1
-        })
-    );
-    assert_eq!("Enum::Hi(1)", format!("{:?}", Enum::Tuple(1)));
-}
-
-#[test]
-#[allow(dead_code)]
 fn rename_field_1() {
     #[derive(Educe)]
     #[educe(Debug)]
     enum Enum {
         Struct {
-            #[educe(Debug = "f")]
+            #[educe(Debug = f)]
             f1: u8,
         },
         #[educe(Debug(named_field(true)))]
-        Tuple(#[educe(Debug = "f")] u8),
+        Tuple(#[educe(Debug = f)] u8),
     }
 
     assert_eq!(
@@ -573,146 +420,128 @@ fn rename_field_1() {
 }
 
 #[test]
-#[allow(dead_code)]
 fn rename_field_2() {
     #[derive(Educe)]
     #[educe(Debug)]
-    enum Enum {
-        Struct {
-            #[educe(Debug("f"))]
-            f1: u8,
-        },
-        #[educe(Debug(named_field(true)))]
-        Tuple(#[educe(Debug = "f")] u8),
+    struct Struct {
+        #[educe(Debug(name = f))]
+        f1: u8,
     }
 
     assert_eq!(
         "Struct { f: 1 }",
-        format!("{:?}", Enum::Struct {
+        format!("{:?}", Struct {
             f1: 1
         })
     );
-    assert_eq!("Tuple { f: 1 }", format!("{:?}", Enum::Tuple(1)));
+
+    #[derive(Educe)]
+    #[educe(Debug(named_field(true)))]
+    struct Tuple(#[educe(Debug(name = f))] u8);
+
+    assert_eq!("Tuple { f: 1 }", format!("{:?}", Tuple(1)));
 }
 
 #[test]
-#[allow(dead_code)]
 fn rename_field_3() {
     #[derive(Educe)]
     #[educe(Debug)]
-    enum Enum {
-        Struct {
-            #[educe(Debug(name = "f"))]
-            f1: u8,
-        },
-        #[educe(Debug(named_field(true)))]
-        Tuple(#[educe(Debug = "f")] u8),
+    struct Struct {
+        #[educe(Debug(name(f)))]
+        f1: u8,
     }
 
     assert_eq!(
         "Struct { f: 1 }",
-        format!("{:?}", Enum::Struct {
+        format!("{:?}", Struct {
             f1: 1
         })
     );
-    assert_eq!("Tuple { f: 1 }", format!("{:?}", Enum::Tuple(1)));
-}
 
-#[test]
-#[allow(dead_code)]
-fn rename_field_4() {
     #[derive(Educe)]
-    #[educe(Debug)]
-    enum Enum {
-        Struct {
-            #[educe(Debug(name("f")))]
-            f1: u8,
-        },
-        #[educe(Debug(named_field(true)))]
-        Tuple(#[educe(Debug = "f")] u8),
-    }
+    #[educe(Debug(named_field(true)))]
+    struct Tuple(#[educe(Debug(name(f)))] u8);
 
-    assert_eq!(
-        "Struct { f: 1 }",
-        format!("{:?}", Enum::Struct {
-            f1: 1
-        })
-    );
-    assert_eq!("Tuple { f: 1 }", format!("{:?}", Enum::Tuple(1)));
+    assert_eq!("Tuple { f: 1 }", format!("{:?}", Tuple(1)));
 }
 
-#[test]
 #[allow(dead_code)]
+#[test]
 fn ignore_1() {
     #[derive(Educe)]
     #[educe(Debug)]
-    enum Enum {
-        Struct {
-            #[educe(Debug = false)]
-            f1: u8,
-            f2: u8,
-        },
-        Tuple(#[educe(Debug = false)] u8, u8),
+    struct Struct {
+        #[educe(Debug = false)]
+        f1: u8,
+        f2: u8,
     }
 
     assert_eq!(
         "Struct { f2: 2 }",
-        format!("{:?}", Enum::Struct {
+        format!("{:?}", Struct {
             f1: 1, f2: 2
         })
     );
-    assert_eq!("Tuple(2)", format!("{:?}", Enum::Tuple(1, 2)));
+
+    #[derive(Educe)]
+    #[educe(Debug)]
+    struct Tuple(#[educe(Debug = false)] u8, u8);
+
+    assert_eq!("Tuple(2)", format!("{:?}", Tuple(1, 2)));
 }
 
-#[test]
 #[allow(dead_code)]
+#[test]
 fn ignore_2() {
     #[derive(Educe)]
     #[educe(Debug)]
-    enum Enum {
-        Struct {
-            #[educe(Debug(false))]
-            f1: u8,
-            f2: u8,
-        },
-        Tuple(#[educe(Debug(false))] u8, u8),
+    struct Struct {
+        #[educe(Debug = "")]
+        f1: u8,
+        f2: u8,
     }
 
     assert_eq!(
         "Struct { f2: 2 }",
-        format!("{:?}", Enum::Struct {
+        format!("{:?}", Struct {
             f1: 1, f2: 2
         })
     );
-    assert_eq!("Tuple(2)", format!("{:?}", Enum::Tuple(1, 2)));
+
+    #[derive(Educe)]
+    #[educe(Debug)]
+    struct Tuple(#[educe(Debug = false)] u8, u8);
+
+    assert_eq!("Tuple(2)", format!("{:?}", Tuple(1, 2)));
 }
 
-#[test]
 #[allow(dead_code)]
+#[test]
 fn ignore_3() {
     #[derive(Educe)]
     #[educe(Debug)]
-    enum Enum {
-        Struct {
-            #[educe(Debug(ignore))]
-            f1: u8,
-            f2: u8,
-        },
-        Tuple(#[educe(Debug(ignore))] u8, u8),
+    struct Struct {
+        #[educe(Debug(ignore))]
+        f1: u8,
+        f2: u8,
     }
 
     assert_eq!(
         "Struct { f2: 2 }",
-        format!("{:?}", Enum::Struct {
+        format!("{:?}", Struct {
             f1: 1, f2: 2
         })
     );
-    assert_eq!("Tuple(2)", format!("{:?}", Enum::Tuple(1, 2)));
+
+    #[derive(Educe)]
+    #[educe(Debug)]
+    struct Tuple(#[educe(Debug(ignore))] u8, u8);
+
+    assert_eq!("Tuple(2)", format!("{:?}", Tuple(1, 2)));
 }
 
 #[test]
-#[allow(dead_code)]
-fn format_without_trait_1() {
+fn method_1() {
     use core::fmt::{self, Formatter};
 
     fn fmt(_s: &u8, f: &mut Formatter) -> fmt::Result {
@@ -721,26 +550,27 @@ fn format_without_trait_1() {
 
     #[derive(Educe)]
     #[educe(Debug)]
-    enum Enum {
-        Struct {
-            #[educe(Debug(method = "fmt"))]
-            f1: u8,
-        },
-        Tuple(#[educe(Debug(method = "fmt"))] u8),
+    struct Struct {
+        #[educe(Debug(method = fmt))]
+        f1: u8,
     }
 
     assert_eq!(
         "Struct { f1: Hi }",
-        format!("{:?}", Enum::Struct {
+        format!("{:?}", Struct {
             f1: 1
         })
     );
-    assert_eq!("Tuple(Hi)", format!("{:?}", Enum::Tuple(1)));
+
+    #[derive(Educe)]
+    #[educe(Debug)]
+    struct Tuple(#[educe(Debug(method = fmt))] u8);
+
+    assert_eq!("Tuple(Hi)", format!("{:?}", Tuple(1)));
 }
 
 #[test]
-#[allow(dead_code)]
-fn format_without_trait_2() {
+fn method_2() {
     use core::fmt::{self, Formatter};
 
     fn fmt(_s: &u8, f: &mut Formatter) -> fmt::Result {
@@ -749,210 +579,87 @@ fn format_without_trait_2() {
 
     #[derive(Educe)]
     #[educe(Debug)]
-    enum Enum {
-        Struct {
-            #[educe(Debug(method("fmt")))]
-            f1: u8,
-        },
-        Tuple(#[educe(Debug(method("fmt")))] u8),
+    struct Struct {
+        #[educe(Debug(method(fmt)))]
+        f1: u8,
     }
 
     assert_eq!(
         "Struct { f1: Hi }",
-        format!("{:?}", Enum::Struct {
+        format!("{:?}", Struct {
             f1: 1
         })
     );
-    assert_eq!("Tuple(Hi)", format!("{:?}", Enum::Tuple(1)));
-}
-
-#[test]
-#[allow(dead_code)]
-fn format_with_trait_1() {
-    use core::fmt::{self, Formatter};
-
-    trait A {
-        fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-            f.write_str("Hi")
-        }
-    }
-
-    impl A for u8 {}
 
     #[derive(Educe)]
     #[educe(Debug)]
-    enum Enum<T: A> {
-        Struct {
-            #[educe(Debug(trait = "A"))]
-            f1: T,
-        },
-        Tuple(#[educe(Debug(trait = "A"))] T),
-    }
+    struct Tuple(#[educe(Debug(method(fmt)))] u8);
 
-    assert_eq!(
-        "Struct { f1: Hi }",
-        format!("{:?}", Enum::Struct {
-            f1: 1
-        })
-    );
-    assert_eq!("Tuple(Hi)", format!("{:?}", Enum::Tuple(1)));
+    assert_eq!("Tuple(Hi)", format!("{:?}", Tuple(1)));
 }
 
 #[test]
-#[allow(dead_code)]
-fn format_with_trait_2() {
-    use core::fmt::{self, Formatter};
-
-    trait A {
-        fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-            f.write_str("Hi")
-        }
-    }
-
-    impl A for u8 {}
-
-    #[derive(Educe)]
-    #[educe(Debug)]
-    enum Enum<T: A> {
-        Struct {
-            #[educe(Debug(trait("A")))]
-            f1: T,
-        },
-        Tuple(#[educe(Debug(trait("A")))] T),
-    }
-
-    assert_eq!(
-        "Struct { f1: Hi }",
-        format!("{:?}", Enum::Struct {
-            f1: 1
-        })
-    );
-    assert_eq!("Tuple(Hi)", format!("{:?}", Enum::Tuple(1)));
-}
-
-#[test]
-#[allow(dead_code)]
-fn format_with_trait_3() {
-    use core::fmt::{self, Formatter};
-
-    trait A {
-        fn format(&self, f: &mut Formatter) -> fmt::Result {
-            f.write_str("Hi")
-        }
-    }
-
-    impl A for u8 {}
-
-    #[derive(Educe)]
-    #[educe(Debug)]
-    enum Enum<T: A> {
-        Struct {
-            #[educe(Debug(trait = "A", method = "format"))]
-            f1: T,
-        },
-        Tuple(#[educe(Debug(trait = "A", method = "format"))] T),
-    }
-
-    assert_eq!(
-        "Struct { f1: Hi }",
-        format!("{:?}", Enum::Struct {
-            f1: 1
-        })
-    );
-    assert_eq!("Tuple(Hi)", format!("{:?}", Enum::Tuple(1)));
-}
-
-#[test]
-#[allow(dead_code)]
-fn format_with_trait_4() {
-    use core::fmt::{self, Formatter};
-
-    trait A {
-        fn format(&self, f: &mut Formatter) -> fmt::Result {
-            f.write_str("Hi")
-        }
-    }
-
-    impl A for u8 {}
-
-    #[derive(Educe)]
-    #[educe(Debug)]
-    enum Enum<T: A> {
-        Struct {
-            #[educe(Debug(trait("A"), method("format")))]
-            f1: T,
-        },
-        Tuple(#[educe(Debug(trait("A"), method("format")))] T),
-    }
-
-    assert_eq!(
-        "Struct { f1: Hi }",
-        format!("{:?}", Enum::Struct {
-            f1: 1
-        })
-    );
-    assert_eq!("Tuple(Hi)", format!("{:?}", Enum::Tuple(1)));
-}
-
-#[test]
-#[allow(dead_code)]
 fn bound_1() {
     #[derive(Educe)]
-    #[educe(Debug(bound))]
-    enum Enum<T> {
-        Unit,
-        Struct { f1: T },
-        Tuple(T),
+    #[educe(Debug)]
+    struct Struct<T> {
+        f1: T,
     }
 
-    assert_eq!("Unit", format!("{:?}", Enum::<u8>::Unit));
     assert_eq!(
         "Struct { f1: 1 }",
-        format!("{:?}", Enum::Struct {
+        format!("{:?}", Struct {
             f1: 1
         })
     );
-    assert_eq!("Tuple(1)", format!("{:?}", Enum::Tuple(1)));
+
+    #[derive(Educe)]
+    #[educe(Debug)]
+    struct Tuple<T>(T);
+
+    assert_eq!("Tuple(1)", format!("{:?}", Tuple(1)));
 }
 
 #[test]
-#[allow(dead_code)]
 fn bound_2() {
     #[derive(Educe)]
     #[educe(Debug(bound = "T: core::fmt::Debug"))]
-    enum Enum<T> {
-        Unit,
-        Struct { f1: T },
-        Tuple(T),
+    struct Struct<T> {
+        f1: T,
     }
 
-    assert_eq!("Unit", format!("{:?}", Enum::<u8>::Unit));
     assert_eq!(
         "Struct { f1: 1 }",
-        format!("{:?}", Enum::Struct {
+        format!("{:?}", Struct {
             f1: 1
         })
     );
-    assert_eq!("Tuple(1)", format!("{:?}", Enum::Tuple(1)));
+
+    #[derive(Educe)]
+    #[educe(Debug(bound = "T: core::fmt::Debug"))]
+    struct Tuple<T>(T);
+
+    assert_eq!("Tuple(1)", format!("{:?}", Tuple(1)));
 }
 
 #[test]
-#[allow(dead_code)]
 fn bound_3() {
     #[derive(Educe)]
-    #[educe(Debug(bound("T: core::fmt::Debug")))]
-    enum Enum<T> {
-        Unit,
-        Struct { f1: T },
-        Tuple(T),
+    #[educe(Debug(bound(T: core::fmt::Debug)))]
+    struct Struct<T> {
+        f1: T,
     }
 
-    assert_eq!("Unit", format!("{:?}", Enum::<u8>::Unit));
     assert_eq!(
         "Struct { f1: 1 }",
-        format!("{:?}", Enum::Struct {
+        format!("{:?}", Struct {
             f1: 1
         })
     );
-    assert_eq!("Tuple(1)", format!("{:?}", Enum::Tuple(1)));
+
+    #[derive(Educe)]
+    #[educe(Debug(bound(T: core::fmt::Debug)))]
+    struct Tuple<T>(T);
+
+    assert_eq!("Tuple(1)", format!("{:?}", Tuple(1)));
 }

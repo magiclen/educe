@@ -1,33 +1,33 @@
 mod models;
-
 mod ord_enum;
 mod ord_struct;
+mod panic;
 
-use ord_enum::OrdEnumHandler;
-use ord_struct::OrdStructHandler;
-use proc_macro2::TokenStream;
 use syn::{Data, DeriveInput, Meta};
 
 use super::TraitHandler;
-use crate::{panic, Trait};
+use crate::Trait;
 
-pub struct OrdHandler;
+pub(crate) struct OrdHandler;
 
 impl TraitHandler for OrdHandler {
+    #[inline]
     fn trait_meta_handler(
-        ast: &DeriveInput,
-        tokens: &mut TokenStream,
+        ast: &mut DeriveInput,
+        token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
-    ) {
+    ) -> syn::Result<()> {
         match ast.data {
             Data::Struct(_) => {
-                OrdStructHandler::trait_meta_handler(ast, tokens, traits, meta);
+                ord_struct::OrdStructHandler::trait_meta_handler(ast, token_stream, traits, meta)
             },
             Data::Enum(_) => {
-                OrdEnumHandler::trait_meta_handler(ast, tokens, traits, meta);
+                ord_enum::OrdEnumHandler::trait_meta_handler(ast, token_stream, traits, meta)
             },
-            Data::Union(_) => panic::trait_not_support_union(Trait::Ord),
+            Data::Union(_) => {
+                Err(crate::panic::trait_not_support_union(meta.path().get_ident().unwrap()))
+            },
         }
     }
 }

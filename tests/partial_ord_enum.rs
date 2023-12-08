@@ -1,16 +1,30 @@
-#![allow(clippy::eq_op, clippy::trivially_copy_pass_by_ref)]
-#![cfg(all(feature = "PartialEq", feature = "PartialOrd"))]
+#![cfg(feature = "PartialOrd")]
 #![no_std]
-
-#[macro_use]
-extern crate educe;
 
 use core::cmp::Ordering;
 
+use educe::Educe;
+
+#[test]
+fn empty() {
+    #[derive(PartialEq, Educe)]
+    #[educe(PartialOrd)]
+    enum Enum {}
+
+    #[derive(PartialEq, Educe)]
+    #[educe(PartialOrd)]
+    enum Enum2 {
+        Struct {},
+        Tuple(),
+    }
+
+    assert!(Enum2::Struct {} < Enum2::Tuple());
+}
+
 #[test]
 fn basic_1() {
-    #[derive(Educe)]
-    #[educe(PartialEq, PartialOrd)]
+    #[derive(PartialEq, Educe)]
+    #[educe(PartialOrd)]
     enum Enum {
         Unit,
         Unit2,
@@ -20,6 +34,12 @@ fn basic_1() {
 
     assert!(Enum::Unit == Enum::Unit);
     assert!(Enum::Unit < Enum::Unit2);
+    assert!(
+        Enum::Unit2
+            < Enum::Struct {
+                f1: 0
+            }
+    );
 
     assert!(
         Enum::Struct {
@@ -43,8 +63,8 @@ fn basic_1() {
 
 #[test]
 fn basic_2() {
-    #[derive(Educe)]
-    #[educe(PartialEq, PartialOrd)]
+    #[derive(PartialEq, Educe)]
+    #[educe(PartialOrd)]
     enum Enum {
         Struct { f1: u8, f2: u8 },
         Tuple(u8, u8),
@@ -72,8 +92,8 @@ fn basic_2() {
 
 #[test]
 fn basic_3() {
-    #[derive(Educe)]
-    #[educe(PartialEq, PartialOrd)]
+    #[derive(PartialEq, Educe)]
+    #[educe(PartialOrd)]
     enum Enum {
         A = 2,
         B = 1,
@@ -82,10 +102,106 @@ fn basic_3() {
     assert!(Enum::A > Enum::B);
 }
 
+#[rustversion::since(1.66)]
 #[test]
-fn ignore() {
-    #[derive(Educe)]
-    #[educe(PartialEq, PartialOrd)]
+fn basic_4() {
+    #[derive(PartialEq, Educe)]
+    #[educe(PartialOrd)]
+    #[repr(u8)]
+    enum Enum {
+        Unit   = 4,
+        Unit2  = 3,
+        Struct { f1: u8 } = 2,
+        Tuple(u8) = 1,
+    }
+
+    assert!(Enum::Unit == Enum::Unit);
+    assert!(Enum::Unit > Enum::Unit2);
+    assert!(
+        Enum::Unit2
+            > Enum::Struct {
+                f1: 9
+            }
+    );
+
+    assert!(
+        Enum::Struct {
+            f1: 2
+        } > Enum::Struct {
+            f1: 1
+        }
+    );
+
+    assert!(
+        Enum::Struct {
+            f1: 1
+        } < Enum::Struct {
+            f1: 2
+        }
+    );
+
+    assert!(Enum::Tuple(2) > Enum::Tuple(1));
+    assert!(Enum::Tuple(1) < Enum::Tuple(2));
+
+    assert!(
+        Enum::Struct {
+            f1: 1
+        } > Enum::Tuple(2)
+    );
+}
+
+#[test]
+fn ignore_1() {
+    #[derive(PartialEq, Educe)]
+    #[educe(PartialOrd)]
+    enum Enum {
+        Struct {
+            #[educe(PartialOrd = false)]
+            f1: u8,
+            f2: u8,
+        },
+        Tuple(#[educe(PartialOrd = false)] u8, u8),
+    }
+
+    assert_eq!(
+        Some(Ordering::Greater),
+        Enum::Struct {
+            f1: 1, f2: 3
+        }
+        .partial_cmp(&Enum::Struct {
+            f1: 1, f2: 2
+        })
+    );
+
+    assert_eq!(
+        Some(Ordering::Less),
+        Enum::Struct {
+            f1: 1, f2: 2
+        }
+        .partial_cmp(&Enum::Struct {
+            f1: 1, f2: 3
+        })
+    );
+
+    assert_eq!(
+        Some(Ordering::Equal),
+        Enum::Struct {
+            f1: 2, f2: 2
+        }
+        .partial_cmp(&Enum::Struct {
+            f1: 1, f2: 2
+        })
+    );
+
+    assert_eq!(Some(Ordering::Greater), Enum::Tuple(1, 3).partial_cmp(&Enum::Tuple(1, 2)));
+    assert_eq!(Some(Ordering::Less), Enum::Tuple(1, 2).partial_cmp(&Enum::Tuple(1, 3)));
+    assert_eq!(Some(Ordering::Equal), Enum::Tuple(2, 2).partial_cmp(&Enum::Tuple(1, 2)));
+}
+
+#[test]
+fn ignore_2() {
+    #[derive(PartialEq, Educe)]
+    #[educe(PartialOrd)]
     enum Enum {
         Struct {
             #[educe(PartialOrd(ignore))]
@@ -131,446 +247,115 @@ fn ignore() {
 }
 
 #[test]
-fn compare_without_trait_1() {
+fn method_1() {
     fn partial_cmp(a: &u8, b: &u8) -> Option<Ordering> {
         b.partial_cmp(a)
     }
 
-    #[derive(Educe)]
-    #[educe(PartialEq, PartialOrd)]
-    enum Enum {
-        Struct {
-            f1: u8,
-            #[educe(PartialOrd(method = "partial_cmp"))]
-            f2: u8,
-        },
-        Tuple(u8, #[educe(PartialOrd(method = "partial_cmp"))] u8),
+    #[derive(PartialEq, Educe)]
+    #[educe(PartialOrd)]
+    struct Struct {
+        f1: u8,
+        #[educe(PartialOrd(method = partial_cmp))]
+        f2: u8,
     }
+
+    #[derive(PartialEq, Educe)]
+    #[educe(PartialOrd)]
+    struct Tuple(u8, #[educe(PartialOrd(method = partial_cmp))] u8);
 
     assert_eq!(
         Some(Ordering::Less),
-        Enum::Struct {
+        Struct {
             f1: 1, f2: 3
         }
-        .partial_cmp(&Enum::Struct {
+        .partial_cmp(&Struct {
             f1: 1, f2: 2
         })
     );
 
     assert_eq!(
         Some(Ordering::Greater),
-        Enum::Struct {
+        Struct {
             f1: 1, f2: 2
         }
-        .partial_cmp(&Enum::Struct {
+        .partial_cmp(&Struct {
             f1: 1, f2: 3
         })
     );
 
     assert_eq!(
         Some(Ordering::Equal),
-        Enum::Struct {
+        Struct {
             f1: 1, f2: 2
         }
-        .partial_cmp(&Enum::Struct {
+        .partial_cmp(&Struct {
             f1: 1, f2: 2
         })
     );
 
-    assert_eq!(Some(Ordering::Less), Enum::Tuple(1, 3).partial_cmp(&Enum::Tuple(1, 2)));
-    assert_eq!(Some(Ordering::Greater), Enum::Tuple(1, 2).partial_cmp(&Enum::Tuple(1, 3)));
-    assert_eq!(Some(Ordering::Equal), Enum::Tuple(1, 2).partial_cmp(&Enum::Tuple(1, 2)));
+    assert_eq!(Some(Ordering::Less), Tuple(1, 3).partial_cmp(&Tuple(1, 2)));
+    assert_eq!(Some(Ordering::Greater), Tuple(1, 2).partial_cmp(&Tuple(1, 3)));
+    assert_eq!(Some(Ordering::Equal), Tuple(1, 2).partial_cmp(&Tuple(1, 2)));
 }
 
 #[test]
-fn compare_without_trait_2() {
+fn method_2() {
     fn partial_cmp(a: &u8, b: &u8) -> Option<Ordering> {
         b.partial_cmp(a)
     }
 
-    #[derive(Educe)]
-    #[educe(PartialEq, PartialOrd)]
-    enum Enum {
-        Struct {
-            f1: u8,
-            #[educe(PartialOrd(method("partial_cmp")))]
-            f2: u8,
-        },
-        Tuple(u8, #[educe(PartialOrd(method("partial_cmp")))] u8),
+    #[derive(PartialEq, Educe)]
+    #[educe(PartialOrd)]
+    struct Struct {
+        f1: u8,
+        #[educe(PartialOrd(method(partial_cmp)))]
+        f2: u8,
     }
+
+    #[derive(PartialEq, Educe)]
+    #[educe(PartialOrd)]
+    struct Tuple(u8, #[educe(PartialOrd(method(partial_cmp)))] u8);
 
     assert_eq!(
         Some(Ordering::Less),
-        Enum::Struct {
+        Struct {
             f1: 1, f2: 3
         }
-        .partial_cmp(&Enum::Struct {
+        .partial_cmp(&Struct {
             f1: 1, f2: 2
         })
     );
 
     assert_eq!(
         Some(Ordering::Greater),
-        Enum::Struct {
-            f1: 1, f2: 2
-        }
-        .partial_cmp(&Enum::Struct {
-            f1: 1, f2: 3
-        })
-    );
-
-    assert_eq!(
-        Some(Ordering::Equal),
-        Enum::Struct {
-            f1: 1, f2: 2
-        }
-        .partial_cmp(&Enum::Struct {
-            f1: 1, f2: 2
-        })
-    );
-
-    assert_eq!(Some(Ordering::Less), Enum::Tuple(1, 3).partial_cmp(&Enum::Tuple(1, 2)));
-    assert_eq!(Some(Ordering::Greater), Enum::Tuple(1, 2).partial_cmp(&Enum::Tuple(1, 3)));
-    assert_eq!(Some(Ordering::Equal), Enum::Tuple(1, 2).partial_cmp(&Enum::Tuple(1, 2)));
-}
-
-#[test]
-fn compare_with_trait_1() {
-    trait A {
-        fn partial_cmp(&self, b: &Self) -> Option<Ordering>;
-    }
-
-    impl A for u8 {
-        fn partial_cmp(&self, b: &u8) -> Option<Ordering> {
-            #[allow(clippy::comparison_chain)]
-            if self > b {
-                Some(Ordering::Less)
-            } else if self < b {
-                Some(Ordering::Greater)
-            } else {
-                Some(Ordering::Equal)
-            }
-        }
-    }
-
-    #[derive(Educe)]
-    #[educe(PartialEq, PartialOrd)]
-    enum Enum {
         Struct {
-            f1: u8,
-            #[educe(PartialOrd(trait = "A"))]
-            f2: u8,
-        },
-        Tuple(u8, #[educe(PartialOrd(trait = "A"))] u8),
-    }
-
-    assert_eq!(
-        Some(Ordering::Less),
-        Enum::Struct {
-            f1: 1, f2: 3
-        }
-        .partial_cmp(&Enum::Struct {
-            f1: 1, f2: 2
-        })
-    );
-
-    assert_eq!(
-        Some(Ordering::Greater),
-        Enum::Struct {
             f1: 1, f2: 2
         }
-        .partial_cmp(&Enum::Struct {
+        .partial_cmp(&Struct {
             f1: 1, f2: 3
         })
     );
 
     assert_eq!(
         Some(Ordering::Equal),
-        Enum::Struct {
-            f1: 1, f2: 2
-        }
-        .partial_cmp(&Enum::Struct {
-            f1: 1, f2: 2
-        })
-    );
-
-    assert_eq!(Some(Ordering::Less), Enum::Tuple(1, 3).partial_cmp(&Enum::Tuple(1, 2)));
-    assert_eq!(Some(Ordering::Greater), Enum::Tuple(1, 2).partial_cmp(&Enum::Tuple(1, 3)));
-    assert_eq!(Some(Ordering::Equal), Enum::Tuple(1, 2).partial_cmp(&Enum::Tuple(1, 2)));
-}
-
-#[test]
-fn compare_with_trait_2() {
-    trait A {
-        fn partial_cmp(&self, b: &Self) -> Option<Ordering>;
-    }
-
-    impl A for u8 {
-        fn partial_cmp(&self, b: &u8) -> Option<Ordering> {
-            #[allow(clippy::comparison_chain)]
-            if self > b {
-                Some(Ordering::Less)
-            } else if self < b {
-                Some(Ordering::Greater)
-            } else {
-                Some(Ordering::Equal)
-            }
-        }
-    }
-
-    #[derive(Educe)]
-    #[educe(PartialEq, PartialOrd)]
-    enum Enum {
         Struct {
-            f1: u8,
-            #[educe(PartialOrd(trait("A")))]
-            f2: u8,
-        },
-        Tuple(u8, #[educe(PartialOrd(trait("A")))] u8),
-    }
-
-    assert_eq!(
-        Some(Ordering::Less),
-        Enum::Struct {
-            f1: 1, f2: 3
+            f1: 1, f2: 2
         }
-        .partial_cmp(&Enum::Struct {
+        .partial_cmp(&Struct {
             f1: 1, f2: 2
         })
     );
 
-    assert_eq!(
-        Some(Ordering::Greater),
-        Enum::Struct {
-            f1: 1, f2: 2
-        }
-        .partial_cmp(&Enum::Struct {
-            f1: 1, f2: 3
-        })
-    );
-
-    assert_eq!(
-        Some(Ordering::Equal),
-        Enum::Struct {
-            f1: 1, f2: 2
-        }
-        .partial_cmp(&Enum::Struct {
-            f1: 1, f2: 2
-        })
-    );
-
-    assert_eq!(Some(Ordering::Less), Enum::Tuple(1, 3).partial_cmp(&Enum::Tuple(1, 2)));
-    assert_eq!(Some(Ordering::Greater), Enum::Tuple(1, 2).partial_cmp(&Enum::Tuple(1, 3)));
-    assert_eq!(Some(Ordering::Equal), Enum::Tuple(1, 2).partial_cmp(&Enum::Tuple(1, 2)));
+    assert_eq!(Some(Ordering::Less), Tuple(1, 3).partial_cmp(&Tuple(1, 2)));
+    assert_eq!(Some(Ordering::Greater), Tuple(1, 2).partial_cmp(&Tuple(1, 3)));
+    assert_eq!(Some(Ordering::Equal), Tuple(1, 2).partial_cmp(&Tuple(1, 2)));
 }
 
 #[test]
-fn compare_with_trait_3() {
-    trait A {
-        fn compare(&self, b: &Self) -> Option<Ordering>;
-    }
-
-    impl A for u8 {
-        fn compare(&self, b: &u8) -> Option<Ordering> {
-            b.partial_cmp(self)
-        }
-    }
-
-    #[derive(Educe)]
-    #[educe(PartialEq, PartialOrd)]
-    enum Enum {
-        Struct {
-            f1: u8,
-            #[educe(PartialOrd(trait = "A", method = "compare"))]
-            f2: u8,
-        },
-        Tuple(u8, #[educe(PartialOrd(trait = "A", method = "compare"))] u8),
-    }
-
-    assert_eq!(
-        Some(Ordering::Less),
-        Enum::Struct {
-            f1: 1, f2: 3
-        }
-        .partial_cmp(&Enum::Struct {
-            f1: 1, f2: 2
-        })
-    );
-
-    assert_eq!(
-        Some(Ordering::Greater),
-        Enum::Struct {
-            f1: 1, f2: 2
-        }
-        .partial_cmp(&Enum::Struct {
-            f1: 1, f2: 3
-        })
-    );
-
-    assert_eq!(
-        Some(Ordering::Equal),
-        Enum::Struct {
-            f1: 1, f2: 2
-        }
-        .partial_cmp(&Enum::Struct {
-            f1: 1, f2: 2
-        })
-    );
-
-    assert_eq!(Some(Ordering::Less), Enum::Tuple(1, 3).partial_cmp(&Enum::Tuple(1, 2)));
-    assert_eq!(Some(Ordering::Greater), Enum::Tuple(1, 2).partial_cmp(&Enum::Tuple(1, 3)));
-    assert_eq!(Some(Ordering::Equal), Enum::Tuple(1, 2).partial_cmp(&Enum::Tuple(1, 2)));
-}
-
-#[test]
-fn compare_with_trait_4() {
-    trait A {
-        fn compare(&self, b: &Self) -> Option<Ordering>;
-    }
-
-    impl A for u8 {
-        fn compare(&self, b: &u8) -> Option<Ordering> {
-            b.partial_cmp(self)
-        }
-    }
-
-    #[derive(Educe)]
-    #[educe(PartialEq, PartialOrd)]
-    enum Enum {
-        Struct {
-            f1: u8,
-            #[educe(PartialOrd(trait("A"), method("compare")))]
-            f2: u8,
-        },
-        Tuple(u8, #[educe(PartialOrd(trait("A"), method("compare")))] u8),
-    }
-
-    assert_eq!(
-        Some(Ordering::Less),
-        Enum::Struct {
-            f1: 1, f2: 3
-        }
-        .partial_cmp(&Enum::Struct {
-            f1: 1, f2: 2
-        })
-    );
-
-    assert_eq!(
-        Some(Ordering::Greater),
-        Enum::Struct {
-            f1: 1, f2: 2
-        }
-        .partial_cmp(&Enum::Struct {
-            f1: 1, f2: 3
-        })
-    );
-
-    assert_eq!(
-        Some(Ordering::Equal),
-        Enum::Struct {
-            f1: 1, f2: 2
-        }
-        .partial_cmp(&Enum::Struct {
-            f1: 1, f2: 2
-        })
-    );
-
-    assert_eq!(Some(Ordering::Less), Enum::Tuple(1, 3).partial_cmp(&Enum::Tuple(1, 2)));
-    assert_eq!(Some(Ordering::Greater), Enum::Tuple(1, 2).partial_cmp(&Enum::Tuple(1, 3)));
-    assert_eq!(Some(Ordering::Equal), Enum::Tuple(1, 2).partial_cmp(&Enum::Tuple(1, 2)));
-}
-
-#[test]
-fn bound_1() {
-    #[derive(Educe)]
-    #[educe(PartialEq(bound), PartialOrd(bound))]
-    enum Enum<T> {
-        Struct { f1: T },
-        Tuple(T),
-    }
-
-    assert!(
-        Enum::Struct {
-            f1: 2
-        } > Enum::Struct {
-            f1: 1
-        }
-    );
-
-    assert!(
-        Enum::Struct {
-            f1: 1
-        } < Enum::Struct {
-            f1: 2
-        }
-    );
-
-    assert!(Enum::Tuple(2) > Enum::Tuple(1));
-    assert!(Enum::Tuple(1) < Enum::Tuple(2));
-}
-
-#[test]
-fn bound_2() {
-    #[derive(Educe)]
-    #[educe(PartialEq(bound), PartialOrd(bound = "T: core::cmp::PartialOrd"))]
-    enum Enum<T> {
-        Struct { f1: T },
-        Tuple(T),
-    }
-
-    assert!(
-        Enum::Struct {
-            f1: 2
-        } > Enum::Struct {
-            f1: 1
-        }
-    );
-
-    assert!(
-        Enum::Struct {
-            f1: 1
-        } < Enum::Struct {
-            f1: 2
-        }
-    );
-
-    assert!(Enum::Tuple(2) > Enum::Tuple(1));
-    assert!(Enum::Tuple(1) < Enum::Tuple(2));
-}
-
-#[test]
-fn bound_3() {
-    #[derive(Educe)]
-    #[educe(PartialEq(bound), PartialOrd(bound("T: core::cmp::PartialOrd")))]
-    enum Enum<T> {
-        Struct { f1: T },
-        Tuple(T),
-    }
-
-    assert!(
-        Enum::Struct {
-            f1: 2
-        } > Enum::Struct {
-            f1: 1
-        }
-    );
-
-    assert!(
-        Enum::Struct {
-            f1: 1
-        } < Enum::Struct {
-            f1: 2
-        }
-    );
-
-    assert!(Enum::Tuple(2) > Enum::Tuple(1));
-    assert!(Enum::Tuple(1) < Enum::Tuple(2));
-}
-
-#[test]
-fn field_rank_1() {
-    #[derive(Educe)]
-    #[educe(PartialEq, PartialOrd)]
+fn rank_1() {
+    #[derive(PartialEq, Educe)]
+    #[educe(PartialOrd)]
     enum Enum {
         Struct {
             #[educe(PartialOrd(rank = 1))]
@@ -601,9 +386,9 @@ fn field_rank_1() {
 }
 
 #[test]
-fn field_rank_2() {
-    #[derive(Educe)]
-    #[educe(PartialEq, PartialOrd)]
+fn rank_2() {
+    #[derive(PartialEq, Educe)]
+    #[educe(PartialOrd)]
     enum Enum {
         Struct {
             #[educe(PartialOrd(rank(1)))]
@@ -634,9 +419,9 @@ fn field_rank_2() {
 }
 
 #[test]
-fn field_rank_3() {
-    #[derive(Educe)]
-    #[educe(PartialEq, PartialOrd)]
+fn rank_3() {
+    #[derive(PartialEq, Educe)]
+    #[educe(PartialOrd)]
     enum Enum {
         Struct {
             #[educe(PartialOrd(rank = 1))]
@@ -668,9 +453,9 @@ fn field_rank_3() {
 }
 
 #[test]
-fn field_rank_4() {
-    #[derive(Educe)]
-    #[educe(PartialEq, PartialOrd)]
+fn rank_4() {
+    #[derive(PartialEq, Educe)]
+    #[educe(PartialOrd)]
     enum Enum {
         Struct {
             #[educe(PartialOrd(rank(1)))]
@@ -702,29 +487,97 @@ fn field_rank_4() {
 }
 
 #[test]
-fn variant_rank_1() {
-    #[derive(Educe)]
-    #[educe(PartialEq, PartialOrd)]
-    enum Enum {
-        #[educe(PartialOrd(rank = 2))]
-        Two,
-        #[educe(PartialOrd(rank = 1))]
-        One,
+fn bound_1() {
+    #[derive(PartialEq, Educe)]
+    #[educe(PartialOrd)]
+    struct Struct<T> {
+        f1: T,
     }
 
-    assert!(Enum::Two > Enum::One);
+    #[derive(PartialEq, Educe)]
+    #[educe(PartialOrd)]
+    struct Tuple<T>(T);
+
+    assert!(
+        Struct {
+            f1: 2
+        } > Struct {
+            f1: 1
+        }
+    );
+
+    assert!(
+        Struct {
+            f1: 1
+        } < Struct {
+            f1: 2
+        }
+    );
+
+    assert!(Tuple(2) > Tuple(1));
+    assert!(Tuple(1) < Tuple(2));
 }
 
 #[test]
-fn variant_rank_2() {
-    #[derive(Educe)]
-    #[educe(PartialEq, PartialOrd)]
-    enum Enum {
-        #[educe(PartialOrd(rank(2)))]
-        Two,
-        #[educe(PartialOrd(rank(1)))]
-        One,
+fn bound_2() {
+    #[derive(PartialEq, Educe)]
+    #[educe(PartialOrd(bound = "T: core::cmp::PartialOrd"))]
+    struct Struct<T> {
+        f1: T,
     }
 
-    assert!(Enum::Two > Enum::One);
+    #[derive(PartialEq, Educe)]
+    #[educe(PartialOrd(bound = "T: core::cmp::PartialOrd"))]
+    struct Tuple<T>(T);
+
+    assert!(
+        Struct {
+            f1: 2
+        } > Struct {
+            f1: 1
+        }
+    );
+
+    assert!(
+        Struct {
+            f1: 1
+        } < Struct {
+            f1: 2
+        }
+    );
+
+    assert!(Tuple(2) > Tuple(1));
+    assert!(Tuple(1) < Tuple(2));
+}
+
+#[test]
+fn bound_3() {
+    #[derive(PartialEq, Educe)]
+    #[educe(PartialOrd(bound(T: core::cmp::PartialOrd)))]
+    struct Struct<T> {
+        f1: T,
+    }
+
+    #[derive(PartialEq, Educe)]
+    #[educe(PartialOrd(bound(T: core::cmp::PartialOrd)))]
+    struct Tuple<T>(T);
+
+    assert!(
+        Struct {
+            f1: 2
+        } > Struct {
+            f1: 1
+        }
+    );
+
+    assert!(
+        Struct {
+            f1: 1
+        } < Struct {
+            f1: 2
+        }
+    );
+
+    assert!(Tuple(2) > Tuple(1));
+    assert!(Tuple(1) < Tuple(2));
 }

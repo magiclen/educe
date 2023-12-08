@@ -1,294 +1,166 @@
-use std::{fmt::Write, str::FromStr};
-
-use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Data, DeriveInput, Fields, Generics, Meta};
+use syn::{Data, DeriveInput, Fields, Ident, Meta, Path, Type};
 
 use super::{
-    super::TraitHandler,
     models::{FieldAttributeBuilder, TypeAttributeBuilder},
+    TraitHandler,
 };
 use crate::Trait;
 
-pub struct HashEnumHandler;
+pub(crate) struct HashEnumHandler;
 
 impl TraitHandler for HashEnumHandler {
+    #[inline]
     fn trait_meta_handler(
-        ast: &DeriveInput,
-        tokens: &mut TokenStream,
+        ast: &mut DeriveInput,
+        token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
-    ) {
-        let type_attribute = TypeAttributeBuilder {
-            enable_flag: true, enable_bound: true
-        }
-        .from_hash_meta(meta);
+    ) -> syn::Result<()> {
+        let type_attribute =
+            TypeAttributeBuilder {
+                enable_flag: true, enable_unsafe: false, enable_bound: true
+            }
+            .build_from_hash_meta(meta)?;
 
-        let enum_name = ast.ident.to_string();
+        let mut hash_types: Vec<&Type> = Vec::new();
 
-        let bound = type_attribute
-            .bound
-            .into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
+        let mut hash_token_stream = proc_macro2::TokenStream::new();
 
-        let mut hasher_tokens = TokenStream::new();
-
-        let mut match_tokens = String::from("match self {");
+        let mut arms_token_stream = proc_macro2::TokenStream::new();
 
         if let Data::Enum(data) = &ast.data {
-            let has_non_unit = {
-                let mut non_unit = false;
-
-                for variant in data.variants.iter() {
-                    let _ = TypeAttributeBuilder {
-                        enable_flag: false, enable_bound: false
-                    }
-                    .from_attributes(&variant.attrs, traits);
-
-                    match &variant.fields {
-                        Fields::Named(_) | Fields::Unnamed(_) => {
-                            non_unit = true;
-
-                            break;
-                        },
-                        _ => (),
-                    }
+            for (variant_index, variant) in data.variants.iter().enumerate() {
+                let _ = TypeAttributeBuilder {
+                    enable_flag:   false,
+                    enable_unsafe: false,
+                    enable_bound:  false,
                 }
+                .build_from_attributes(&variant.attrs, traits)?;
 
-                non_unit
-            };
+                let variant_ident = &variant.ident;
 
-            if has_non_unit {
-                for (index, variant) in data.variants.iter().enumerate() {
-                    let variant_ident = variant.ident.to_string();
+                let built_in_hash: Path = syn::parse2(quote!(::core::hash::Hash::hash)).unwrap();
 
-                    match &variant.fields {
-                        Fields::Unit => {
-                            // TODO Unit
-                            match_tokens
-                                .write_fmt(format_args!(
-                                    "{enum_name}::{variant_ident} => {{ \
-                                     core::hash::Hash::hash(&{index}, state); }}",
-                                    enum_name = enum_name,
-                                    variant_ident = variant_ident,
-                                    index = index
-                                ))
-                                .unwrap();
-                        },
-                        Fields::Named(fields) => {
-                            // TODO Struct
-                            let mut pattern_tokens = String::new();
-                            let mut block_tokens = String::new();
+                match &variant.fields {
+                    Fields::Unit => {
+                        arms_token_stream.extend(quote! {
+                            Self::#variant_ident => {
+                                ::core::hash::Hash::hash(&#variant_index, state);
+                            }
+                        });
+                    },
+                    Fields::Named(_) => {
+                        let mut pattern_token_stream = proc_macro2::TokenStream::new();
+                        let mut block_token_stream = proc_macro2::TokenStream::new();
 
-                            block_tokens
-                                .write_fmt(format_args!(
-                                    "core::hash::Hash::hash(&{index}, state);",
-                                    index = index
-                                ))
-                                .unwrap();
+                        for field in variant.fields.iter() {
+                            let field_attribute = FieldAttributeBuilder {
+                                enable_ignore: true,
+                                enable_method: true,
+                            }
+                            .build_from_attributes(&field.attrs, traits)?;
 
-                            for field in fields.named.iter() {
-                                let field_attribute = FieldAttributeBuilder {
-                                    enable_ignore: true,
-                                    enable_impl:   true,
-                                }
-                                .from_attributes(&field.attrs, traits);
+                            let field_name = field.ident.as_ref().unwrap();
 
-                                let field_name = field.ident.as_ref().unwrap().to_string();
+                            if field_attribute.ignore {
+                                pattern_token_stream.extend(quote!(#field_name: _,));
 
-                                if field_attribute.ignore {
-                                    pattern_tokens
-                                        .write_fmt(format_args!(
-                                            "{field_name}: _,",
-                                            field_name = field_name
-                                        ))
-                                        .unwrap();
-                                    continue;
-                                }
-
-                                let hash_trait = field_attribute.hash_trait;
-                                let hash_method = field_attribute.hash_method;
-
-                                pattern_tokens
-                                    .write_fmt(format_args!(
-                                        "{field_name},",
-                                        field_name = field_name
-                                    ))
-                                    .unwrap();
-
-                                match hash_trait {
-                                    Some(hash_trait) => {
-                                        let hash_method = hash_method.unwrap();
-
-                                        block_tokens
-                                            .write_fmt(format_args!(
-                                                "{hash_trait}::{hash_method}({field_name}, state);",
-                                                hash_trait = hash_trait,
-                                                hash_method = hash_method,
-                                                field_name = field_name
-                                            ))
-                                            .unwrap();
-                                    },
-                                    None => match hash_method {
-                                        Some(hash_method) => {
-                                            block_tokens
-                                                .write_fmt(format_args!(
-                                                    "{hash_method}({field_name}, state);",
-                                                    hash_method = hash_method,
-                                                    field_name = field_name
-                                                ))
-                                                .unwrap();
-                                        },
-                                        None => {
-                                            block_tokens
-                                                .write_fmt(format_args!(
-                                                    "core::hash::Hash::hash({field_name}, state);",
-                                                    field_name = field_name
-                                                ))
-                                                .unwrap();
-                                        },
-                                    },
-                                }
+                                continue;
                             }
 
-                            match_tokens
-                                .write_fmt(format_args!(
-                                    "{enum_name}::{variant_ident} {{ {pattern_tokens} }} => {{ \
-                                     {block_tokens} }}",
-                                    enum_name = enum_name,
-                                    variant_ident = variant_ident,
-                                    pattern_tokens = pattern_tokens,
-                                    block_tokens = block_tokens
-                                ))
-                                .unwrap();
-                        },
-                        Fields::Unnamed(fields) => {
-                            // TODO Tuple
-                            let mut pattern_tokens = String::new();
-                            let mut block_tokens = String::new();
+                            pattern_token_stream.extend(quote!(#field_name,));
 
-                            block_tokens
-                                .write_fmt(format_args!(
-                                    "core::hash::Hash::hash(&{index}, state);",
-                                    index = index
-                                ))
-                                .unwrap();
+                            let hash = field_attribute.method.as_ref().unwrap_or_else(|| {
+                                hash_types.push(&field.ty);
+                                &built_in_hash
+                            });
 
-                            for (index, field) in fields.unnamed.iter().enumerate() {
-                                let field_attribute = FieldAttributeBuilder {
-                                    enable_ignore: true,
-                                    enable_impl:   true,
-                                }
-                                .from_attributes(&field.attrs, traits);
+                            block_token_stream.extend(quote!( #hash(#field_name, state) ));
+                        }
 
-                                if field_attribute.ignore {
-                                    pattern_tokens.push_str("_,");
-                                    continue;
-                                }
+                        arms_token_stream.extend(quote! {
+                            Self::#variant_ident { #pattern_token_stream } => {
+                                ::core::hash::Hash::hash(&#variant_index, state);
 
-                                let hash_trait = field_attribute.hash_trait;
-                                let hash_method = field_attribute.hash_method;
+                                #block_token_stream
+                            }
+                        });
+                    },
+                    Fields::Unnamed(_) => {
+                        let mut pattern_token_stream = proc_macro2::TokenStream::new();
+                        let mut block_token_stream = proc_macro2::TokenStream::new();
 
-                                let field_name = format!("{}", index);
+                        for (index, field) in variant.fields.iter().enumerate() {
+                            let field_attribute = FieldAttributeBuilder {
+                                enable_ignore: true,
+                                enable_method: true,
+                            }
+                            .build_from_attributes(&field.attrs, traits)?;
 
-                                pattern_tokens
-                                    .write_fmt(format_args!(
-                                        "_{field_name},",
-                                        field_name = field_name
-                                    ))
-                                    .unwrap();
+                            let field_name: Ident = syn::parse_str(&format!("_{}", index)).unwrap();
 
-                                match hash_trait {
-                                    Some(hash_trait) => {
-                                        let hash_method = hash_method.unwrap();
+                            if field_attribute.ignore {
+                                pattern_token_stream.extend(quote!(_,));
 
-                                        block_tokens
-                                            .write_fmt(format_args!(
-                                                "{hash_trait}::{hash_method}(_{field_name}, \
-                                                 state);",
-                                                hash_trait = hash_trait,
-                                                hash_method = hash_method,
-                                                field_name = field_name
-                                            ))
-                                            .unwrap();
-                                    },
-                                    None => match hash_method {
-                                        Some(hash_method) => {
-                                            block_tokens
-                                                .write_fmt(format_args!(
-                                                    "{hash_method}(_{field_name}, state);",
-                                                    hash_method = hash_method,
-                                                    field_name = field_name
-                                                ))
-                                                .unwrap();
-                                        },
-                                        None => {
-                                            block_tokens
-                                                .write_fmt(format_args!(
-                                                    "core::hash::Hash::hash(_{field_name}, state);",
-                                                    field_name = field_name
-                                                ))
-                                                .unwrap();
-                                        },
-                                    },
-                                }
+                                continue;
                             }
 
-                            match_tokens
-                                .write_fmt(format_args!(
-                                    "{enum_name}::{variant_ident}( {pattern_tokens} ) => {{ \
-                                     {block_tokens} }}",
-                                    enum_name = enum_name,
-                                    variant_ident = variant_ident,
-                                    pattern_tokens = pattern_tokens,
-                                    block_tokens = block_tokens
-                                ))
-                                .unwrap();
-                        },
-                    }
-                }
-            } else {
-                for variant in data.variants.iter() {
-                    let variant_ident = variant.ident.to_string();
+                            pattern_token_stream.extend(quote!(#field_name,));
 
-                    match_tokens
-                        .write_fmt(format_args!(
-                            "{enum_name}::{variant_ident} => {{ \
-                             core::hash::Hash::hash(&({enum_name}::{variant_ident} as isize), \
-                             state); }}",
-                            enum_name = enum_name,
-                            variant_ident = variant_ident
-                        ))
-                        .unwrap();
+                            let hash = field_attribute.method.as_ref().unwrap_or_else(|| {
+                                hash_types.push(&field.ty);
+                                &built_in_hash
+                            });
+
+                            block_token_stream.extend(quote!( #hash(#field_name, state) ));
+                        }
+
+                        arms_token_stream.extend(quote! {
+                            Self::#variant_ident ( #pattern_token_stream ) => {
+                                ::core::hash::Hash::hash(&#variant_index, state);
+
+                                #block_token_stream
+                            }
+                        });
+                    },
                 }
             }
         }
 
-        match_tokens.push('}');
-
-        hasher_tokens.extend(TokenStream::from_str(&match_tokens).unwrap());
+        if !arms_token_stream.is_empty() {
+            hash_token_stream.extend(quote! {
+                match self {
+                    #arms_token_stream
+                }
+            });
+        }
 
         let ident = &ast.ident;
 
-        let mut generics_cloned: Generics = ast.generics.clone();
+        let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
+            &ast.generics.params,
+            &syn::parse2(quote!(::core::hash::Hash)).unwrap(),
+            &hash_types,
+        );
 
-        let where_clause = generics_cloned.make_where_clause();
+        let where_clause = ast.generics.make_where_clause();
 
         for where_predicate in bound {
             where_clause.predicates.push(where_predicate);
         }
 
-        let (impl_generics, ty_generics, where_clause) = generics_cloned.split_for_impl();
+        let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
-        let hash_impl = quote! {
-            impl #impl_generics core::hash::Hash for #ident #ty_generics #where_clause {
+        token_stream.extend(quote! {
+            impl #impl_generics ::core::hash::Hash for #ident #ty_generics #where_clause {
                 #[inline]
-                #[allow(clippy::unneeded_field_pattern)]
-                fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
-                    #hasher_tokens
+                fn hash<H: ::core::hash::Hasher>(&self, state: &mut H) {
+                    #hash_token_stream
                 }
             }
-        };
+        });
 
-        tokens.extend(hash_impl);
+        Ok(())
     }
 }

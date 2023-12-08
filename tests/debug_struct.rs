@@ -1,12 +1,25 @@
-#![allow(clippy::trivially_copy_pass_by_ref)]
 #![cfg(feature = "Debug")]
 #![no_std]
 
 #[macro_use]
 extern crate alloc;
 
-#[macro_use]
-extern crate educe;
+use educe::Educe;
+
+#[test]
+fn empty() {
+    #[derive(Educe)]
+    #[educe(Debug)]
+    struct Struct {}
+
+    assert_eq!("Struct", format!("{:?}", Struct {}));
+
+    #[derive(Educe)]
+    #[educe(Debug)]
+    struct Tuple();
+
+    assert_eq!("Tuple", format!("{:?}", Tuple()));
+}
 
 #[test]
 fn name_1() {
@@ -39,13 +52,13 @@ fn name_1() {
 #[test]
 fn name_2() {
     #[derive(Educe)]
-    #[educe(Debug = "A")]
+    #[educe(Debug = A)]
     struct Unit;
 
     assert_eq!("A", format!("{:?}", Unit));
 
     #[derive(Educe)]
-    #[educe(Debug = "B")]
+    #[educe(Debug = B)]
     struct Struct {
         f1: u8,
     }
@@ -58,7 +71,7 @@ fn name_2() {
     );
 
     #[derive(Educe)]
-    #[educe(Debug = "C")]
+    #[educe(Debug = C)]
     struct Tuple(u8);
 
     assert_eq!("C(1)", format!("{:?}", Tuple(1)));
@@ -67,13 +80,13 @@ fn name_2() {
 #[test]
 fn name_3() {
     #[derive(Educe)]
-    #[educe(Debug("A"))]
+    #[educe(Debug(name = A))]
     struct Unit;
 
     assert_eq!("A", format!("{:?}", Unit));
 
     #[derive(Educe)]
-    #[educe(Debug("B"))]
+    #[educe(Debug(name = B))]
     struct Struct {
         f1: u8,
     }
@@ -86,7 +99,7 @@ fn name_3() {
     );
 
     #[derive(Educe)]
-    #[educe(Debug("C"))]
+    #[educe(Debug(name = C))]
     struct Tuple(u8);
 
     assert_eq!("C(1)", format!("{:?}", Tuple(1)));
@@ -95,13 +108,13 @@ fn name_3() {
 #[test]
 fn name_4() {
     #[derive(Educe)]
-    #[educe(Debug(name = "A"))]
+    #[educe(Debug(name(A)))]
     struct Unit;
 
     assert_eq!("A", format!("{:?}", Unit));
 
     #[derive(Educe)]
-    #[educe(Debug(name = "B"))]
+    #[educe(Debug(name(B)))]
     struct Struct {
         f1: u8,
     }
@@ -114,35 +127,7 @@ fn name_4() {
     );
 
     #[derive(Educe)]
-    #[educe(Debug(name = "C"))]
-    struct Tuple(u8);
-
-    assert_eq!("C(1)", format!("{:?}", Tuple(1)));
-}
-
-#[test]
-fn name_5() {
-    #[derive(Educe)]
-    #[educe(Debug(name("A")))]
-    struct Unit;
-
-    assert_eq!("A", format!("{:?}", Unit));
-
-    #[derive(Educe)]
-    #[educe(Debug(name("B")))]
-    struct Struct {
-        f1: u8,
-    }
-
-    assert_eq!(
-        "B { f1: 1 }",
-        format!("{:?}", Struct {
-            f1: 1
-        })
-    );
-
-    #[derive(Educe)]
-    #[educe(Debug(name("C")))]
+    #[educe(Debug(name(C)))]
     struct Tuple(u8);
 
     assert_eq!("C(1)", format!("{:?}", Tuple(1)));
@@ -195,7 +180,7 @@ fn unnamed_2() {
 #[test]
 fn unnamed_3() {
     #[derive(Educe)]
-    #[educe(Debug = "")]
+    #[educe(Debug(name = ""))]
     struct Struct {
         f1: u8,
     }
@@ -208,7 +193,7 @@ fn unnamed_3() {
     );
 
     #[derive(Educe)]
-    #[educe(Debug = "")]
+    #[educe(Debug(name = ""))]
     struct Tuple(u8);
 
     assert_eq!("(1,)", format!("{:?}", Tuple(1)));
@@ -216,50 +201,6 @@ fn unnamed_3() {
 
 #[test]
 fn unnamed_4() {
-    #[derive(Educe)]
-    #[educe(Debug(""))]
-    struct Struct {
-        f1: u8,
-    }
-
-    assert_eq!(
-        "{f1: 1}",
-        format!("{:?}", Struct {
-            f1: 1
-        })
-    );
-
-    #[derive(Educe)]
-    #[educe(Debug(""))]
-    struct Tuple(u8);
-
-    assert_eq!("(1,)", format!("{:?}", Tuple(1)));
-}
-
-#[test]
-fn unnamed_5() {
-    #[derive(Educe)]
-    #[educe(Debug(name = ""))]
-    struct Struct {
-        f1: u8,
-    }
-
-    assert_eq!(
-        "{f1: 1}",
-        format!("{:?}", Struct {
-            f1: 1
-        })
-    );
-
-    #[derive(Educe)]
-    #[educe(Debug(name = ""))]
-    struct Tuple(u8);
-
-    assert_eq!("(1,)", format!("{:?}", Tuple(1)));
-}
-
-#[test]
-fn unnamed_6() {
     #[derive(Educe)]
     #[educe(Debug(name("")))]
     struct Struct {
@@ -329,7 +270,7 @@ fn rename_field_1() {
     #[derive(Educe)]
     #[educe(Debug)]
     struct Struct {
-        #[educe(Debug = "f")]
+        #[educe(Debug = f)]
         f1: u8,
     }
 
@@ -342,7 +283,7 @@ fn rename_field_1() {
 
     #[derive(Educe)]
     #[educe(Debug(named_field(true)))]
-    struct Tuple(#[educe(Debug = "f")] u8);
+    struct Tuple(#[educe(Debug = f)] u8);
 
     assert_eq!("Tuple { f: 1 }", format!("{:?}", Tuple(1)));
 }
@@ -352,7 +293,7 @@ fn rename_field_2() {
     #[derive(Educe)]
     #[educe(Debug)]
     struct Struct {
-        #[educe(Debug("f"))]
+        #[educe(Debug(name = f))]
         f1: u8,
     }
 
@@ -365,7 +306,7 @@ fn rename_field_2() {
 
     #[derive(Educe)]
     #[educe(Debug(named_field(true)))]
-    struct Tuple(#[educe(Debug("f"))] u8);
+    struct Tuple(#[educe(Debug(name = f))] u8);
 
     assert_eq!("Tuple { f: 1 }", format!("{:?}", Tuple(1)));
 }
@@ -375,7 +316,7 @@ fn rename_field_3() {
     #[derive(Educe)]
     #[educe(Debug)]
     struct Struct {
-        #[educe(Debug(name = "f"))]
+        #[educe(Debug(name(f)))]
         f1: u8,
     }
 
@@ -388,36 +329,13 @@ fn rename_field_3() {
 
     #[derive(Educe)]
     #[educe(Debug(named_field(true)))]
-    struct Tuple(#[educe(Debug(name = "f"))] u8);
+    struct Tuple(#[educe(Debug(name(f)))] u8);
 
     assert_eq!("Tuple { f: 1 }", format!("{:?}", Tuple(1)));
 }
 
-#[test]
-fn rename_field_4() {
-    #[derive(Educe)]
-    #[educe(Debug)]
-    struct Struct {
-        #[educe(Debug(name("f")))]
-        f1: u8,
-    }
-
-    assert_eq!(
-        "Struct { f: 1 }",
-        format!("{:?}", Struct {
-            f1: 1
-        })
-    );
-
-    #[derive(Educe)]
-    #[educe(Debug(named_field(true)))]
-    struct Tuple(#[educe(Debug(name("f")))] u8);
-
-    assert_eq!("Tuple { f: 1 }", format!("{:?}", Tuple(1)));
-}
-
-#[test]
 #[allow(dead_code)]
+#[test]
 fn ignore_1() {
     #[derive(Educe)]
     #[educe(Debug)]
@@ -441,13 +359,13 @@ fn ignore_1() {
     assert_eq!("Tuple(2)", format!("{:?}", Tuple(1, 2)));
 }
 
-#[test]
 #[allow(dead_code)]
+#[test]
 fn ignore_2() {
     #[derive(Educe)]
     #[educe(Debug)]
     struct Struct {
-        #[educe(Debug(false))]
+        #[educe(Debug = "")]
         f1: u8,
         f2: u8,
     }
@@ -461,13 +379,13 @@ fn ignore_2() {
 
     #[derive(Educe)]
     #[educe(Debug)]
-    struct Tuple(#[educe(Debug(false))] u8, u8);
+    struct Tuple(#[educe(Debug = false)] u8, u8);
 
     assert_eq!("Tuple(2)", format!("{:?}", Tuple(1, 2)));
 }
 
-#[test]
 #[allow(dead_code)]
+#[test]
 fn ignore_3() {
     #[derive(Educe)]
     #[educe(Debug)]
@@ -492,17 +410,17 @@ fn ignore_3() {
 }
 
 #[test]
-fn format_without_trait_1() {
+fn method_1() {
     use core::fmt::{self, Formatter};
 
-    fn fmt(_s: &u8, f: &mut Formatter) -> fmt::Result {
+    fn fmt(_s: &u8, f: &mut Formatter<'_>) -> fmt::Result {
         f.write_str("Hi")
     }
 
     #[derive(Educe)]
     #[educe(Debug)]
     struct Struct {
-        #[educe(Debug(method = "fmt"))]
+        #[educe(Debug(method = fmt))]
         f1: u8,
     }
 
@@ -515,23 +433,23 @@ fn format_without_trait_1() {
 
     #[derive(Educe)]
     #[educe(Debug)]
-    struct Tuple(#[educe(Debug(method = "fmt"))] u8);
+    struct Tuple(#[educe(Debug(method = fmt))] u8);
 
     assert_eq!("Tuple(Hi)", format!("{:?}", Tuple(1)));
 }
 
 #[test]
-fn format_without_trait_2() {
+fn method_2() {
     use core::fmt::{self, Formatter};
 
-    fn fmt(_s: &u8, f: &mut Formatter) -> fmt::Result {
+    fn fmt(_s: &u8, f: &mut Formatter<'_>) -> fmt::Result {
         f.write_str("Hi")
     }
 
     #[derive(Educe)]
     #[educe(Debug)]
     struct Struct {
-        #[educe(Debug(method("fmt")))]
+        #[educe(Debug(method(fmt)))]
         f1: u8,
     }
 
@@ -544,139 +462,7 @@ fn format_without_trait_2() {
 
     #[derive(Educe)]
     #[educe(Debug)]
-    struct Tuple(#[educe(Debug(method("fmt")))] u8);
-
-    assert_eq!("Tuple(Hi)", format!("{:?}", Tuple(1)));
-}
-
-#[test]
-fn format_with_trait_1() {
-    use core::fmt::{self, Formatter};
-
-    trait A {
-        fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-            f.write_str("Hi")
-        }
-    }
-
-    impl A for u8 {}
-
-    #[derive(Educe)]
-    #[educe(Debug)]
-    struct Struct<T: A> {
-        #[educe(Debug(trait = "A"))]
-        f1: T,
-    }
-
-    assert_eq!(
-        "Struct { f1: Hi }",
-        format!("{:?}", Struct {
-            f1: 1
-        })
-    );
-
-    #[derive(Educe)]
-    #[educe(Debug)]
-    struct Tuple<T: A>(#[educe(Debug(trait = "A"))] T);
-
-    assert_eq!("Tuple(Hi)", format!("{:?}", Tuple(1)));
-}
-
-#[test]
-fn format_with_trait_2() {
-    use core::fmt::{self, Formatter};
-
-    trait A {
-        fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-            f.write_str("Hi")
-        }
-    }
-
-    impl A for u8 {}
-
-    #[derive(Educe)]
-    #[educe(Debug)]
-    struct Struct<T: A> {
-        #[educe(Debug(trait("A")))]
-        f1: T,
-    }
-
-    assert_eq!(
-        "Struct { f1: Hi }",
-        format!("{:?}", Struct {
-            f1: 1
-        })
-    );
-
-    #[derive(Educe)]
-    #[educe(Debug)]
-    struct Tuple<T: A>(#[educe(Debug(trait("A")))] T);
-
-    assert_eq!("Tuple(Hi)", format!("{:?}", Tuple(1)));
-}
-
-#[test]
-fn format_with_trait_3() {
-    use core::fmt::{self, Formatter};
-
-    trait A {
-        fn format(&self, f: &mut Formatter) -> fmt::Result {
-            f.write_str("Hi")
-        }
-    }
-
-    impl A for u8 {}
-
-    #[derive(Educe)]
-    #[educe(Debug)]
-    struct Struct<T: A> {
-        #[educe(Debug(trait = "A", method = "format"))]
-        f1: T,
-    }
-
-    assert_eq!(
-        "Struct { f1: Hi }",
-        format!("{:?}", Struct {
-            f1: 1
-        })
-    );
-
-    #[derive(Educe)]
-    #[educe(Debug)]
-    struct Tuple<T: A>(#[educe(Debug(trait = "A", method = "format"))] T);
-
-    assert_eq!("Tuple(Hi)", format!("{:?}", Tuple(1)));
-}
-
-#[test]
-fn format_with_trait_4() {
-    use core::fmt::{self, Formatter};
-
-    trait A {
-        fn format(&self, f: &mut Formatter) -> fmt::Result {
-            f.write_str("Hi")
-        }
-    }
-
-    impl A for u8 {}
-
-    #[derive(Educe)]
-    #[educe(Debug)]
-    struct Struct<T: A> {
-        #[educe(Debug(trait("A"), method("format")))]
-        f1: T,
-    }
-
-    assert_eq!(
-        "Struct { f1: Hi }",
-        format!("{:?}", Struct {
-            f1: 1
-        })
-    );
-
-    #[derive(Educe)]
-    #[educe(Debug)]
-    struct Tuple<T: A>(#[educe(Debug(trait("A"), method("format")))] T);
+    struct Tuple(#[educe(Debug(method(fmt)))] u8);
 
     assert_eq!("Tuple(Hi)", format!("{:?}", Tuple(1)));
 }
@@ -684,7 +470,7 @@ fn format_with_trait_4() {
 #[test]
 fn bound_1() {
     #[derive(Educe)]
-    #[educe(Debug(bound))]
+    #[educe(Debug)]
     struct Struct<T> {
         f1: T,
     }
@@ -697,7 +483,7 @@ fn bound_1() {
     );
 
     #[derive(Educe)]
-    #[educe(Debug(bound))]
+    #[educe(Debug)]
     struct Tuple<T>(T);
 
     assert_eq!("Tuple(1)", format!("{:?}", Tuple(1)));
@@ -728,7 +514,7 @@ fn bound_2() {
 #[test]
 fn bound_3() {
     #[derive(Educe)]
-    #[educe(Debug(bound("T: core::fmt::Debug")))]
+    #[educe(Debug(bound(T: core::fmt::Debug)))]
     struct Struct<T> {
         f1: T,
     }
@@ -741,7 +527,7 @@ fn bound_3() {
     );
 
     #[derive(Educe)]
-    #[educe(Debug(bound("T: core::fmt::Debug")))]
+    #[educe(Debug(bound(T: core::fmt::Debug)))]
     struct Tuple<T>(T);
 
     assert_eq!("Tuple(1)", format!("{:?}", Tuple(1)));

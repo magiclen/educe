@@ -1,11 +1,10 @@
 #![cfg(all(feature = "Deref", feature = "DerefMut"))]
 #![no_std]
 
-#[macro_use]
-extern crate educe;
+use educe::Educe;
 
-#[test]
 #[allow(dead_code)]
+#[test]
 fn basic() {
     #[derive(Educe)]
     #[educe(Deref, DerefMut)]

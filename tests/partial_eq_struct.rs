@@ -1,9 +1,21 @@
-#![allow(clippy::eq_op, clippy::trivially_copy_pass_by_ref)]
 #![cfg(feature = "PartialEq")]
 #![no_std]
 
-#[macro_use]
-extern crate educe;
+use educe::Educe;
+
+#[test]
+fn empty() {
+    #[derive(Educe)]
+    #[educe(PartialEq)]
+    struct Struct {}
+
+    #[derive(Educe)]
+    #[educe(PartialEq)]
+    struct Tuple();
+
+    assert!(Struct {} == Struct {});
+    assert!(Tuple() == Tuple());
+}
 
 #[test]
 fn basic() {
@@ -43,9 +55,53 @@ fn basic() {
     assert!(Tuple(1) != Tuple(2));
 }
 
-#[test]
 #[allow(dead_code)]
-fn ignore() {
+#[test]
+fn ignore_1() {
+    #[derive(Educe)]
+    #[educe(PartialEq)]
+    struct Struct {
+        #[educe(PartialEq = false)]
+        f1: u8,
+        f2: u8,
+    }
+
+    #[derive(Educe)]
+    #[educe(PartialEq)]
+    struct Tuple(#[educe(PartialEq = false)] u8, u8);
+
+    assert!(
+        Struct {
+            f1: 1, f2: 2
+        } == Struct {
+            f1: 1, f2: 2
+        }
+    );
+
+    assert!(
+        Struct {
+            f1: 1, f2: 2
+        } == Struct {
+            f1: 2, f2: 2
+        }
+    );
+
+    assert!(
+        Struct {
+            f1: 1, f2: 2
+        } != Struct {
+            f1: 2, f2: 3
+        }
+    );
+
+    assert!(Tuple(1, 2) == Tuple(1, 2));
+    assert!(Tuple(1, 2) == Tuple(2, 2));
+    assert!(Tuple(1, 2) != Tuple(2, 3));
+}
+
+#[allow(dead_code)]
+#[test]
+fn ignore_2() {
     #[derive(Educe)]
     #[educe(PartialEq)]
     struct Struct {
@@ -88,7 +144,7 @@ fn ignore() {
 }
 
 #[test]
-fn compare_without_trait_1() {
+fn method_1() {
     fn eq(a: &u8, b: &u8) -> bool {
         a != b
     }
@@ -96,14 +152,14 @@ fn compare_without_trait_1() {
     #[derive(Educe)]
     #[educe(PartialEq)]
     struct Struct {
-        #[educe(PartialEq(method = "eq"))]
+        #[educe(PartialEq(method = eq))]
         f1: u8,
         f2: u8,
     }
 
     #[derive(Educe)]
     #[educe(PartialEq)]
-    struct Tuple(#[educe(PartialEq(method = "eq"))] u8, u8);
+    struct Tuple(#[educe(PartialEq(method = eq))] u8, u8);
 
     assert!(
         Struct {
@@ -135,7 +191,7 @@ fn compare_without_trait_1() {
 }
 
 #[test]
-fn compare_without_trait_2() {
+fn method_2() {
     fn eq(a: &u8, b: &u8) -> bool {
         a != b
     }
@@ -143,226 +199,14 @@ fn compare_without_trait_2() {
     #[derive(Educe)]
     #[educe(PartialEq)]
     struct Struct {
-        #[educe(PartialEq(method("eq")))]
+        #[educe(PartialEq(method(eq)))]
         f1: u8,
         f2: u8,
     }
 
     #[derive(Educe)]
     #[educe(PartialEq)]
-    struct Tuple(#[educe(PartialEq(method("eq")))] u8, u8);
-
-    assert!(
-        Struct {
-            f1: 1, f2: 2
-        } != Struct {
-            f1: 1, f2: 2
-        }
-    );
-
-    assert!(
-        Struct {
-            f1: 1, f2: 2
-        } == Struct {
-            f1: 2, f2: 2
-        }
-    );
-
-    assert!(
-        Struct {
-            f1: 1, f2: 2
-        } != Struct {
-            f1: 2, f2: 3
-        }
-    );
-
-    assert!(Tuple(1, 2) != Tuple(1, 2));
-    assert!(Tuple(1, 2) == Tuple(2, 2));
-    assert!(Tuple(1, 2) != Tuple(2, 3));
-}
-
-#[test]
-fn compare_with_trait_1() {
-    trait A {
-        fn eq(&self, b: &Self) -> bool;
-    }
-
-    impl A for u8 {
-        fn eq(&self, b: &u8) -> bool {
-            self != b
-        }
-    }
-
-    #[derive(Educe)]
-    #[educe(PartialEq)]
-    struct Struct {
-        #[educe(PartialEq(trait = "A"))]
-        f1: u8,
-        f2: u8,
-    }
-
-    #[derive(Educe)]
-    #[educe(PartialEq)]
-    struct Tuple(#[educe(PartialEq(trait = "A"))] u8, u8);
-
-    assert!(
-        Struct {
-            f1: 1, f2: 2
-        } != Struct {
-            f1: 1, f2: 2
-        }
-    );
-
-    assert!(
-        Struct {
-            f1: 1, f2: 2
-        } == Struct {
-            f1: 2, f2: 2
-        }
-    );
-
-    assert!(
-        Struct {
-            f1: 1, f2: 2
-        } != Struct {
-            f1: 2, f2: 3
-        }
-    );
-
-    assert!(Tuple(1, 2) != Tuple(1, 2));
-    assert!(Tuple(1, 2) == Tuple(2, 2));
-    assert!(Tuple(1, 2) != Tuple(2, 3));
-}
-
-#[test]
-fn compare_with_trait_2() {
-    trait A {
-        fn eq(&self, b: &Self) -> bool;
-    }
-
-    impl A for u8 {
-        fn eq(&self, b: &u8) -> bool {
-            self != b
-        }
-    }
-
-    #[derive(Educe)]
-    #[educe(PartialEq)]
-    struct Struct {
-        #[educe(PartialEq(trait("A")))]
-        f1: u8,
-        f2: u8,
-    }
-
-    #[derive(Educe)]
-    #[educe(PartialEq)]
-    struct Tuple(#[educe(PartialEq(trait("A")))] u8, u8);
-
-    assert!(
-        Struct {
-            f1: 1, f2: 2
-        } != Struct {
-            f1: 1, f2: 2
-        }
-    );
-
-    assert!(
-        Struct {
-            f1: 1, f2: 2
-        } == Struct {
-            f1: 2, f2: 2
-        }
-    );
-
-    assert!(
-        Struct {
-            f1: 1, f2: 2
-        } != Struct {
-            f1: 2, f2: 3
-        }
-    );
-
-    assert!(Tuple(1, 2) != Tuple(1, 2));
-    assert!(Tuple(1, 2) == Tuple(2, 2));
-    assert!(Tuple(1, 2) != Tuple(2, 3));
-}
-
-#[test]
-fn compare_with_trait_3() {
-    trait A {
-        fn compare(&self, b: &Self) -> bool;
-    }
-
-    impl A for u8 {
-        fn compare(&self, b: &u8) -> bool {
-            self != b
-        }
-    }
-
-    #[derive(Educe)]
-    #[educe(PartialEq)]
-    struct Struct {
-        #[educe(PartialEq(trait = "A", method = "compare"))]
-        f1: u8,
-        f2: u8,
-    }
-
-    #[derive(Educe)]
-    #[educe(PartialEq)]
-    struct Tuple(#[educe(PartialEq(trait = "A", method = "compare"))] u8, u8);
-
-    assert!(
-        Struct {
-            f1: 1, f2: 2
-        } != Struct {
-            f1: 1, f2: 2
-        }
-    );
-
-    assert!(
-        Struct {
-            f1: 1, f2: 2
-        } == Struct {
-            f1: 2, f2: 2
-        }
-    );
-
-    assert!(
-        Struct {
-            f1: 1, f2: 2
-        } != Struct {
-            f1: 2, f2: 3
-        }
-    );
-
-    assert!(Tuple(1, 2) != Tuple(1, 2));
-    assert!(Tuple(1, 2) == Tuple(2, 2));
-    assert!(Tuple(1, 2) != Tuple(2, 3));
-}
-
-#[test]
-fn compare_with_trait_4() {
-    trait A {
-        fn compare(&self, b: &Self) -> bool;
-    }
-
-    impl A for u8 {
-        fn compare(&self, b: &u8) -> bool {
-            self != b
-        }
-    }
-
-    #[derive(Educe)]
-    #[educe(PartialEq)]
-    struct Struct {
-        #[educe(PartialEq(trait("A"), method("compare")))]
-        f1: u8,
-        f2: u8,
-    }
-
-    #[derive(Educe)]
-    #[educe(PartialEq)]
-    struct Tuple(#[educe(PartialEq(trait("A"), method("compare")))] u8, u8);
+    struct Tuple(#[educe(PartialEq(method(eq)))] u8, u8);
 
     assert!(
         Struct {
@@ -396,13 +240,13 @@ fn compare_with_trait_4() {
 #[test]
 fn bound_1() {
     #[derive(Educe)]
-    #[educe(PartialEq(bound))]
+    #[educe(PartialEq)]
     struct Struct<T> {
         f1: T,
     }
 
     #[derive(Educe)]
-    #[educe(PartialEq(bound))]
+    #[educe(PartialEq)]
     struct Tuple<T>(T);
 
     assert!(
@@ -460,13 +304,13 @@ fn bound_2() {
 #[test]
 fn bound_3() {
     #[derive(Educe)]
-    #[educe(PartialEq(bound("T: core::cmp::PartialEq")))]
+    #[educe(PartialEq(bound(T: core::cmp::PartialEq)))]
     struct Struct<T> {
         f1: T,
     }
 
     #[derive(Educe)]
-    #[educe(PartialEq(bound("T: core::cmp::PartialEq")))]
+    #[educe(PartialEq(bound(T: core::cmp::PartialEq)))]
     struct Tuple<T>(T);
 
     assert!(

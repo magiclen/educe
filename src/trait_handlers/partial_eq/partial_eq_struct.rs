@@ -1,118 +1,101 @@
-use std::str::FromStr;
-
-use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Data, DeriveInput, Generics, Meta};
+use syn::{Data, DeriveInput, Meta, Type};
 
 use super::{
-    super::TraitHandler,
     models::{FieldAttributeBuilder, TypeAttributeBuilder},
+    TraitHandler,
 };
-use crate::Trait;
+use crate::{common::ident_index::IdentOrIndex, Trait};
 
-pub struct PartialEqStructHandler;
+pub(crate) struct PartialEqStructHandler;
 
 impl TraitHandler for PartialEqStructHandler {
+    #[inline]
     fn trait_meta_handler(
-        ast: &DeriveInput,
-        tokens: &mut TokenStream,
+        ast: &mut DeriveInput,
+        token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
-    ) {
-        let type_attribute = TypeAttributeBuilder {
-            enable_flag: true, enable_bound: true
-        }
-        .from_partial_eq_meta(meta);
+    ) -> syn::Result<()> {
+        let type_attribute =
+            TypeAttributeBuilder {
+                enable_flag: true, enable_unsafe: false, enable_bound: true
+            }
+            .build_from_partial_eq_meta(meta)?;
 
-        let bound = type_attribute
-            .bound
-            .into_punctuated_where_predicates_by_generic_parameters(&ast.generics.params);
+        let mut partial_eq_types: Vec<&Type> = Vec::new();
 
-        let mut comparer_tokens = TokenStream::new();
+        let mut eq_token_stream = proc_macro2::TokenStream::new();
 
         if let Data::Struct(data) = &ast.data {
             for (index, field) in data.fields.iter().enumerate() {
                 let field_attribute = FieldAttributeBuilder {
                     enable_ignore: true,
-                    enable_impl:   true,
+                    enable_method: true,
                 }
-                .from_attributes(&field.attrs, traits);
+                .build_from_attributes(&field.attrs, traits)?;
 
                 if field_attribute.ignore {
                     continue;
                 }
 
-                let compare_trait = field_attribute.compare_trait;
-                let compare_method = field_attribute.compare_method;
+                let field_name = IdentOrIndex::from_ident_with_index(field.ident.as_ref(), index);
 
-                let field_name = if let Some(ident) = field.ident.as_ref() {
-                    ident.to_string()
+                if let Some(method) = field_attribute.method {
+                    eq_token_stream.extend(quote! {
+                        if !#method(&self.#field_name, &other.#field_name) {
+                            return false;
+                        }
+                    });
                 } else {
-                    format!("{}", index)
-                };
+                    let ty = &field.ty;
 
-                match compare_trait {
-                    Some(compare_trait) => {
-                        let compare_method = compare_method.unwrap();
+                    partial_eq_types.push(ty);
 
-                        let statement = format!(
-                            "if !{compare_trait}::{compare_method}(&self.{field_name}, \
-                             &other.{field_name}) {{ return false }}",
-                            compare_trait = compare_trait,
-                            compare_method = compare_method,
-                            field_name = field_name
-                        );
-
-                        comparer_tokens.extend(TokenStream::from_str(&statement).unwrap());
-                    },
-                    None => match compare_method {
-                        Some(compare_method) => {
-                            let statement = format!(
-                                "if !{compare_method}(&self.{field_name}, &other.{field_name}) {{ \
-                                 return false; }}",
-                                compare_method = compare_method,
-                                field_name = field_name
-                            );
-
-                            comparer_tokens.extend(TokenStream::from_str(&statement).unwrap());
-                        },
-                        None => {
-                            let statement = format!(
-                                "if core::cmp::PartialEq::ne(&self.{field_name}, \
-                                 &other.{field_name}) {{ return false; }}",
-                                field_name = field_name
-                            );
-
-                            comparer_tokens.extend(TokenStream::from_str(&statement).unwrap());
-                        },
-                    },
+                    eq_token_stream.extend(quote! {
+                        if ::core::cmp::PartialEq::ne(&self.#field_name, &other.#field_name) {
+                            return false;
+                        }
+                    });
                 }
             }
         }
 
         let ident = &ast.ident;
 
-        let mut generics_cloned: Generics = ast.generics.clone();
+        let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
+            &ast.generics.params,
+            &syn::parse2(quote!(::core::cmp::PartialEq)).unwrap(),
+            &partial_eq_types,
+        );
 
-        let where_clause = generics_cloned.make_where_clause();
+        let where_clause = ast.generics.make_where_clause();
 
         for where_predicate in bound {
             where_clause.predicates.push(where_predicate);
         }
 
-        let (impl_generics, ty_generics, where_clause) = generics_cloned.split_for_impl();
+        let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
-        let compare_impl = quote! {
-            impl #impl_generics core::cmp::PartialEq for #ident #ty_generics #where_clause {
+        token_stream.extend(quote! {
+            impl #impl_generics ::core::cmp::PartialEq for #ident #ty_generics #where_clause {
                 #[inline]
                 fn eq(&self, other: &Self) -> bool {
-                    #comparer_tokens
+                    #eq_token_stream
 
                     true
                 }
             }
-        };
+        });
 
-        tokens.extend(compare_impl);
+        #[cfg(feature = "Eq")]
+        if traits.contains(&Trait::Eq) {
+            token_stream.extend(quote! {
+                impl #impl_generics ::core::cmp::Eq for #ident #ty_generics #where_clause {
+                }
+            });
+        }
+
+        Ok(())
     }
 }

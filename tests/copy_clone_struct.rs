@@ -1,12 +1,21 @@
-#![allow(clippy::clone_on_copy)]
 #![cfg(all(feature = "Copy", feature = "Clone"))]
 #![no_std]
+#![allow(clippy::clone_on_copy)]
 
-#[macro_use]
-extern crate educe;
+use educe::Educe;
 
 #[test]
-#[allow(irrefutable_let_patterns)]
+fn empty() {
+    #[derive(Educe)]
+    #[educe(Copy, Clone)]
+    struct Struct {}
+
+    #[derive(Educe)]
+    #[educe(Copy, Clone)]
+    struct Tuple();
+}
+
+#[test]
 fn basic() {
     #[derive(Educe)]
     #[educe(Copy, Clone)]
@@ -38,13 +47,13 @@ fn basic() {
 #[test]
 fn bound_1() {
     #[derive(Educe)]
-    #[educe(Copy(bound), Clone(bound))]
+    #[educe(Copy, Clone)]
     struct Struct<T> {
         f1: T,
     }
 
     #[derive(Educe)]
-    #[educe(Copy(bound), Clone(bound))]
+    #[educe(Copy, Clone)]
     struct Tuple<T>(T);
 
     let s = Struct {
@@ -82,13 +91,13 @@ fn bound_2() {
 #[test]
 fn bound_3() {
     #[derive(Educe)]
-    #[educe(Copy(bound("T: core::marker::Copy")), Clone(bound("T: core::marker::Copy")))]
+    #[educe(Copy(bound(T: core::marker::Copy)), Clone(bound(T: core::marker::Copy)))]
     struct Struct<T> {
         f1: T,
     }
 
     #[derive(Educe)]
-    #[educe(Copy(bound("T: core::marker::Copy")), Clone(bound("T: core::marker::Copy")))]
+    #[educe(Copy(bound(T: core::marker::Copy)), Clone(bound(T: core::marker::Copy)))]
     struct Tuple<T>(T);
 
     let s = Struct {
