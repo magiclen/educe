@@ -35,6 +35,10 @@ impl TraitHandler for CloneStructHandler {
             #[cfg(not(feature = "Copy"))]
             let contains_copy = false;
 
+            if contains_copy {
+                clone_token_stream.extend(quote!(*self));
+            }
+
             for field in data.fields.iter() {
                 let field_attribute = FieldAttributeBuilder {
                     enable_method: !contains_copy
@@ -44,96 +48,105 @@ impl TraitHandler for CloneStructHandler {
                 fields.push((field, field_attribute));
             }
 
-            if contains_copy {
-                bound = type_attribute.bound.into_where_predicates_by_generic_parameters(
-                    &ast.generics.params,
-                    &syn::parse2(quote!(::core::marker::Copy)).unwrap(),
-                );
+            let mut clone_types: Vec<&Type> = Vec::new();
 
-                clone_token_stream.extend(quote!(*self));
-            } else {
-                let mut clone_types: Vec<&Type> = Vec::new();
-
-                match &data.fields {
-                    Fields::Unit => {
+            match &data.fields {
+                Fields::Unit => {
+                    if !contains_copy {
                         clone_token_stream.extend(quote!(Self));
                         clone_from_token_stream.extend(quote!(let _ = source;));
-                    },
-                    Fields::Named(_) => {
-                        let mut fields_token_stream = proc_macro2::TokenStream::new();
+                    }
+                },
+                Fields::Named(_) => {
+                    let mut fields_token_stream = proc_macro2::TokenStream::new();
+                    let mut clone_from_body_token_stream = proc_macro2::TokenStream::new();
 
-                        if fields.is_empty() {
-                            clone_from_token_stream.extend(quote!(let _ = source;));
-                        } else {
-                            for (field, field_attribute) in fields {
-                                let field_name = field.ident.as_ref().unwrap();
+                    if fields.is_empty() {
+                        clone_from_body_token_stream.extend(quote!(let _ = source;));
+                    } else {
+                        for (field, field_attribute) in fields {
+                            let field_name = field.ident.as_ref().unwrap();
 
-                                if let Some(clone) = field_attribute.method.as_ref() {
-                                    fields_token_stream.extend(quote! {
-                                        #field_name: #clone(&self.#field_name),
-                                    });
-                                    clone_from_token_stream.extend(
-                                        quote!(self.#field_name = #clone(&source.#field_name);),
-                                    );
-                                } else {
-                                    clone_types.push(&field.ty);
+                            if let Some(clone) = field_attribute.method.as_ref() {
+                                fields_token_stream.extend(quote! {
+                                    #field_name: #clone(&self.#field_name),
+                                });
 
-                                    fields_token_stream.extend(quote! {
-                                        #field_name: ::core::clone::Clone::clone(&self.#field_name),
-                                    });
-                                    clone_from_token_stream.extend(
+                                clone_from_body_token_stream.extend(
+                                    quote!(self.#field_name = #clone(&source.#field_name);),
+                                );
+                            } else {
+                                clone_types.push(&field.ty);
+
+                                fields_token_stream.extend(quote! {
+                                    #field_name: ::core::clone::Clone::clone(&self.#field_name),
+                                });
+
+                                clone_from_body_token_stream.extend(
                                         quote!( ::core::clone::Clone::clone_from(&mut self.#field_name, &source.#field_name); ),
                                     );
-                                }
                             }
                         }
+                    }
 
+                    if !contains_copy {
                         clone_token_stream.extend(quote! {
                             Self {
                                 #fields_token_stream
                             }
                         });
-                    },
-                    Fields::Unnamed(_) => {
-                        let mut fields_token_stream = proc_macro2::TokenStream::new();
 
-                        if fields.is_empty() {
-                            clone_from_token_stream.extend(quote!(let _ = source;));
-                        } else {
-                            for (index, (field, field_attribute)) in fields.into_iter().enumerate()
-                            {
-                                let field_name = Index::from(index);
+                        clone_from_token_stream.extend(clone_from_body_token_stream);
+                    }
+                },
+                Fields::Unnamed(_) => {
+                    let mut fields_token_stream = proc_macro2::TokenStream::new();
+                    let mut clone_from_body_token_stream = proc_macro2::TokenStream::new();
 
-                                if let Some(clone) = field_attribute.method.as_ref() {
-                                    fields_token_stream.extend(quote!(#clone(&self.#field_name),));
-                                    clone_from_token_stream.extend(
-                                        quote!(self.#field_name = #clone(&source.#field_name);),
-                                    );
-                                } else {
-                                    clone_types.push(&field.ty);
+                    if fields.is_empty() {
+                        clone_from_body_token_stream.extend(quote!(let _ = source;));
+                    } else {
+                        for (index, (field, field_attribute)) in fields.into_iter().enumerate() {
+                            let field_name = Index::from(index);
 
-                                    fields_token_stream.extend(
-                                        quote! ( ::core::clone::Clone::clone(&self.#field_name), ),
-                                    );
-                                    clone_from_token_stream.extend(
+                            if let Some(clone) = field_attribute.method.as_ref() {
+                                fields_token_stream.extend(quote!(#clone(&self.#field_name),));
+
+                                clone_from_body_token_stream.extend(
+                                    quote!(self.#field_name = #clone(&source.#field_name);),
+                                );
+                            } else {
+                                clone_types.push(&field.ty);
+
+                                fields_token_stream.extend(
+                                    quote! ( ::core::clone::Clone::clone(&self.#field_name), ),
+                                );
+
+                                clone_from_body_token_stream.extend(
                                         quote!( ::core::clone::Clone::clone_from(&mut self.#field_name, &source.#field_name); ),
                                     );
-                                }
                             }
                         }
+                    }
 
+                    if !contains_copy {
                         clone_token_stream.extend(quote!(Self ( #fields_token_stream )));
-                    },
-                }
-
-                bound =
-                    type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
-                        &ast.generics.params,
-                        &syn::parse2(quote!(::core::clone::Clone)).unwrap(),
-                        &clone_types,
-                        Some((false, false)),
-                    );
+                        clone_from_token_stream.extend(clone_from_body_token_stream);
+                    }
+                },
             }
+
+            bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
+                &ast.generics.params,
+                &syn::parse2(if contains_copy {
+                    quote!(::core::marker::Copy)
+                } else {
+                    quote!(::core::clone::Clone)
+                })
+                .unwrap(),
+                &clone_types,
+                Some((false, false)),
+            );
         }
 
         let clone_from_fn_token_stream = if clone_from_token_stream.is_empty() {
@@ -167,6 +180,14 @@ impl TraitHandler for CloneStructHandler {
                 #clone_from_fn_token_stream
             }
         });
+
+        #[cfg(feature = "Copy")]
+        if traits.contains(&Trait::Copy) {
+            token_stream.extend(quote! {
+                impl #impl_generics ::core::marker::Copy for #ident #ty_generics #where_clause {
+                }
+            });
+        }
 
         Ok(())
     }

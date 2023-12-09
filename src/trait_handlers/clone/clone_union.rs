@@ -54,6 +54,14 @@ impl TraitHandler for CloneUnionHandler {
             }
         });
 
+        #[cfg(feature = "Copy")]
+        if traits.contains(&Trait::Copy) {
+            token_stream.extend(quote! {
+                impl #impl_generics ::core::marker::Copy for #ident #ty_generics #where_clause {
+                }
+            });
+        }
+
         Ok(())
     }
 }
