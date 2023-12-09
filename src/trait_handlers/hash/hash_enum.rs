@@ -142,6 +142,7 @@ impl TraitHandler for HashEnumHandler {
             &ast.generics.params,
             &syn::parse2(quote!(::core::hash::Hash)).unwrap(),
             &hash_types,
+            Some((true, false)),
         );
 
         let where_clause = ast.generics.make_where_clause();

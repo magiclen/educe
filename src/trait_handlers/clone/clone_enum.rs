@@ -219,6 +219,7 @@ impl TraitHandler for CloneEnumHandler {
                         &ast.generics.params,
                         &syn::parse2(quote!(::core::clone::Clone)).unwrap(),
                         &clone_types,
+                        Some((false, false)),
                     );
             }
         }

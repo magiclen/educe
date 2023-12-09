@@ -31,7 +31,7 @@ pub(crate) fn create_format_arg(
     let ty = dereference(ty);
 
     let mut idents = HashSet::new();
-    find_idents_in_type(&mut idents, ty);
+    find_idents_in_type(&mut idents, ty, Some((true, false)));
 
     // simply support one level generics (without considering bounds that use other generics)
     let mut filtered_params: Punctuated<GenericParam, Comma> = Punctuated::new();

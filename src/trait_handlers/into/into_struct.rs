@@ -138,6 +138,7 @@ impl TraitHandlerMultiple for IntoStructHandler {
                     &ast.generics.params,
                     &syn::parse2(quote!(::core::convert::Into<#target_ty>)).unwrap(),
                     &into_types,
+                    None,
                 );
 
                 // clone generics in order to not to affect other Into<T> implementations

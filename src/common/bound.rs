@@ -52,6 +52,7 @@ impl Bound {
         params: &Punctuated<GenericParam, Comma>,
         bound_trait: &Path,
         types: &[&Type],
+        recursive: Option<(bool, bool)>,
     ) -> Punctuated<WherePredicate, Comma> {
         match self {
             Self::Disabled => Punctuated::new(),
@@ -59,6 +60,7 @@ impl Bound {
                 params,
                 bound_trait,
                 types,
+                recursive,
             ),
             Self::Custom(where_predicates) => where_predicates,
         }

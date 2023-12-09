@@ -131,6 +131,7 @@ impl TraitHandler for CloneStructHandler {
                         &ast.generics.params,
                         &syn::parse2(quote!(::core::clone::Clone)).unwrap(),
                         &clone_types,
+                        Some((false, false)),
                     );
             }
         }
