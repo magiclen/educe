@@ -76,7 +76,7 @@ impl TraitHandler for HashEnumHandler {
                                 &built_in_hash
                             });
 
-                            block_token_stream.extend(quote!( #hash(#field_name, state) ));
+                            block_token_stream.extend(quote!( #hash(#field_name, state); ));
                         }
 
                         arms_token_stream.extend(quote! {
@@ -113,7 +113,7 @@ impl TraitHandler for HashEnumHandler {
                                 &built_in_hash
                             });
 
-                            block_token_stream.extend(quote!( #hash(#field_name, state) ));
+                            block_token_stream.extend(quote!( #hash(#field_name, state); ));
                         }
 
                         arms_token_stream.extend(quote! {

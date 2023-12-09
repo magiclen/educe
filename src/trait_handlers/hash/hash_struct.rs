@@ -52,7 +52,7 @@ impl TraitHandler for HashStructHandler {
                     &built_in_hash
                 });
 
-                hash_token_stream.extend(quote!( #hash(&self.#field_name, state) ));
+                hash_token_stream.extend(quote!( #hash(&self.#field_name, state); ));
             }
         }
 
