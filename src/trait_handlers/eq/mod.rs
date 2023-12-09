@@ -61,6 +61,18 @@ impl TraitHandler for EqHandler {
 
             let ident = &ast.ident;
 
+            /*
+                #[derive(PartialEq)]
+                struct B<T> {
+                    f1: PhantomData<T>,
+                }
+
+                impl<T> Eq for B<T> {
+
+                }
+
+                // The above code will throw a compile error because T have to be bound to `PartialEq`. However, it seems not to be necessary logically.
+            */
             let bound = type_attribute.bound.into_where_predicates_by_generic_parameters(
                 &ast.generics.params,
                 &syn::parse2(quote!(::core::cmp::PartialEq)).unwrap(),

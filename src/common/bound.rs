@@ -52,7 +52,7 @@ impl Bound {
         params: &Punctuated<GenericParam, Comma>,
         bound_trait: &Path,
         types: &[&Type],
-        recursive: Option<(bool, bool)>,
+        recursive: Option<(bool, bool, bool)>,
     ) -> Punctuated<WherePredicate, Comma> {
         match self {
             Self::Disabled => Punctuated::new(),

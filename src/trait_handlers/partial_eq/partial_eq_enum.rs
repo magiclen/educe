@@ -182,7 +182,7 @@ impl TraitHandler for PartialEqEnumHandler {
             &ast.generics.params,
             &syn::parse2(quote!(::core::cmp::PartialEq)).unwrap(),
             &partial_eq_types,
-            Some((true, false)),
+            Some((true, false, false)),
         );
 
         let where_clause = ast.generics.make_where_clause();

@@ -237,7 +237,7 @@ impl TraitHandler for OrdEnumHandler {
             &ast.generics.params,
             &syn::parse2(quote!(::core::cmp::Ord)).unwrap(),
             &ord_types,
-            Some((true, false)),
+            Some((true, false, false)),
         );
 
         let where_clause = ast.generics.make_where_clause();

@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use syn::{
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
-    Ident, Meta, Token, Type, TypeParamBound,
+    GenericArgument, Ident, Meta, Path, PathArguments, Token, Type, TypeParamBound,
 };
 
 pub(crate) struct TypeWithPunctuatedMeta {
@@ -34,12 +34,48 @@ impl Parse for TypeWithPunctuatedMeta {
     }
 }
 
-/// recursive (dereference, de_ptr)
+/// recursive (dereference, de_ptr, de_param)
+#[inline]
+pub(crate) fn find_idents_in_path<'a>(
+    set: &mut HashSet<&'a Ident>,
+    path: &'a Path,
+    recursive: Option<(bool, bool, bool)>,
+) {
+    if let Some((_, _, de_param)) = recursive {
+        if de_param {
+            if let Some(segment) = path.segments.iter().last() {
+                if let PathArguments::AngleBracketed(a) = &segment.arguments {
+                    // the ident is definitely not a generic parameter, so we don't insert it
+
+                    for arg in a.args.iter() {
+                        match arg {
+                            GenericArgument::Type(ty) => {
+                                find_idents_in_type(set, ty, recursive);
+                            },
+                            GenericArgument::AssocType(ty) => {
+                                find_idents_in_type(set, &ty.ty, recursive);
+                            },
+                            _ => (),
+                        }
+                    }
+
+                    return;
+                }
+            }
+        }
+    }
+
+    if let Some(ty) = path.get_ident() {
+        set.insert(ty);
+    }
+}
+
+/// recursive (dereference, de_ptr, de_param)
 #[inline]
 pub(crate) fn find_idents_in_type<'a>(
     set: &mut HashSet<&'a Ident>,
     ty: &'a Type,
-    recursive: Option<(bool, bool)>,
+    recursive: Option<(bool, bool, bool)>,
 ) {
     match ty {
         Type::Array(ty) => {
@@ -53,21 +89,16 @@ pub(crate) fn find_idents_in_type<'a>(
             }
         },
         Type::ImplTrait(ty) => {
-            if recursive.is_some() {
-                for b in &ty.bounds {
-                    if let TypeParamBound::Trait(ty) = b {
-                        if let Some(ty) = ty.path.get_ident() {
-                            set.insert(ty);
-                        }
-                    }
+            // always recursive
+            for b in &ty.bounds {
+                if let TypeParamBound::Trait(ty) = b {
+                    find_idents_in_path(set, &ty.path, recursive);
                 }
             }
         },
         Type::Macro(ty) => {
             if recursive.is_some() {
-                if let Some(ty) = ty.mac.path.get_ident() {
-                    set.insert(ty);
-                }
+                find_idents_in_path(set, &ty.mac.path, recursive);
             }
         },
         Type::Paren(ty) => {
@@ -76,22 +107,16 @@ pub(crate) fn find_idents_in_type<'a>(
             }
         },
         Type::Path(ty) => {
-            if let Some(ty) = ty.path.get_ident() {
-                set.insert(ty);
-            }
+            find_idents_in_path(set, &ty.path, recursive);
         },
         Type::Ptr(ty) => {
-            if let Some((_, de_ptr)) = recursive {
-                if de_ptr {
-                    find_idents_in_type(set, ty.elem.as_ref(), recursive);
-                }
+            if let Some((_, true, _)) = recursive {
+                find_idents_in_type(set, ty.elem.as_ref(), recursive);
             }
         },
         Type::Reference(ty) => {
-            if let Some((dereference, _)) = recursive {
-                if dereference {
-                    find_idents_in_type(set, ty.elem.as_ref(), recursive);
-                }
+            if let Some((true, ..)) = recursive {
+                find_idents_in_type(set, ty.elem.as_ref(), recursive);
             }
         },
         Type::Slice(ty) => {
@@ -100,13 +125,10 @@ pub(crate) fn find_idents_in_type<'a>(
             }
         },
         Type::TraitObject(ty) => {
-            if recursive.is_some() {
-                for b in &ty.bounds {
-                    if let TypeParamBound::Trait(ty) = b {
-                        if let Some(ty) = ty.path.get_ident() {
-                            set.insert(ty);
-                        }
-                    }
+            // always recursive
+            for b in &ty.bounds {
+                if let TypeParamBound::Trait(ty) = b {
+                    find_idents_in_path(set, &ty.path, recursive);
                 }
             }
         },
@@ -115,52 +137,6 @@ pub(crate) fn find_idents_in_type<'a>(
                 for ty in &ty.elems {
                     find_idents_in_type(set, ty, recursive)
                 }
-            }
-        },
-        _ => (),
-    }
-}
-
-#[inline]
-pub(crate) fn find_derivable_idents_in_type<'a>(set: &mut HashSet<&'a Ident>, ty: &'a Type) {
-    match ty {
-        Type::Array(ty) => find_derivable_idents_in_type(set, ty.elem.as_ref()),
-        Type::Group(ty) => find_derivable_idents_in_type(set, ty.elem.as_ref()),
-        Type::ImplTrait(ty) => {
-            for b in &ty.bounds {
-                if let TypeParamBound::Trait(ty) = b {
-                    if let Some(ty) = ty.path.get_ident() {
-                        set.insert(ty);
-                    }
-                }
-            }
-        },
-        Type::Macro(ty) => {
-            if let Some(ty) = ty.mac.path.get_ident() {
-                set.insert(ty);
-            }
-        },
-        Type::Paren(ty) => find_derivable_idents_in_type(set, ty.elem.as_ref()),
-        Type::Path(ty) => {
-            if let Some(ty) = ty.path.get_ident() {
-                set.insert(ty);
-            }
-        },
-        Type::Ptr(_) => (),
-        Type::Reference(_) => (),
-        Type::Slice(ty) => find_derivable_idents_in_type(set, ty.elem.as_ref()),
-        Type::TraitObject(ty) => {
-            for b in &ty.bounds {
-                if let TypeParamBound::Trait(ty) = b {
-                    if let Some(ty) = ty.path.get_ident() {
-                        set.insert(ty);
-                    }
-                }
-            }
-        },
-        Type::Tuple(ty) => {
-            for ty in &ty.elems {
-                find_derivable_idents_in_type(set, ty)
             }
         },
         _ => (),

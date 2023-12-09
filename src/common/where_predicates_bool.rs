@@ -111,14 +111,14 @@ pub(crate) fn create_where_predicates_from_generic_parameters_check_types(
     params: &Punctuated<GenericParam, Comma>,
     bound_trait: &Path,
     types: &[&Type],
-    resursive: Option<(bool, bool)>,
+    recursive: Option<(bool, bool, bool)>,
 ) -> WherePredicates {
     let mut where_predicates = Punctuated::new();
 
     let mut set = HashSet::new();
 
     for t in types {
-        find_idents_in_type(&mut set, t, resursive);
+        find_idents_in_type(&mut set, t, recursive);
     }
 
     for param in params {

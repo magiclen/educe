@@ -316,7 +316,7 @@ enum Enum<T: A> {
 
 ###### Generic Parameters Bound to the `Clone` Trait or Others
 
-Generic parameters will be automatically bound to the `Clone` trait if necessary. If the `#[educe(Copy)]` attribute exists, all generic parameters will bound to the `Copy` trait.
+Generic parameters will be automatically bound to the `Clone` trait if necessary. If the `#[educe(Copy)]` attribute exists, they will be bound to the `Copy` trait.
 
 ```rust
 # #[cfg(feature = "Clone")]
