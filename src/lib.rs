@@ -1074,7 +1074,7 @@ enum Enum {
 
 ###### Use Another Method to Perform Comparison
 
-The `method` parameter can be utilized to replace the implementation of the `PartialOrd` trait for a field, eliminating the need to implement the `PartialOrd` trait for the type of that field.
+The `method` parameter can be utilized to replace the implementation of the `Ord` trait for a field, eliminating the need to implement the `Ord` trait for the type of that field.
 
 ```rust
 # #[cfg(all(feature = "PartialEq", feature = "Eq", feature = "PartialOrd", feature = "Ord"))]
@@ -1119,7 +1119,7 @@ enum Enum<T: A> {
 
 ###### Ranking
 
-Each field can add a `#[educe(PartialOrd(rank = priority_value))]` attribute, where `priority_value` is an integer value indicating its comparison precedence (lower values indicate higher priority). The default `priority_value` for a field depends on its ordinal position (lower towards the front) and starts with `isize::MIN`.
+Each field can add a `#[educe(Ord(rank = priority_value))]` attribute, where `priority_value` is an integer value indicating its comparison precedence (lower values indicate higher priority). The default `priority_value` for a field depends on its ordinal position (lower towards the front) and starts with `isize::MIN`.
 
 ```rust
 # #[cfg(all(feature = "PartialOrd", feature = "Ord"))]
