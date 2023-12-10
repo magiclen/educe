@@ -69,13 +69,13 @@ fn bound_1() {
 #[test]
 fn bound_2() {
     #[derive(Educe)]
-    #[educe(Copy(bound = "T: core::marker::Copy"), Clone(bound = "T: core::marker::Copy"))]
+    #[educe(Copy, Clone(bound = "T: core::marker::Copy"))]
     struct Struct<T> {
         f1: T,
     }
 
     #[derive(Educe)]
-    #[educe(Copy(bound = "T: core::marker::Copy"), Clone(bound = "T: core::marker::Copy"))]
+    #[educe(Copy, Clone(bound = "T: core::marker::Copy"))]
     struct Tuple<T>(T);
 
     let s = Struct {
@@ -91,13 +91,13 @@ fn bound_2() {
 #[test]
 fn bound_3() {
     #[derive(Educe)]
-    #[educe(Copy(bound(T: core::marker::Copy)), Clone(bound(T: core::marker::Copy)))]
+    #[educe(Copy, Clone(bound(T: core::marker::Copy)))]
     struct Struct<T> {
         f1: T,
     }
 
     #[derive(Educe)]
-    #[educe(Copy(bound(T: core::marker::Copy)), Clone(bound(T: core::marker::Copy)))]
+    #[educe(Copy, Clone(bound(T: core::marker::Copy)))]
     struct Tuple<T>(T);
 
     let s = Struct {

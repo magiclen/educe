@@ -441,7 +441,7 @@ fn clone<T: A>(v: &T) -> T {
 }
 
 #[derive(Educe)]
-#[educe(Copy(bound(T: Copy, K: A + Copy)), Clone(bound(T: Copy, K: A + Copy)))]
+#[educe(Copy, Clone(bound(T: Copy, K: A + Copy)))]
 enum Enum<T, K> {
     V1,
     V2 {

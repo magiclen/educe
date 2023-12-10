@@ -24,7 +24,8 @@ impl TraitHandler for CopyHandler {
         let contains_clone = false;
 
         let type_attribute = TypeAttributeBuilder {
-            enable_flag: true, enable_bound: true
+            enable_flag:  true,
+            enable_bound: !contains_clone,
         }
         .build_from_copy_meta(meta)?;
 
