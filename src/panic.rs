@@ -89,16 +89,18 @@ pub(crate) fn educe_format_incorrect(name: &Ident) -> syn::Error {
 
 #[inline]
 pub(crate) fn unsupported_trait(name: &Path) -> syn::Error {
+    let span = name.span();
+
     match name.get_ident() {
         Some(name) => syn::Error::new(
-            name.span(),
+            span,
             format!("unsupported trait `{}`, available traits:{}", name, DisplayTraits),
         ),
         None => {
             let name = path_to_string(name);
 
             syn::Error::new(
-                name.span(),
+                span,
                 format!("unsupported trait `{}`, available traits:{}", name, DisplayTraits),
             )
         },
