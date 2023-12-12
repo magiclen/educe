@@ -51,7 +51,7 @@ pub(crate) enum Trait {
 
 impl Trait {
     #[inline]
-    pub(crate) fn from_path(path: &Path) -> Option<Trait> {
+    pub(crate) fn from_path(path: &Path) -> Option<Self> {
         let ident_string = match path.get_ident() {
             Some(ident) => ident.to_string(),
             None => return None,
@@ -59,29 +59,29 @@ impl Trait {
 
         match ident_string.as_str() {
             #[cfg(feature = "Debug")]
-            "Debug" => Some(Trait::Debug),
+            "Debug" => Some(Self::Debug),
             #[cfg(feature = "Clone")]
-            "Clone" => Some(Trait::Clone),
+            "Clone" => Some(Self::Clone),
             #[cfg(feature = "Copy")]
-            "Copy" => Some(Trait::Copy),
+            "Copy" => Some(Self::Copy),
             #[cfg(feature = "PartialEq")]
-            "PartialEq" => Some(Trait::PartialEq),
+            "PartialEq" => Some(Self::PartialEq),
             #[cfg(feature = "Eq")]
-            "Eq" => Some(Trait::Eq),
+            "Eq" => Some(Self::Eq),
             #[cfg(feature = "PartialOrd")]
-            "PartialOrd" => Some(Trait::PartialOrd),
+            "PartialOrd" => Some(Self::PartialOrd),
             #[cfg(feature = "Ord")]
-            "Ord" => Some(Trait::Ord),
+            "Ord" => Some(Self::Ord),
             #[cfg(feature = "Hash")]
-            "Hash" => Some(Trait::Hash),
+            "Hash" => Some(Self::Hash),
             #[cfg(feature = "Default")]
-            "Default" => Some(Trait::Default),
+            "Default" => Some(Self::Default),
             #[cfg(feature = "Deref")]
-            "Deref" => Some(Trait::Deref),
+            "Deref" => Some(Self::Deref),
             #[cfg(feature = "DerefMut")]
-            "DerefMut" => Some(Trait::DerefMut),
+            "DerefMut" => Some(Self::DerefMut),
             #[cfg(feature = "Into")]
-            "Into" => Some(Trait::Into),
+            "Into" => Some(Self::Into),
             _ => None,
         }
     }
