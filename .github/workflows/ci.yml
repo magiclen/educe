@@ -73,7 +73,7 @@ jobs:
           - macos-latest
           - windows-latest
         toolchain:
-          - 1.56
+          - "1.60"
         features:
           -
           - --no-default-features --features Debug

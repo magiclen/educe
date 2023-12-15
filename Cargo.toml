@@ -1,9 +1,9 @@
 [package]
 name = "educe"
-version = "0.5.5"
+version = "0.5.6"
 authors = ["Magic Len <len@magiclen.org>"]
 edition = "2021"
-rust-version = "1.56"
+rust-version = "1.60"
 repository = "https://github.com/magiclen/educe"
 homepage = "https://magiclen.org/educe"
 keywords = ["derive", "macro", "trait", "field", "procedural"]
