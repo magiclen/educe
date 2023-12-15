@@ -15,9 +15,8 @@ pub(crate) fn union_without_unsafe(meta: &Meta) -> syn::Error {
         meta.span(),
         format!(
             "a union's `Hash` implementation is not precise, because it ignores the type of \
-             fields\n* If your union doesn't care about that, use `#[educe({})]` to implement the \
-             `Hash` trait for it.",
-            s
+             fields\n* If your union doesn't care about that, use `#[educe({s})]` to implement \
+             the `Hash` trait for it."
         ),
     )
 }
