@@ -1,25 +1,34 @@
-use syn::{spanned::Spanned, Expr, Lit, Meta, MetaNameValue};
+use syn::{spanned::Spanned, Expr, Lit, Meta, MetaNameValue, UnOp};
 
 use super::path::path_to_string;
 
 #[inline]
 pub(crate) fn meta_name_value_2_isize(name_value: &MetaNameValue) -> syn::Result<isize> {
-    if let Expr::Lit(lit) = &name_value.value {
-        match &lit.lit {
+    match &name_value.value {
+        Expr::Lit(lit) => match &lit.lit {
             Lit::Str(lit) => {
                 return lit
                     .value()
                     .parse::<isize>()
                     .map_err(|error| syn::Error::new(lit.span(), error))
             },
-            Lit::Int(lit) => {
-                return lit
-                    .base10_digits()
-                    .parse::<isize>()
-                    .map_err(|error| syn::Error::new(lit.span(), error))
-            },
+            Lit::Int(lit) => return lit.base10_parse(),
             _ => (),
-        }
+        },
+        Expr::Unary(unary) => {
+            if let UnOp::Neg(_) = unary.op {
+                if let Expr::Lit(lit) = unary.expr.as_ref() {
+                    if let Lit::Int(lit) = &lit.lit {
+                        let s = format!("-{}", lit.base10_digits());
+
+                        return s
+                            .parse::<isize>()
+                            .map_err(|error| syn::Error::new(lit.span(), error));
+                    }
+                }
+            }
+        },
+        _ => (),
     }
 
     Err(syn::Error::new(
@@ -39,10 +48,7 @@ pub(crate) fn meta_2_isize(meta: &Meta) -> syn::Result<isize> {
                 Lit::Str(lit) => {
                     lit.value().parse::<isize>().map_err(|error| syn::Error::new(lit.span(), error))
                 },
-                Lit::Int(lit) => lit
-                    .base10_digits()
-                    .parse::<isize>()
-                    .map_err(|error| syn::Error::new(lit.span(), error)),
+                Lit::Int(lit) => lit.base10_parse(),
                 _ => Err(syn::Error::new(lit.span(), "not an integer")),
             }
         },
