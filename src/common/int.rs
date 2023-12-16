@@ -24,7 +24,7 @@ pub(crate) fn meta_name_value_2_isize(name_value: &MetaNameValue) -> syn::Result
 
     Err(syn::Error::new(
         name_value.value.span(),
-        format!("expected #[{path} = integer]", path = path_to_string(&name_value.path)),
+        format!("expected `{path} = integer`", path = path_to_string(&name_value.path)),
     ))
 }
 
@@ -49,7 +49,7 @@ pub(crate) fn meta_2_isize(meta: &Meta) -> syn::Result<isize> {
         Meta::Path(path) => Err(syn::Error::new(
             path.span(),
             format!(
-                "expected #[{path} = integer] or #[{path}(integer)]",
+                "expected `{path} = integer` or `{path}(integer)`",
                 path = path_to_string(path)
             ),
         )),

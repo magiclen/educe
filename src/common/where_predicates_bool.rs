@@ -66,7 +66,7 @@ pub(crate) fn meta_name_value_2_where_predicates_bool(
     Err(syn::Error::new(
         name_value.value.span(),
         format!(
-            "expected #[{path} = \"where_predicates\"] or #[{path} = false]",
+            "expected `{path} = \"where_predicates\"` or `{path} = false`",
             path = path_to_string(&name_value.path)
         ),
     ))
@@ -80,8 +80,8 @@ pub(crate) fn meta_2_where_predicates(meta: &Meta) -> syn::Result<WherePredicate
         Meta::Path(path) => Err(syn::Error::new(
             path.span(),
             format!(
-                "expected #[{path} = \"where_predicates\"], #[{path}(where_predicates)], #[{path} \
-                 = false], or #[{path}(false)], ",
+                "expected `{path} = \"where_predicates\"`, `{path}(where_predicates)`, `{path} = \
+                 false`, or `{path}(false)`",
                 path = path.clone().into_token_stream()
             ),
         )),

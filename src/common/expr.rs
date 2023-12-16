@@ -15,7 +15,7 @@ pub(crate) fn meta_2_expr(meta: &Meta) -> syn::Result<Expr> {
         Meta::List(list) => list.parse_args::<Expr>(),
         Meta::Path(path) => Err(syn::Error::new(
             path.span(),
-            format!("expected #[{path} = Expr] or #[{path}(Expr)]", path = path_to_string(path)),
+            format!("expected `{path} = Expr` or `{path}(Expr)`", path = path_to_string(path)),
         )),
     }
 }

@@ -51,7 +51,7 @@ pub(crate) fn meta_name_value_2_ident(name_value: &MetaNameValue) -> syn::Result
 
     Err(syn::Error::new(
         name_value.value.span(),
-        format!("expected #[{path} = Ident]", path = path_to_string(&name_value.path)),
+        format!("expected `{path} = Ident`", path = path_to_string(&name_value.path)),
     ))
 }
 
@@ -68,7 +68,7 @@ pub(crate) fn meta_2_ident(meta: &Meta) -> syn::Result<Ident> {
         },
         Meta::Path(path) => Err(syn::Error::new(
             path.span(),
-            format!("expected #[{path} = Ident] or #[{path}(Ident)]", path = path_to_string(path)),
+            format!("expected `{path} = Ident` or `{path}(Ident)`", path = path_to_string(path)),
         )),
     }
 }
@@ -83,7 +83,7 @@ pub(crate) fn meta_name_value_2_bool(name_value: &MetaNameValue) -> syn::Result<
 
     Err(syn::Error::new(
         name_value.value.span(),
-        format!("expected #[{path} = false]", path = path_to_string(&name_value.path)),
+        format!("expected `{path} = false`", path = path_to_string(&name_value.path)),
     ))
 }
 
@@ -94,7 +94,7 @@ pub(crate) fn meta_2_bool(meta: &Meta) -> syn::Result<bool> {
         Meta::List(list) => Ok(list.parse_args::<LitBool>()?.value),
         Meta::Path(path) => Err(syn::Error::new(
             path.span(),
-            format!("expected #[{path} = false] or #[{path}(false)]", path = path_to_string(path)),
+            format!("expected `{path} = false` or `{path}(false)`", path = path_to_string(path)),
         )),
     }
 }
@@ -139,7 +139,7 @@ pub(crate) fn meta_name_value_2_ident_and_bool(
     Err(syn::Error::new(
         name_value.value.span(),
         format!(
-            "expected #[{path} = Ident] or #[{path} = false]",
+            "expected `{path} = Ident` or `{path} = false`",
             path = path_to_string(&name_value.path)
         ),
     ))
@@ -153,8 +153,7 @@ pub(crate) fn meta_2_ident_and_bool(meta: &Meta) -> syn::Result<IdentOrBool> {
         Meta::Path(path) => Err(syn::Error::new(
             path.span(),
             format!(
-                "expected #[{path} = Ident], #[{path}(Ident)], #[{path} = false], or \
-                 #[{path}(false)], ",
+                "expected `{path} = Ident`, `{path}(Ident)`, `{path} = false`, or `{path}(false)`",
                 path = path_to_string(path)
             ),
         )),
