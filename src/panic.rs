@@ -29,7 +29,7 @@ impl Display for DisplayTraits {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         for t in &Trait::VARIANTS[..Trait::VARIANTS.len() - 1] {
             f.write_str("\n    ")?;
-            f.write_fmt(format_args!("{:?}", t))?;
+            f.write_fmt(format_args!("{t:?}"))?;
         }
 
         Ok(())
@@ -46,7 +46,7 @@ pub(crate) fn derive_attribute_not_set_up_yet() -> syn::Error {
 
 #[inline]
 pub(crate) fn attribute_incorrect_place(name: &Ident) -> syn::Error {
-    syn::Error::new(name.span(), format!("the `{}` attribute cannot be placed here", name,))
+    syn::Error::new(name.span(), format!("the `{name}` attribute cannot be placed here"))
 }
 
 #[inline]
@@ -61,8 +61,7 @@ pub(crate) fn attribute_incorrect_format_with_span(
         syn::Error::new(
             span,
             format!(
-                "you are using an incorrect format of the `{}` attribute{}",
-                name,
+                "you are using an incorrect format of the `{name}` attribute{}",
                 DisplayStringSlice(correct_usage)
             ),
         )
@@ -79,7 +78,7 @@ pub(crate) fn attribute_incorrect_format(
 
 #[inline]
 pub(crate) fn parameter_reset(name: &Ident) -> syn::Error {
-    syn::Error::new(name.span(), format!("you are trying to reset the `{}` parameter", name))
+    syn::Error::new(name.span(), format!("you are trying to reset the `{name}` parameter"))
 }
 
 #[inline]
@@ -94,14 +93,14 @@ pub(crate) fn unsupported_trait(name: &Path) -> syn::Error {
     match name.get_ident() {
         Some(name) => syn::Error::new(
             span,
-            format!("unsupported trait `{}`, available traits:{}", name, DisplayTraits),
+            format!("unsupported trait `{name}`, available traits:{DisplayTraits}"),
         ),
         None => {
             let name = path_to_string(name);
 
             syn::Error::new(
                 span,
-                format!("unsupported trait `{}`, available traits:{}", name, DisplayTraits),
+                format!("unsupported trait `{name}`, available traits:{DisplayTraits}"),
             )
         },
     }
@@ -109,23 +108,23 @@ pub(crate) fn unsupported_trait(name: &Path) -> syn::Error {
 
 #[inline]
 pub(crate) fn reuse_a_trait(name: &Ident) -> syn::Error {
-    syn::Error::new(name.span(), format!("the trait `{}` is used repeatedly", name))
+    syn::Error::new(name.span(), format!("the trait `{name}` is used repeatedly"))
 }
 
 #[inline]
 pub(crate) fn trait_not_used(name: &Ident) -> syn::Error {
-    syn::Error::new(name.span(), format!("the trait `{}` is not used", name))
+    syn::Error::new(name.span(), format!("the trait `{name}` is not used"))
 }
 
 #[inline]
 pub(crate) fn trait_not_support_union(name: &Ident) -> syn::Error {
-    syn::Error::new(name.span(), format!("the trait `{}` does not support to a union", name))
+    syn::Error::new(name.span(), format!("the trait `{name}` does not support to a union"))
 }
 
 #[inline]
 pub(crate) fn trait_not_support_unit_variant(name: &Ident, variant: &Variant) -> syn::Error {
     syn::Error::new(
         variant.span(),
-        format!("the trait `{}` cannot be implemented for an enum which has unit variants", name),
+        format!("the trait `{name}` cannot be implemented for an enum which has unit variants"),
     )
 }

@@ -35,9 +35,9 @@ pub(crate) fn union_without_unsafe(meta: &Meta) -> syn::Error {
             "a union's `Debug` implementation may expose uninitialized memory\n* It is \
              recommended that, for a union where `Debug` is implemented, types that allow \
              uninitialized memory should not be used in it.\n* If you can ensure that the union \
-             uses no such types, use `#[educe({})]` to implement the `Debug` trait for it.\n* The \
-             `unsafe` keyword should be placed as the first parameter of the `Debug` attribute.",
-            s
+             uses no such types, use `#[educe({s})]` to implement the `Debug` trait for it.\n* \
+             The `unsafe` keyword should be placed as the first parameter of the `Debug` \
+             attribute."
         ),
     )
 }
