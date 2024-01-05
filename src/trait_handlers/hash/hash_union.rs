@@ -40,11 +40,11 @@ impl TraitHandler for HashUnionHandler {
         token_stream.extend(quote! {
             impl #impl_generics ::core::hash::Hash for #ident #ty_generics #where_clause {
                 #[inline]
-                fn hash<H: ::core::hash::Hasher>(&self, state: &mut H) {
+                fn hash<H: ::core::hash::Hasher>(&self, v_state_: &mut H) {
                     let size = ::core::mem::size_of::<Self>();
                     let data = unsafe { ::core::slice::from_raw_parts(self as *const Self as *const u8, size) };
 
-                    ::core::hash::Hash::hash(data, state)
+                    ::core::hash::Hash::hash(data, v_state_)
                 }
             }
         });

@@ -46,7 +46,7 @@ impl TraitHandler for HashEnumHandler {
                     Fields::Unit => {
                         arms_token_stream.extend(quote! {
                             Self::#variant_ident => {
-                                ::core::hash::Hash::hash(&#variant_index, state);
+                                ::core::hash::Hash::hash(&#variant_index, v_state_);
                             }
                         });
                     },
@@ -76,12 +76,12 @@ impl TraitHandler for HashEnumHandler {
                                 &built_in_hash
                             });
 
-                            block_token_stream.extend(quote!( #hash(#field_name, state); ));
+                            block_token_stream.extend(quote!( #hash(#field_name, v_state_); ));
                         }
 
                         arms_token_stream.extend(quote! {
                             Self::#variant_ident { #pattern_token_stream } => {
-                                ::core::hash::Hash::hash(&#variant_index, state);
+                                ::core::hash::Hash::hash(&#variant_index, v_state_);
 
                                 #block_token_stream
                             }
@@ -113,12 +113,12 @@ impl TraitHandler for HashEnumHandler {
                                 &built_in_hash
                             });
 
-                            block_token_stream.extend(quote!( #hash(#field_name, state); ));
+                            block_token_stream.extend(quote!( #hash(#field_name, v_state_); ));
                         }
 
                         arms_token_stream.extend(quote! {
                             Self::#variant_ident ( #pattern_token_stream ) => {
-                                ::core::hash::Hash::hash(&#variant_index, state);
+                                ::core::hash::Hash::hash(&#variant_index, v_state_);
 
                                 #block_token_stream
                             }
@@ -156,7 +156,7 @@ impl TraitHandler for HashEnumHandler {
         token_stream.extend(quote! {
             impl #impl_generics ::core::hash::Hash for #ident #ty_generics #where_clause {
                 #[inline]
-                fn hash<H: ::core::hash::Hasher>(&self, state: &mut H) {
+                fn hash<H: ::core::hash::Hasher>(&self, v_state_: &mut H) {
                     #hash_token_stream
                 }
             }

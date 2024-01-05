@@ -44,7 +44,7 @@ impl TraitHandler for DebugStructHandler {
 
         if type_attribute.named_field {
             builder_token_stream.extend(if let Some(name) = name {
-                quote!(let mut builder = f.debug_struct(stringify!(#name));)
+                quote!(let mut builder = v_formatter_.debug_struct(stringify!(#name));)
             } else {
                 super::common::create_debug_map_builder()
             });
@@ -109,7 +109,7 @@ impl TraitHandler for DebugStructHandler {
             }
         } else {
             builder_token_stream
-                .extend(quote!(let mut builder = f.debug_tuple(stringify!(#name));));
+                .extend(quote!(let mut builder = v_formatter_.debug_tuple(stringify!(#name));));
 
             if let Data::Struct(data) = &ast.data {
                 for (index, field) in data.fields.iter().enumerate() {
@@ -174,7 +174,7 @@ impl TraitHandler for DebugStructHandler {
         token_stream.extend(quote! {
             impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
                 #[inline]
-                fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+                fn fmt(&self, v_formatter_: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                     #builder_token_stream
 
                     builder.finish()

@@ -67,8 +67,9 @@ impl TraitHandler for DebugEnumHandler {
                             return Err(super::panic::unit_variant_need_name(variant));
                         }
 
-                        arms_token_stream
-                            .extend(quote!( Self::#variant_ident => f.write_str(#name_string), ));
+                        arms_token_stream.extend(
+                            quote!( Self::#variant_ident => v_formatter_.write_str(#name_string), ),
+                        );
                     },
                     Fields::Named(fields) => {
                         let mut has_fields = false;
@@ -132,8 +133,9 @@ impl TraitHandler for DebugEnumHandler {
                                 has_fields = true;
                             }
                         } else {
-                            block_token_stream
-                                .extend(quote!(let mut builder = f.debug_tuple(#name_string);));
+                            block_token_stream.extend(
+                                quote!(let mut builder = v_formatter_.debug_tuple(#name_string);),
+                            );
 
                             for field in fields.named.iter() {
                                 let field_attribute = FieldAttributeBuilder {
@@ -250,8 +252,9 @@ impl TraitHandler for DebugEnumHandler {
                                 has_fields = true;
                             }
                         } else {
-                            block_token_stream
-                                .extend(quote!(let mut builder = f.debug_tuple(#name_string);));
+                            block_token_stream.extend(
+                                quote!(let mut builder = v_formatter_.debug_tuple(#name_string);),
+                            );
 
                             for (index, field) in fields.unnamed.iter().enumerate() {
                                 let field_attribute = FieldAttributeBuilder {
@@ -315,7 +318,7 @@ impl TraitHandler for DebugEnumHandler {
         if arms_token_stream.is_empty() {
             if let Some(ident) = name {
                 builder_token_stream.extend(quote! {
-                    f.write_str(stringify!(#ident))
+                    v_formatter_.write_str(stringify!(#ident))
                 });
             } else {
                 return Err(super::panic::unit_enum_need_name(ident));
@@ -346,7 +349,7 @@ impl TraitHandler for DebugEnumHandler {
         token_stream.extend(quote! {
             impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
                 #[inline]
-                fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+                fn fmt(&self, v_formatter_: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                     #builder_token_stream
                 }
             }
@@ -359,7 +362,7 @@ impl TraitHandler for DebugEnumHandler {
 #[inline]
 fn create_named_field_builder(name_string: Option<&str>) -> proc_macro2::TokenStream {
     if let Some(name_string) = name_string {
-        quote!(let mut builder = f.debug_struct(#name_string);)
+        quote!(let mut builder = v_formatter_.debug_struct(#name_string);)
     } else {
         super::common::create_debug_map_builder()
     }

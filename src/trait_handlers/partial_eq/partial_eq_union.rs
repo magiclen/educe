@@ -40,10 +40,10 @@ impl TraitHandler for PartialEqUnionHandler {
         token_stream.extend(quote! {
             impl #impl_generics ::core::cmp::PartialEq for #ident #ty_generics #where_clause {
                 #[inline]
-                fn eq(&self, other: &Self) -> bool {
+                fn eq(&self, v_other_: &Self) -> bool {
                     let size = ::core::mem::size_of::<Self>();
                     let self_data = unsafe { ::core::slice::from_raw_parts(self as *const Self as *const u8, size) };
-                    let other_data = unsafe { ::core::slice::from_raw_parts(other as *const Self as *const u8, size) };
+                    let other_data = unsafe { ::core::slice::from_raw_parts(v_other_ as *const Self as *const u8, size) };
 
                     ::core::cmp::PartialEq::eq(self_data, other_data)
                 }

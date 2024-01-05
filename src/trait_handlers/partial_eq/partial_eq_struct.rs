@@ -43,7 +43,7 @@ impl TraitHandler for PartialEqStructHandler {
 
                 if let Some(method) = field_attribute.method {
                     eq_token_stream.extend(quote! {
-                        if !#method(&self.#field_name, &other.#field_name) {
+                        if !#method(&self.#field_name, &v_other_.#field_name) {
                             return false;
                         }
                     });
@@ -53,7 +53,7 @@ impl TraitHandler for PartialEqStructHandler {
                     partial_eq_types.push(ty);
 
                     eq_token_stream.extend(quote! {
-                        if ::core::cmp::PartialEq::ne(&self.#field_name, &other.#field_name) {
+                        if ::core::cmp::PartialEq::ne(&self.#field_name, &v_other_.#field_name) {
                             return false;
                         }
                     });
@@ -81,7 +81,7 @@ impl TraitHandler for PartialEqStructHandler {
         token_stream.extend(quote! {
             impl #impl_generics ::core::cmp::PartialEq for #ident #ty_generics #where_clause {
                 #[inline]
-                fn eq(&self, other: &Self) -> bool {
+                fn eq(&self, v_other_: &Self) -> bool {
                     #eq_token_stream
 
                     true
