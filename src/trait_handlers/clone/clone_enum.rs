@@ -74,7 +74,7 @@ impl TraitHandler for CloneEnumHandler {
             if variants.is_empty() {
                 if !contains_copy {
                     clone_token_stream.extend(quote!(unreachable!()));
-                    clone_from_token_stream.extend(quote!(let _ = v_source_;));
+                    clone_from_token_stream.extend(quote!(let _ = source;));
                 }
             } else {
                 let mut clone_variants_token_stream = proc_macro2::TokenStream::new();
@@ -90,10 +90,10 @@ impl TraitHandler for CloneEnumHandler {
                             });
                             clone_from_variants_token_stream.extend(quote! {
                                 Self::#variant_ident => {
-                                    if let Self::#variant_ident = v_source_ {
+                                    if let Self::#variant_ident = source {
                                         // same
                                     } else {
-                                        *self = ::core::clone::Clone::clone(v_source_);
+                                        *self = ::core::clone::Clone::clone(source);
                                     }
                                 },
                             });
@@ -127,7 +127,7 @@ impl TraitHandler for CloneEnumHandler {
                                         #field_name: ::core::clone::Clone::clone(#field_name),
                                     });
                                     body_token_stream.extend(
-                                quote!( ::core::clone::Clone::clone_from(#field_name, #field_name2); ),
+                                        quote!( ::core::clone::Clone::clone_from(#field_name, #field_name2); ),
                                     );
                                 }
                             }
@@ -138,10 +138,10 @@ impl TraitHandler for CloneEnumHandler {
 
                             clone_from_variants_token_stream.extend(quote! {
                                     Self::#variant_ident { #pattern_token_stream } => {
-                                        if let Self::#variant_ident { #pattern2_token_stream } = v_source_ {
+                                        if let Self::#variant_ident { #pattern2_token_stream } = source {
                                             #body_token_stream
                                         } else {
-                                            *self = ::core::clone::Clone::clone(v_source_);
+                                            *self = ::core::clone::Clone::clone(source);
                                         }
                                     },
                                 });
@@ -182,18 +182,18 @@ impl TraitHandler for CloneEnumHandler {
                             }
 
                             clone_variants_token_stream.extend(quote! {
-                                Self::#variant_ident ( #pattern_token_stream ) => Self::#variant_ident ( #fields_token_stream ),
-                            });
+                                    Self::#variant_ident ( #pattern_token_stream ) => Self::#variant_ident ( #fields_token_stream ),
+                                });
 
                             clone_from_variants_token_stream.extend(quote! {
-                                Self::#variant_ident ( #pattern_token_stream ) => {
-                                    if let Self::#variant_ident ( #pattern2_token_stream ) = v_source_ {
-                                        #body_token_stream
-                                    } else {
-                                        *self = ::core::clone::Clone::clone(v_source_);
-                                    }
-                                },
-                            });
+                                    Self::#variant_ident ( #pattern_token_stream ) => {
+                                        if let Self::#variant_ident ( #pattern2_token_stream ) = source {
+                                            #body_token_stream
+                                        } else {
+                                            *self = ::core::clone::Clone::clone(source);
+                                        }
+                                    },
+                                });
                         },
                     }
                 }
@@ -231,7 +231,7 @@ impl TraitHandler for CloneEnumHandler {
         } else {
             Some(quote! {
                 #[inline]
-                fn clone_from(&mut self, v_source_: &Self) {
+                fn clone_from(&mut self, source: &Self) {
                     #clone_from_token_stream
                 }
             })

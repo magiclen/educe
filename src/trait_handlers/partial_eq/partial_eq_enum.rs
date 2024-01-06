@@ -44,7 +44,7 @@ impl TraitHandler for PartialEqEnumHandler {
                     Fields::Unit => {
                         arms_token_stream.extend(quote! {
                             Self::#variant_ident => {
-                                if let Self::#variant_ident = v_other_ {
+                                if let Self::#variant_ident = other {
                                     // same
                                 } else {
                                     return false;
@@ -100,7 +100,7 @@ impl TraitHandler for PartialEqEnumHandler {
 
                         arms_token_stream.extend(quote! {
                             Self::#variant_ident { #pattern_token_stream } => {
-                                if let Self::#variant_ident { #pattern2_token_stream } = v_other_ {
+                                if let Self::#variant_ident { #pattern2_token_stream } = other {
                                     #block_token_stream
                                 } else {
                                     return false;
@@ -156,7 +156,7 @@ impl TraitHandler for PartialEqEnumHandler {
 
                         arms_token_stream.extend(quote! {
                             Self::#variant_ident ( #pattern_token_stream ) => {
-                                if let Self::#variant_ident ( #pattern2_token_stream ) = v_other_ {
+                                if let Self::#variant_ident ( #pattern2_token_stream ) = other {
                                     #block_token_stream
                                 } else {
                                     return false;
@@ -196,7 +196,7 @@ impl TraitHandler for PartialEqEnumHandler {
         token_stream.extend(quote! {
             impl #impl_generics ::core::cmp::PartialEq for #ident #ty_generics #where_clause {
                 #[inline]
-                fn eq(&self, v_other_: &Self) -> bool {
+                fn eq(&self, other: &Self) -> bool {
                     #eq_token_stream
 
                     true

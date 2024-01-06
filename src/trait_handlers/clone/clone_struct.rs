@@ -54,7 +54,7 @@ impl TraitHandler for CloneStructHandler {
                 Fields::Unit => {
                     if !contains_copy {
                         clone_token_stream.extend(quote!(Self));
-                        clone_from_token_stream.extend(quote!(let _ = v_source_;));
+                        clone_from_token_stream.extend(quote!(let _ = source;));
                     }
                 },
                 Fields::Named(_) => {
@@ -62,7 +62,7 @@ impl TraitHandler for CloneStructHandler {
                     let mut clone_from_body_token_stream = proc_macro2::TokenStream::new();
 
                     if fields.is_empty() {
-                        clone_from_body_token_stream.extend(quote!(let _ = v_source_;));
+                        clone_from_body_token_stream.extend(quote!(let _ = source;));
                     } else {
                         for (field, field_attribute) in fields {
                             let field_name = field.ident.as_ref().unwrap();
@@ -73,7 +73,7 @@ impl TraitHandler for CloneStructHandler {
                                 });
 
                                 clone_from_body_token_stream.extend(
-                                    quote!(self.#field_name = #clone(&v_source_.#field_name);),
+                                    quote!(self.#field_name = #clone(&source.#field_name);),
                                 );
                             } else {
                                 clone_types.push(&field.ty);
@@ -83,8 +83,8 @@ impl TraitHandler for CloneStructHandler {
                                 });
 
                                 clone_from_body_token_stream.extend(
-                            quote!( ::core::clone::Clone::clone_from(&mut self.#field_name, &v_source_.#field_name); ),
-                                );
+                                        quote!( ::core::clone::Clone::clone_from(&mut self.#field_name, &source.#field_name); ),
+                                    );
                             }
                         }
                     }
@@ -104,7 +104,7 @@ impl TraitHandler for CloneStructHandler {
                     let mut clone_from_body_token_stream = proc_macro2::TokenStream::new();
 
                     if fields.is_empty() {
-                        clone_from_body_token_stream.extend(quote!(let _ = v_source_;));
+                        clone_from_body_token_stream.extend(quote!(let _ = source;));
                     } else {
                         for (index, (field, field_attribute)) in fields.into_iter().enumerate() {
                             let field_name = Index::from(index);
@@ -113,7 +113,7 @@ impl TraitHandler for CloneStructHandler {
                                 fields_token_stream.extend(quote!(#clone(&self.#field_name),));
 
                                 clone_from_body_token_stream.extend(
-                                    quote!(self.#field_name = #clone(&v_source_.#field_name);),
+                                    quote!(self.#field_name = #clone(&source.#field_name);),
                                 );
                             } else {
                                 clone_types.push(&field.ty);
@@ -123,8 +123,8 @@ impl TraitHandler for CloneStructHandler {
                                 );
 
                                 clone_from_body_token_stream.extend(
-                            quote!( ::core::clone::Clone::clone_from(&mut self.#field_name, &v_source_.#field_name); ),
-                                );
+                                        quote!( ::core::clone::Clone::clone_from(&mut self.#field_name, &source.#field_name); ),
+                                    );
                             }
                         }
                     }
@@ -154,7 +154,7 @@ impl TraitHandler for CloneStructHandler {
         } else {
             Some(quote! {
                 #[inline]
-                fn clone_from(&mut self, v_source_: &Self) {
+                fn clone_from(&mut self, source: &Self) {
                     #clone_from_token_stream
                 }
             })

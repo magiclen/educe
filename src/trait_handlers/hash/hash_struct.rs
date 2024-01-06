@@ -52,7 +52,7 @@ impl TraitHandler for HashStructHandler {
                     &built_in_hash
                 });
 
-                hash_token_stream.extend(quote!( #hash(&self.#field_name, v_state_); ));
+                hash_token_stream.extend(quote!( #hash(&self.#field_name, state); ));
             }
         }
 
@@ -76,7 +76,7 @@ impl TraitHandler for HashStructHandler {
         token_stream.extend(quote! {
             impl #impl_generics ::core::hash::Hash for #ident #ty_generics #where_clause {
                 #[inline]
-                fn hash<H: ::core::hash::Hasher>(&self, v_state_: &mut H) {
+                fn hash<H: ::core::hash::Hasher>(&self, state: &mut H) {
                     #hash_token_stream
                 }
             }

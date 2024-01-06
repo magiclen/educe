@@ -48,7 +48,7 @@ impl TraitHandler for DebugUnionHandler {
 
             if let Some(name) = name {
                 builder_token_stream.extend(quote!(
-                    let mut builder = v_formatter_.debug_tuple(stringify!(#name));
+                    let mut builder = f.debug_tuple(stringify!(#name));
 
                     let size = ::core::mem::size_of::<Self>();
 
@@ -63,7 +63,7 @@ impl TraitHandler for DebugUnionHandler {
                     let size = ::core::mem::size_of::<Self>();
                     let data = unsafe { ::core::slice::from_raw_parts(self as *const Self as *const u8, size) };
 
-                    ::core::fmt::Debug::fmt(data, v_formatter_)
+                    ::core::fmt::Debug::fmt(data, f)
                 ));
             }
         }
@@ -75,7 +75,7 @@ impl TraitHandler for DebugUnionHandler {
         token_stream.extend(quote! {
             impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
                 #[inline]
-                fn fmt(&self, v_formatter_: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
                     #builder_token_stream
                 }
             }

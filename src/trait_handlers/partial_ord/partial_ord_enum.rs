@@ -120,7 +120,7 @@ impl TraitHandler for PartialOrdEnumHandler {
 
                         arms_token_stream.extend(quote! {
                             Self::#variant_ident { #pattern_token_stream } => {
-                                if let Self::#variant_ident { #pattern2_token_stream } = v_other_ {
+                                if let Self::#variant_ident { #pattern2_token_stream } = other {
                                     #block_token_stream
                                 }
                             }
@@ -192,7 +192,7 @@ impl TraitHandler for PartialOrdEnumHandler {
 
                         arms_token_stream.extend(quote! {
                             Self::#variant_ident ( #pattern_token_stream ) => {
-                                if let Self::#variant_ident ( #pattern2_token_stream ) = v_other_ {
+                                if let Self::#variant_ident ( #pattern2_token_stream ) = other {
                                     #block_token_stream
                                 }
                             }
@@ -207,7 +207,7 @@ impl TraitHandler for PartialOrdEnumHandler {
         } else {
             let discriminant_cmp = quote! {
                 unsafe {
-                    ::core::cmp::Ord::cmp(&*<*const _>::from(self).cast::<#discriminant_type>(), &*<*const _>::from(v_other_).cast::<#discriminant_type>())
+                    ::core::cmp::Ord::cmp(&*<*const _>::from(self).cast::<#discriminant_type>(), &*<*const _>::from(other).cast::<#discriminant_type>())
                 }
             };
 
@@ -256,7 +256,7 @@ impl TraitHandler for PartialOrdEnumHandler {
         token_stream.extend(quote! {
             impl #impl_generics ::core::cmp::PartialOrd for #ident #ty_generics #where_clause {
                 #[inline]
-                fn partial_cmp(&self, v_other_: &Self) -> Option<::core::cmp::Ordering> {
+                fn partial_cmp(&self, other: &Self) -> Option<::core::cmp::Ordering> {
                     #partial_cmp_token_stream
                 }
             }

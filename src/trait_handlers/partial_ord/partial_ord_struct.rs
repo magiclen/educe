@@ -69,7 +69,7 @@ impl TraitHandler for PartialOrdStructHandler {
                 });
 
                 partial_cmp_token_stream.extend(quote! {
-                    match #partial_cmp(&self.#field_name, &v_other_.#field_name) {
+                    match #partial_cmp(&self.#field_name, &other.#field_name) {
                         Some(::core::cmp::Ordering::Equal) => (),
                         Some(::core::cmp::Ordering::Greater) => return Some(::core::cmp::Ordering::Greater),
                         Some(::core::cmp::Ordering::Less) => return Some(::core::cmp::Ordering::Less),
@@ -99,7 +99,7 @@ impl TraitHandler for PartialOrdStructHandler {
         token_stream.extend(quote! {
             impl #impl_generics ::core::cmp::PartialOrd for #ident #ty_generics #where_clause {
                 #[inline]
-                fn partial_cmp(&self, v_other_: &Self) -> Option<::core::cmp::Ordering> {
+                fn partial_cmp(&self, other: &Self) -> Option<::core::cmp::Ordering> {
                     #partial_cmp_token_stream
 
                     Some(::core::cmp::Ordering::Equal)
