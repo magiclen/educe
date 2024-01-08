@@ -1,4 +1,4 @@
-use quote::{quote, ToTokens};
+use quote::{format_ident, quote, ToTokens};
 use syn::{Data, DeriveInput, Fields, Ident, Meta, Type};
 
 use super::models::{FieldAttributeBuilder, FieldName, TypeAttributeBuilder, TypeName};
@@ -89,20 +89,21 @@ impl TraitHandler for DebugEnumHandler {
                                 }
                                 .build_from_attributes(&field.attrs, traits)?;
 
-                                let field_name = field.ident.as_ref().unwrap();
+                                let field_name_real = field.ident.as_ref().unwrap();
+                                let field_name_var = format_ident!("_{}", field_name_real);
 
                                 if field_attribute.ignore {
-                                    pattern_token_stream.extend(quote!(#field_name: _,));
+                                    pattern_token_stream.extend(quote!(#field_name_real: _,));
 
                                     continue;
                                 }
 
                                 let key = match field_attribute.name {
                                     FieldName::Custom(name) => name,
-                                    FieldName::Default => field_name.clone(),
+                                    FieldName::Default => field_name_real.clone(),
                                 };
 
-                                pattern_token_stream.extend(quote!(#field_name,));
+                                pattern_token_stream.extend(quote!(#field_name_real: #field_name_var,));
 
                                 let ty = &field.ty;
 
@@ -111,7 +112,7 @@ impl TraitHandler for DebugEnumHandler {
                                         &ast.generics.params,
                                         ty,
                                         &method,
-                                        quote!(#field_name),
+                                        quote!(#field_name_var),
                                     ));
 
                                     block_token_stream.extend(if name_string.is_some() {
@@ -123,9 +124,9 @@ impl TraitHandler for DebugEnumHandler {
                                     debug_types.push(ty);
 
                                     block_token_stream.extend(if name_string.is_some() {
-                                        quote! (builder.field(stringify!(#key), #field_name);)
+                                        quote! (builder.field(stringify!(#key), #field_name_var);)
                                     } else {
-                                        quote! (builder.entry(&RawString(stringify!(#key)), #field_name);)
+                                        quote! (builder.entry(&RawString(stringify!(#key)), #field_name_var);)
                                     });
                                 }
 
@@ -144,15 +145,16 @@ impl TraitHandler for DebugEnumHandler {
                                 }
                                 .build_from_attributes(&field.attrs, traits)?;
 
-                                let field_name = field.ident.as_ref().unwrap();
+                                let field_name_real = field.ident.as_ref().unwrap();
+                                let field_name_var = format_ident!("_{}", field_name_real);
 
                                 if field_attribute.ignore {
-                                    pattern_token_stream.extend(quote!(#field_name: _,));
+                                    pattern_token_stream.extend(quote!(#field_name_real: _,));
 
                                     continue;
                                 }
 
-                                pattern_token_stream.extend(quote!(#field_name,));
+                                pattern_token_stream.extend(quote!(#field_name_real: #field_name_var,));
 
                                 let ty = &field.ty;
 
@@ -161,14 +163,14 @@ impl TraitHandler for DebugEnumHandler {
                                         &ast.generics.params,
                                         ty,
                                         &method,
-                                        quote!(#field_name),
+                                        quote!(#field_name_var),
                                     ));
 
                                     block_token_stream.extend(quote! (builder.field(&arg);));
                                 } else {
                                     debug_types.push(ty);
 
-                                    block_token_stream.extend(quote! (builder.field(#field_name);));
+                                    block_token_stream.extend(quote! (builder.field(#field_name_var);));
                                 }
 
                                 has_fields = true;
