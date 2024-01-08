@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{spanned::Spanned, Data, DeriveInput, Field, Fields, Ident, Meta, Path, Type};
 
 use super::{
@@ -57,11 +57,11 @@ impl TraitHandler for PartialOrdEnumHandler {
                     Fields::Named(_) => {
                         all_unit = false;
 
-                        let mut pattern_token_stream = proc_macro2::TokenStream::new();
-                        let mut pattern2_token_stream = proc_macro2::TokenStream::new();
+                        let mut pattern_self_token_stream = proc_macro2::TokenStream::new();
+                        let mut pattern_other_token_stream = proc_macro2::TokenStream::new();
                         let mut block_token_stream = proc_macro2::TokenStream::new();
 
-                        let mut fields: BTreeMap<isize, (&Field, &Ident, Ident, FieldAttribute)> =
+                        let mut fields: BTreeMap<isize, (&Field, Ident, Ident, FieldAttribute)> =
                             BTreeMap::new();
 
                         for (index, field) in variant.fields.iter().enumerate() {
@@ -73,20 +73,19 @@ impl TraitHandler for PartialOrdEnumHandler {
                             }
                             .build_from_attributes(&field.attrs, traits)?;
 
-                            let field_name = field.ident.as_ref().unwrap();
+                            let field_name_real = field.ident.as_ref().unwrap();
+                            let field_name_var_self = format_ident!("_s_{}", field_name_real);
+                            let field_name_var_other = format_ident!("_o_{}", field_name_real);
 
                             if field_attribute.ignore {
-                                pattern_token_stream.extend(quote!(#field_name: _,));
-                                pattern2_token_stream.extend(quote!(#field_name: _,));
+                                pattern_self_token_stream.extend(quote!(#field_name_real: _,));
+                                pattern_other_token_stream.extend(quote!(#field_name_real: _,));
 
                                 continue;
                             }
 
-                            let field_name2: Ident =
-                                syn::parse_str(&format!("_{}", field_name)).unwrap();
-
-                            pattern_token_stream.extend(quote!(#field_name,));
-                            pattern2_token_stream.extend(quote!(#field_name: #field_name2,));
+                            pattern_self_token_stream.extend(quote!(#field_name_real: #field_name_var_self,));
+                            pattern_other_token_stream.extend(quote!(#field_name_real: #field_name_var_other,));
 
                             let rank = field_attribute.rank;
 
@@ -97,10 +96,10 @@ impl TraitHandler for PartialOrdEnumHandler {
                                 ));
                             }
 
-                            fields.insert(rank, (field, field_name, field_name2, field_attribute));
+                            fields.insert(rank, (field, field_name_var_self, field_name_var_other, field_attribute));
                         }
 
-                        for (field, field_name, field_name2, field_attribute) in fields.values() {
+                        for (field, field_name_var_self, field_name_var_other, field_attribute) in fields.values() {
                             let partial_cmp =
                                 field_attribute.method.as_ref().unwrap_or_else(|| {
                                     partial_ord_types.push(&field.ty);
@@ -109,7 +108,7 @@ impl TraitHandler for PartialOrdEnumHandler {
                                 });
 
                             block_token_stream.extend(quote! {
-                                match #partial_cmp(#field_name, #field_name2) {
+                                match #partial_cmp(#field_name_var_self, #field_name_var_other) {
                                     Some(::core::cmp::Ordering::Equal) => (),
                                     Some(::core::cmp::Ordering::Greater) => return Some(::core::cmp::Ordering::Greater),
                                     Some(::core::cmp::Ordering::Less) => return Some(::core::cmp::Ordering::Less),
@@ -119,8 +118,8 @@ impl TraitHandler for PartialOrdEnumHandler {
                         }
 
                         arms_token_stream.extend(quote! {
-                            Self::#variant_ident { #pattern_token_stream } => {
-                                if let Self::#variant_ident { #pattern2_token_stream } = other {
+                            Self::#variant_ident { #pattern_self_token_stream } => {
+                                if let Self::#variant_ident { #pattern_other_token_stream } = other {
                                     #block_token_stream
                                 }
                             }
