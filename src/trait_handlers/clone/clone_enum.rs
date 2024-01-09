@@ -1,5 +1,5 @@
 use quote::{format_ident, quote};
-use syn::{punctuated::Punctuated, Data, DeriveInput, Field, Fields, Ident, Meta, Type, Variant};
+use syn::{punctuated::Punctuated, Data, DeriveInput, Field, Fields, Meta, Type, Variant};
 
 use super::models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder};
 use crate::{
@@ -156,28 +156,27 @@ impl TraitHandler for CloneEnumHandler {
                             for (index, (field, field_attribute)) in
                                 variant_fields.into_iter().enumerate()
                             {
-                                let field_name: Ident =
-                                    syn::parse_str(&format!("_{}", index)).unwrap();
+                                let field_name_src = format_ident!("_{}", index);
 
-                                pattern_token_stream.extend(quote!(#field_name,));
+                                pattern_token_stream.extend(quote!(#field_name_src,));
 
-                                let field_name2: Ident =
-                                    syn::parse_str(&format!("_{}", field_name)).unwrap();
+                                let field_name_dst = format_ident!("_{}", field_name_src);
 
-                                pattern2_token_stream.extend(quote!(#field_name2,));
+                                pattern2_token_stream.extend(quote!(#field_name_dst,));
 
                                 if let Some(clone) = field_attribute.method.as_ref() {
-                                    fields_token_stream.extend(quote! (#clone(#field_name),));
-                                    body_token_stream
-                                        .extend(quote!(*#field_name = #clone(#field_name2);));
+                                    fields_token_stream.extend(quote! (#clone(#field_name_src),));
+                                    body_token_stream.extend(
+                                        quote!(*#field_name_src = #clone(#field_name_dst);),
+                                    );
                                 } else {
                                     clone_types.push(&field.ty);
 
                                     fields_token_stream.extend(
-                                        quote! ( ::core::clone::Clone::clone(#field_name), ),
+                                        quote! ( ::core::clone::Clone::clone(#field_name_src), ),
                                     );
                                     body_token_stream.extend(
-                                        quote!( ::core::clone::Clone::clone_from(#field_name, #field_name2); ),
+                                        quote!( ::core::clone::Clone::clone_from(#field_name_src, #field_name_dst); ),
                                     );
                                 }
                             }

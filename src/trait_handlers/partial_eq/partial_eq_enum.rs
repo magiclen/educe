@@ -1,5 +1,5 @@
 use quote::{format_ident, quote};
-use syn::{Data, DeriveInput, Fields, Ident, Meta, Type};
+use syn::{Data, DeriveInput, Fields, Meta, Type};
 
 use super::{
     models::{FieldAttributeBuilder, TypeAttributeBuilder},
@@ -128,17 +128,16 @@ impl TraitHandler for PartialEqEnumHandler {
                                 continue;
                             }
 
-                            let field_name: Ident = syn::parse_str(&format!("_{}", index)).unwrap();
+                            let field_name_var_self = format_ident!("_{}", index);
 
-                            let field_name2: Ident =
-                                syn::parse_str(&format!("_{}", field_name)).unwrap();
+                            let field_name_var_other = format_ident!("_{}", field_name_var_self);
 
-                            pattern_token_stream.extend(quote!(#field_name,));
-                            pattern2_token_stream.extend(quote!(#field_name2,));
+                            pattern_token_stream.extend(quote!(#field_name_var_self,));
+                            pattern2_token_stream.extend(quote!(#field_name_var_other,));
 
                             if let Some(method) = field_attribute.method {
                                 block_token_stream.extend(quote! {
-                                    if !#method(#field_name, #field_name2) {
+                                    if !#method(#field_name_var_self, #field_name_var_other) {
                                         return false;
                                     }
                                 });
@@ -148,7 +147,7 @@ impl TraitHandler for PartialEqEnumHandler {
                                 partial_eq_types.push(ty);
 
                                 block_token_stream.extend(quote! {
-                                    if ::core::cmp::PartialEq::ne(#field_name, #field_name2) {
+                                    if ::core::cmp::PartialEq::ne(#field_name_var_self, #field_name_var_other) {
                                         return false;
                                     }
                                 });

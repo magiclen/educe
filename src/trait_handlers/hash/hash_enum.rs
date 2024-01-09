@@ -1,5 +1,5 @@
 use quote::{format_ident, quote};
-use syn::{Data, DeriveInput, Fields, Ident, Meta, Path, Type};
+use syn::{Data, DeriveInput, Fields, Meta, Path, Type};
 
 use super::{
     models::{FieldAttributeBuilder, TypeAttributeBuilder},
@@ -99,7 +99,7 @@ impl TraitHandler for HashEnumHandler {
                             }
                             .build_from_attributes(&field.attrs, traits)?;
 
-                            let field_name: Ident = syn::parse_str(&format!("_{}", index)).unwrap();
+                            let field_name_var = format_ident!("_{}", index);
 
                             if field_attribute.ignore {
                                 pattern_token_stream.extend(quote!(_,));
@@ -107,14 +107,14 @@ impl TraitHandler for HashEnumHandler {
                                 continue;
                             }
 
-                            pattern_token_stream.extend(quote!(#field_name,));
+                            pattern_token_stream.extend(quote!(#field_name_var,));
 
                             let hash = field_attribute.method.as_ref().unwrap_or_else(|| {
                                 hash_types.push(&field.ty);
                                 &built_in_hash
                             });
 
-                            block_token_stream.extend(quote!( #hash(#field_name, state); ));
+                            block_token_stream.extend(quote!( #hash(#field_name_var, state); ));
                         }
 
                         arms_token_stream.extend(quote! {

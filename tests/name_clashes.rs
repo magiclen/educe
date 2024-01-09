@@ -12,8 +12,24 @@ pub enum NameClashesEnum {
 }
 
 #[derive(Educe)]
+#[educe(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
+pub enum NameClashesEnumNoOrd {
+    Variant { f: i8, builder: i16, source: i32, other: i64, state: i128 },
+}
+
+#[derive(Educe)]
 #[educe(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct NameClashesStruct {
+    f:       i8,
+    builder: i16,
+    source:  i32,
+    other:   i64,
+    state:   i128,
+}
+
+#[derive(Educe)]
+#[educe(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
+pub struct NameClashesStructNoOrd {
     f:       i8,
     builder: i16,
     source:  i32,

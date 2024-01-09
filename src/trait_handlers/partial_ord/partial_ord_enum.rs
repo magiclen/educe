@@ -151,7 +151,7 @@ impl TraitHandler for PartialOrdEnumHandler {
                             }
                             .build_from_attributes(&field.attrs, traits)?;
 
-                            let field_name: Ident = syn::parse_str(&format!("_{}", index)).unwrap();
+                            let field_name_var_self = format_ident!("_{}", index);
 
                             if field_attribute.ignore {
                                 pattern_token_stream.extend(quote!(_,));
@@ -160,11 +160,10 @@ impl TraitHandler for PartialOrdEnumHandler {
                                 continue;
                             }
 
-                            let field_name2: Ident =
-                                syn::parse_str(&format!("_{}", field_name)).unwrap();
+                            let field_name_var_other = format_ident!("_{}", field_name_var_self);
 
-                            pattern_token_stream.extend(quote!(#field_name,));
-                            pattern2_token_stream.extend(quote!(#field_name2,));
+                            pattern_token_stream.extend(quote!(#field_name_var_self,));
+                            pattern2_token_stream.extend(quote!(#field_name_var_other,));
 
                             let rank = field_attribute.rank;
 
@@ -175,7 +174,10 @@ impl TraitHandler for PartialOrdEnumHandler {
                                 ));
                             }
 
-                            fields.insert(rank, (field, field_name, field_name2, field_attribute));
+                            fields.insert(
+                                rank,
+                                (field, field_name_var_self, field_name_var_other, field_attribute),
+                            );
                         }
 
                         for (field, field_name, field_name2, field_attribute) in fields.values() {

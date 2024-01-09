@@ -1,4 +1,4 @@
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{Data, DeriveInput, Fields, Meta, Type};
 
 use super::{
@@ -71,10 +71,7 @@ impl TraitHandler for DebugStructHandler {
                             if let Some(ident) = field.ident.as_ref() {
                                 (ident.clone(), IdentOrIndex::from(ident))
                             } else {
-                                (
-                                    syn::parse_str(&format!("_{}", index)).unwrap(),
-                                    IdentOrIndex::from(index),
-                                )
+                                (format_ident!("_{}", index), IdentOrIndex::from(index))
                             }
                         },
                     };

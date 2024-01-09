@@ -1,5 +1,5 @@
 use quote::{format_ident, quote, ToTokens};
-use syn::{Data, DeriveInput, Fields, Ident, Meta, Type};
+use syn::{Data, DeriveInput, Fields, Meta, Type};
 
 use super::models::{FieldAttributeBuilder, FieldName, TypeAttributeBuilder, TypeName};
 use crate::{common::path::path_to_string, supported_traits::Trait, trait_handlers::TraitHandler};
@@ -217,8 +217,7 @@ impl TraitHandler for DebugEnumHandler {
                                     continue;
                                 }
 
-                                let field_name_var: Ident =
-                                    syn::parse_str(&format!("_{}", index)).unwrap();
+                                let field_name_var = format_ident!("_{}", index);
 
                                 let key = match field_attribute.name {
                                     FieldName::Custom(name) => name,
@@ -273,8 +272,7 @@ impl TraitHandler for DebugEnumHandler {
                                     continue;
                                 }
 
-                                let field_name_var: Ident =
-                                    syn::parse_str(&format!("_{}", index)).unwrap();
+                                let field_name_var = format_ident!("_{}", index);
 
                                 pattern_token_stream.extend(quote!(#field_name_var,));
 

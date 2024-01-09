@@ -1,4 +1,4 @@
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{spanned::Spanned, Data, DeriveInput, Field, Fields, Ident, Meta};
 
 use super::{
@@ -86,7 +86,7 @@ impl TraitHandler for DerefMutEnumHandler {
 
                 let (field_name, is_tuple): (Ident, bool) = match field.ident.as_ref() {
                     Some(ident) => (ident.clone(), false),
-                    None => (syn::parse_str(&format!("_{}", index)).unwrap(), true),
+                    None => (format_ident!("_{}", index), true),
                 };
 
                 variants.push((&variant.ident, is_tuple, index, field_name));
