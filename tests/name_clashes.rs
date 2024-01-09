@@ -1,66 +1,30 @@
-// These types test that we don't have name clashes between field names
-// and our local variables and parameter names.
-//
-// We don't need to actually use these anywhere - just compiling them shows things are OK.
+// These types test that we don't have name clashes between field names and our local variables and parameter names.
+
+#![cfg(feature = "default")]
 #![allow(dead_code)]
 
 use educe::Educe;
 
-#[derive(Educe, Eq)]
-#[educe(Clone, Debug, Hash, Default, PartialEq, PartialOrd, Ord)]
+#[derive(Educe)]
+#[educe(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum NameClashesEnum {
-    #[educe(Default)]
-    TestDefault {},
-    TestClone {
-        source:    i16,
-        v_source_: i16,
-    },
-    TestDebug1 {
-        f:            i8,
-        v_formatter_: i8,
-    },
-    TestDebug2 {
-        builder:    i32,
-        v_builder_: i32,
-    },
-    TestHHash {
-        state:    i32,
-        v_state_: i32,
-    },
-    TestPartialEq {
-        other:    i64,
-        v_other_: i64,
-    },
-}
-
-#[derive(Educe, Eq)]
-#[educe(Clone, Debug, Hash, Default, PartialEq, PartialOrd, Ord)]
-pub struct NameClashes {
-    source:       i16,
-    v_source_:    i16,
-    f:            i8,
-    v_formatter_: i8,
-    builder:      i32,
-    v_builder_:   i32,
-    state:        i32,
-    v_state_:     i32,
-    other:        i64,
-    v_other_:     i64,
+    Variant { f: i8, builder: i16, source: i32, other: i64, state: i128 },
 }
 
 #[derive(Educe)]
-#[educe(Debug(unsafe), Hash(unsafe), PartialEq(unsafe), Default)]
+#[educe(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct NameClashesStruct {
+    f:       i8,
+    builder: i16,
+    source:  i32,
+    other:   i64,
+    state:   i128,
+}
+
+#[derive(Educe)]
+#[educe(Debug(unsafe), PartialEq(unsafe), Eq)]
 pub union NameClashesUnion {
-    source:       i16,
-    v_source_:    i16,
-    f:            i8,
-    v_formatter_: i8,
-    builder:      i32,
-    v_builder_:   i32,
-    state:        i32,
-    v_state_:     i32,
-    other:        i64,
-    v_other_:     i64,
-    #[educe(Default)]
-    def:          (),
+    f:       i8,
+    builder: i16,
+    other:   i64,
 }
