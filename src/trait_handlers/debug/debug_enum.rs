@@ -103,7 +103,8 @@ impl TraitHandler for DebugEnumHandler {
                                     FieldName::Default => field_name_real.clone(),
                                 };
 
-                                pattern_token_stream.extend(quote!(#field_name_real: #field_name_var,));
+                                pattern_token_stream
+                                    .extend(quote!(#field_name_real: #field_name_var,));
 
                                 let ty = &field.ty;
 
@@ -154,7 +155,8 @@ impl TraitHandler for DebugEnumHandler {
                                     continue;
                                 }
 
-                                pattern_token_stream.extend(quote!(#field_name_real: #field_name_var,));
+                                pattern_token_stream
+                                    .extend(quote!(#field_name_real: #field_name_var,));
 
                                 let ty = &field.ty;
 
@@ -170,7 +172,8 @@ impl TraitHandler for DebugEnumHandler {
                                 } else {
                                     debug_types.push(ty);
 
-                                    block_token_stream.extend(quote! (builder.field(#field_name_var);));
+                                    block_token_stream
+                                        .extend(quote! (builder.field(#field_name_var);));
                                 }
 
                                 has_fields = true;
@@ -289,7 +292,8 @@ impl TraitHandler for DebugEnumHandler {
                                 } else {
                                     debug_types.push(ty);
 
-                                    block_token_stream.extend(quote! (builder.field(#field_name_var);));
+                                    block_token_stream
+                                        .extend(quote! (builder.field(#field_name_var);));
                                 }
 
                                 has_fields = true;

@@ -84,8 +84,10 @@ impl TraitHandler for PartialOrdEnumHandler {
                                 continue;
                             }
 
-                            pattern_self_token_stream.extend(quote!(#field_name_real: #field_name_var_self,));
-                            pattern_other_token_stream.extend(quote!(#field_name_real: #field_name_var_other,));
+                            pattern_self_token_stream
+                                .extend(quote!(#field_name_real: #field_name_var_self,));
+                            pattern_other_token_stream
+                                .extend(quote!(#field_name_real: #field_name_var_other,));
 
                             let rank = field_attribute.rank;
 
@@ -96,10 +98,15 @@ impl TraitHandler for PartialOrdEnumHandler {
                                 ));
                             }
 
-                            fields.insert(rank, (field, field_name_var_self, field_name_var_other, field_attribute));
+                            fields.insert(
+                                rank,
+                                (field, field_name_var_self, field_name_var_other, field_attribute),
+                            );
                         }
 
-                        for (field, field_name_var_self, field_name_var_other, field_attribute) in fields.values() {
+                        for (field, field_name_var_self, field_name_var_other, field_attribute) in
+                            fields.values()
+                        {
                             let partial_cmp =
                                 field_attribute.method.as_ref().unwrap_or_else(|| {
                                     partial_ord_types.push(&field.ty);

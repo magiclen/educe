@@ -75,8 +75,10 @@ impl TraitHandler for PartialEqEnumHandler {
                                 continue;
                             }
 
-                            pattern_self_token_stream.extend(quote!(#field_name_real: #field_name_var_self,));
-                            pattern_other_token_stream.extend(quote!(#field_name_real: #field_name_var_other,));
+                            pattern_self_token_stream
+                                .extend(quote!(#field_name_real: #field_name_var_self,));
+                            pattern_other_token_stream
+                                .extend(quote!(#field_name_real: #field_name_var_other,));
 
                             if let Some(method) = field_attribute.method {
                                 block_token_stream.extend(quote! {

@@ -109,15 +109,18 @@ impl TraitHandler for CloneEnumHandler {
                                 let field_name_src = format_ident!("_s_{}", field_name_real);
                                 let field_name_dst = format_ident!("_d_{}", field_name_real);
 
-                                pattern_src_token_stream.extend(quote!(#field_name_real: #field_name_src,));
-                                pattern_dst_token_stream.extend(quote!(#field_name_real: #field_name_dst,));
+                                pattern_src_token_stream
+                                    .extend(quote!(#field_name_real: #field_name_src,));
+                                pattern_dst_token_stream
+                                    .extend(quote!(#field_name_real: #field_name_dst,));
 
                                 if let Some(clone) = field_attribute.method.as_ref() {
                                     cl_fields_token_stream.extend(quote! {
                                         #field_name_real: #clone(#field_name_src),
                                     });
-                                    cf_body_token_stream
-                                        .extend(quote!(*#field_name_dst = #clone(#field_name_src);));
+                                    cf_body_token_stream.extend(
+                                        quote!(*#field_name_dst = #clone(#field_name_src);),
+                                    );
                                 } else {
                                     clone_types.push(&field.ty);
 
