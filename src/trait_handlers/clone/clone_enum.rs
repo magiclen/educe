@@ -1,4 +1,4 @@
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{punctuated::Punctuated, Data, DeriveInput, Field, Fields, Ident, Meta, Type, Variant};
 
 use super::models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder};
@@ -74,7 +74,7 @@ impl TraitHandler for CloneEnumHandler {
             if variants.is_empty() {
                 if !contains_copy {
                     clone_token_stream.extend(quote!(unreachable!()));
-                    clone_from_token_stream.extend(quote!(let _ = v_source_;));
+                    clone_from_token_stream.extend(quote!(let _ = source;));
                 }
             } else {
                 let mut clone_variants_token_stream = proc_macro2::TokenStream::new();
@@ -90,58 +90,56 @@ impl TraitHandler for CloneEnumHandler {
                             });
                             clone_from_variants_token_stream.extend(quote! {
                                 Self::#variant_ident => {
-                                    if let Self::#variant_ident = v_source_ {
+                                    if let Self::#variant_ident = source {
                                         // same
                                     } else {
-                                        *self = ::core::clone::Clone::clone(v_source_);
+                                        *self = ::core::clone::Clone::clone(source);
                                     }
                                 },
                             });
                         },
                         Fields::Named(_) => {
-                            let mut pattern_token_stream = proc_macro2::TokenStream::new();
-                            let mut pattern2_token_stream = proc_macro2::TokenStream::new();
-                            let mut fields_token_stream = proc_macro2::TokenStream::new();
-                            let mut body_token_stream = proc_macro2::TokenStream::new();
+                            let mut pattern_src_token_stream = proc_macro2::TokenStream::new();
+                            let mut pattern_dst_token_stream = proc_macro2::TokenStream::new();
+                            let mut cl_fields_token_stream = proc_macro2::TokenStream::new();
+                            let mut cf_body_token_stream = proc_macro2::TokenStream::new();
 
                             for (field, field_attribute) in variant_fields {
-                                let field_name = field.ident.as_ref().unwrap();
+                                let field_name_real = field.ident.as_ref().unwrap();
+                                let field_name_src = format_ident!("_s_{}", field_name_real);
+                                let field_name_dst = format_ident!("_d_{}", field_name_real);
 
-                                pattern_token_stream.extend(quote!(#field_name,));
-
-                                let field_name2: Ident =
-                                    syn::parse_str(&format!("_{}", field_name)).unwrap();
-
-                                pattern2_token_stream.extend(quote!(#field_name: #field_name2,));
+                                pattern_src_token_stream.extend(quote!(#field_name_real: #field_name_src,));
+                                pattern_dst_token_stream.extend(quote!(#field_name_real: #field_name_dst,));
 
                                 if let Some(clone) = field_attribute.method.as_ref() {
-                                    fields_token_stream.extend(quote! {
-                                        #field_name: #clone(#field_name),
+                                    cl_fields_token_stream.extend(quote! {
+                                        #field_name_real: #clone(#field_name_src),
                                     });
-                                    body_token_stream
-                                        .extend(quote!(*#field_name = #clone(#field_name2);));
+                                    cf_body_token_stream
+                                        .extend(quote!(*#field_name_dst = #clone(#field_name_src);));
                                 } else {
                                     clone_types.push(&field.ty);
 
-                                    fields_token_stream.extend(quote! {
-                                        #field_name: ::core::clone::Clone::clone(#field_name),
+                                    cl_fields_token_stream.extend(quote! {
+                                        #field_name_real: ::core::clone::Clone::clone(#field_name_src),
                                     });
-                                    body_token_stream.extend(
-                                quote!( ::core::clone::Clone::clone_from(#field_name, #field_name2); ),
+                                    cf_body_token_stream.extend(
+                                        quote!( ::core::clone::Clone::clone_from(#field_name_dst, #field_name_src); ),
                                     );
                                 }
                             }
 
                             clone_variants_token_stream.extend(quote! {
-                                    Self::#variant_ident { #pattern_token_stream } => Self::#variant_ident { #fields_token_stream },
+                                    Self::#variant_ident { #pattern_src_token_stream } => Self::#variant_ident { #cl_fields_token_stream },
                                 });
 
                             clone_from_variants_token_stream.extend(quote! {
-                                    Self::#variant_ident { #pattern_token_stream } => {
-                                        if let Self::#variant_ident { #pattern2_token_stream } = v_source_ {
-                                            #body_token_stream
+                                    Self::#variant_ident { #pattern_dst_token_stream } => {
+                                        if let Self::#variant_ident { #pattern_src_token_stream } = source {
+                                            #cf_body_token_stream
                                         } else {
-                                            *self = ::core::clone::Clone::clone(v_source_);
+                                            *self = ::core::clone::Clone::clone(source);
                                         }
                                     },
                                 });
@@ -182,18 +180,18 @@ impl TraitHandler for CloneEnumHandler {
                             }
 
                             clone_variants_token_stream.extend(quote! {
-                                Self::#variant_ident ( #pattern_token_stream ) => Self::#variant_ident ( #fields_token_stream ),
-                            });
+                                    Self::#variant_ident ( #pattern_token_stream ) => Self::#variant_ident ( #fields_token_stream ),
+                                });
 
                             clone_from_variants_token_stream.extend(quote! {
-                                Self::#variant_ident ( #pattern_token_stream ) => {
-                                    if let Self::#variant_ident ( #pattern2_token_stream ) = v_source_ {
-                                        #body_token_stream
-                                    } else {
-                                        *self = ::core::clone::Clone::clone(v_source_);
-                                    }
-                                },
-                            });
+                                    Self::#variant_ident ( #pattern_token_stream ) => {
+                                        if let Self::#variant_ident ( #pattern2_token_stream ) = source {
+                                            #body_token_stream
+                                        } else {
+                                            *self = ::core::clone::Clone::clone(source);
+                                        }
+                                    },
+                                });
                         },
                     }
                 }
@@ -231,7 +229,7 @@ impl TraitHandler for CloneEnumHandler {
         } else {
             Some(quote! {
                 #[inline]
-                fn clone_from(&mut self, v_source_: &Self) {
+                fn clone_from(&mut self, source: &Self) {
                     #clone_from_token_stream
                 }
             })

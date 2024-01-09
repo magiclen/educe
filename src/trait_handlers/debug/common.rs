@@ -12,12 +12,12 @@ pub(crate) fn create_debug_map_builder() -> proc_macro2::TokenStream {
 
         impl ::core::fmt::Debug for RawString {
             #[inline]
-            fn fmt(&self, v_formatter_: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-                v_formatter_.write_str(self.0)
+            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                f.write_str(self.0)
             }
         }
 
-        let mut builder = v_formatter_.debug_map();
+        let mut builder = f.debug_map();
     )
 }
 
@@ -52,8 +52,8 @@ pub(crate) fn create_format_arg(
 
             impl<'a, #filtered_params> ::core::fmt::Debug for MyDebug<'a, #filtered_params> {
                 #[inline]
-                fn fmt(&self, v_formatter_: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-                    #format_method(self.0, v_formatter_)
+                fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                    #format_method(self.0, f)
                 }
             }
 

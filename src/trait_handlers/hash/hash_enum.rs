@@ -1,4 +1,4 @@
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{Data, DeriveInput, Fields, Ident, Meta, Path, Type};
 
 use super::{
@@ -46,7 +46,7 @@ impl TraitHandler for HashEnumHandler {
                     Fields::Unit => {
                         arms_token_stream.extend(quote! {
                             Self::#variant_ident => {
-                                ::core::hash::Hash::hash(&#variant_index, v_state_);
+                                ::core::hash::Hash::hash(&#variant_index, state);
                             }
                         });
                     },
@@ -61,27 +61,28 @@ impl TraitHandler for HashEnumHandler {
                             }
                             .build_from_attributes(&field.attrs, traits)?;
 
-                            let field_name = field.ident.as_ref().unwrap();
+                            let field_name_real = field.ident.as_ref().unwrap();
+                            let field_name_var = format_ident!("v_{}", field_name_real);
 
                             if field_attribute.ignore {
-                                pattern_token_stream.extend(quote!(#field_name: _,));
+                                pattern_token_stream.extend(quote!(#field_name_real: _,));
 
                                 continue;
                             }
 
-                            pattern_token_stream.extend(quote!(#field_name,));
+                            pattern_token_stream.extend(quote!(#field_name_real: #field_name_var,));
 
                             let hash = field_attribute.method.as_ref().unwrap_or_else(|| {
                                 hash_types.push(&field.ty);
                                 &built_in_hash
                             });
 
-                            block_token_stream.extend(quote!( #hash(#field_name, v_state_); ));
+                            block_token_stream.extend(quote!( #hash(#field_name_var, state); ));
                         }
 
                         arms_token_stream.extend(quote! {
                             Self::#variant_ident { #pattern_token_stream } => {
-                                ::core::hash::Hash::hash(&#variant_index, v_state_);
+                                ::core::hash::Hash::hash(&#variant_index, state);
 
                                 #block_token_stream
                             }
@@ -113,12 +114,12 @@ impl TraitHandler for HashEnumHandler {
                                 &built_in_hash
                             });
 
-                            block_token_stream.extend(quote!( #hash(#field_name, v_state_); ));
+                            block_token_stream.extend(quote!( #hash(#field_name, state); ));
                         }
 
                         arms_token_stream.extend(quote! {
                             Self::#variant_ident ( #pattern_token_stream ) => {
-                                ::core::hash::Hash::hash(&#variant_index, v_state_);
+                                ::core::hash::Hash::hash(&#variant_index, state);
 
                                 #block_token_stream
                             }
@@ -156,7 +157,7 @@ impl TraitHandler for HashEnumHandler {
         token_stream.extend(quote! {
             impl #impl_generics ::core::hash::Hash for #ident #ty_generics #where_clause {
                 #[inline]
-                fn hash<H: ::core::hash::Hasher>(&self, v_state_: &mut H) {
+                fn hash<H: ::core::hash::Hasher>(&self, state: &mut H) {
                     #hash_token_stream
                 }
             }

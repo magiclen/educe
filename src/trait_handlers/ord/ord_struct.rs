@@ -68,7 +68,7 @@ impl TraitHandler for OrdStructHandler {
                 });
 
                 cmp_token_stream.extend(quote! {
-                    match #cmp(&self.#field_name, &v_other_.#field_name) {
+                    match #cmp(&self.#field_name, &other.#field_name) {
                         ::core::cmp::Ordering::Equal => (),
                         ::core::cmp::Ordering::Greater => return ::core::cmp::Ordering::Greater,
                         ::core::cmp::Ordering::Less => return ::core::cmp::Ordering::Less,
@@ -97,7 +97,7 @@ impl TraitHandler for OrdStructHandler {
         token_stream.extend(quote! {
             impl #impl_generics ::core::cmp::Ord for #ident #ty_generics #where_clause {
                 #[inline]
-                fn cmp(&self, v_other_: &Self) -> ::core::cmp::Ordering {
+                fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
                     #cmp_token_stream
 
                     ::core::cmp::Ordering::Equal
@@ -110,8 +110,8 @@ impl TraitHandler for OrdStructHandler {
             token_stream.extend(quote! {
                 impl #impl_generics ::core::cmp::PartialOrd for #ident #ty_generics #where_clause {
                     #[inline]
-                    fn partial_cmp(&self, v_other_: &Self) -> Option<::core::cmp::Ordering> {
-                        Some(::core::cmp::Ord::cmp(self, v_other_))
+                    fn partial_cmp(&self, other: &Self) -> Option<::core::cmp::Ordering> {
+                        Some(::core::cmp::Ord::cmp(self, other))
                     }
                 }
             });

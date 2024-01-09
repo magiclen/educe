@@ -1,4 +1,4 @@
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{Data, DeriveInput, Fields, Ident, Meta, Type};
 
 use super::{
@@ -44,7 +44,7 @@ impl TraitHandler for PartialEqEnumHandler {
                     Fields::Unit => {
                         arms_token_stream.extend(quote! {
                             Self::#variant_ident => {
-                                if let Self::#variant_ident = v_other_ {
+                                if let Self::#variant_ident = other {
                                     // same
                                 } else {
                                     return false;
@@ -53,8 +53,8 @@ impl TraitHandler for PartialEqEnumHandler {
                         });
                     },
                     Fields::Named(_) => {
-                        let mut pattern_token_stream = proc_macro2::TokenStream::new();
-                        let mut pattern2_token_stream = proc_macro2::TokenStream::new();
+                        let mut pattern_self_token_stream = proc_macro2::TokenStream::new();
+                        let mut pattern_other_token_stream = proc_macro2::TokenStream::new();
                         let mut block_token_stream = proc_macro2::TokenStream::new();
 
                         for field in variant.fields.iter() {
@@ -64,24 +64,23 @@ impl TraitHandler for PartialEqEnumHandler {
                             }
                             .build_from_attributes(&field.attrs, traits)?;
 
-                            let field_name = field.ident.as_ref().unwrap();
+                            let field_name_real = field.ident.as_ref().unwrap();
+                            let field_name_var_self = format_ident!("_s_{}", field_name_real);
+                            let field_name_var_other = format_ident!("_o_{}", field_name_real);
 
                             if field_attribute.ignore {
-                                pattern_token_stream.extend(quote!(#field_name: _,));
-                                pattern2_token_stream.extend(quote!(#field_name: _,));
+                                pattern_self_token_stream.extend(quote!(#field_name_real: _,));
+                                pattern_other_token_stream.extend(quote!(#field_name_real: _,));
 
                                 continue;
                             }
 
-                            let field_name2: Ident =
-                                syn::parse_str(&format!("_{}", field_name)).unwrap();
-
-                            pattern_token_stream.extend(quote!(#field_name,));
-                            pattern2_token_stream.extend(quote!(#field_name: #field_name2,));
+                            pattern_self_token_stream.extend(quote!(#field_name_real: #field_name_var_self,));
+                            pattern_other_token_stream.extend(quote!(#field_name_real: #field_name_var_other,));
 
                             if let Some(method) = field_attribute.method {
                                 block_token_stream.extend(quote! {
-                                    if !#method(#field_name, #field_name2) {
+                                    if !#method(#field_name_var_self, #field_name_var_other) {
                                         return false;
                                     }
                                 });
@@ -91,7 +90,7 @@ impl TraitHandler for PartialEqEnumHandler {
                                 partial_eq_types.push(ty);
 
                                 block_token_stream.extend(quote! {
-                                    if ::core::cmp::PartialEq::ne(#field_name, #field_name2) {
+                                    if ::core::cmp::PartialEq::ne(#field_name_var_self, #field_name_var_other) {
                                         return false;
                                     }
                                 });
@@ -99,8 +98,8 @@ impl TraitHandler for PartialEqEnumHandler {
                         }
 
                         arms_token_stream.extend(quote! {
-                            Self::#variant_ident { #pattern_token_stream } => {
-                                if let Self::#variant_ident { #pattern2_token_stream } = v_other_ {
+                            Self::#variant_ident { #pattern_self_token_stream } => {
+                                if let Self::#variant_ident { #pattern_other_token_stream } = other {
                                     #block_token_stream
                                 } else {
                                     return false;
@@ -156,7 +155,7 @@ impl TraitHandler for PartialEqEnumHandler {
 
                         arms_token_stream.extend(quote! {
                             Self::#variant_ident ( #pattern_token_stream ) => {
-                                if let Self::#variant_ident ( #pattern2_token_stream ) = v_other_ {
+                                if let Self::#variant_ident ( #pattern2_token_stream ) = other {
                                     #block_token_stream
                                 } else {
                                     return false;
@@ -196,7 +195,7 @@ impl TraitHandler for PartialEqEnumHandler {
         token_stream.extend(quote! {
             impl #impl_generics ::core::cmp::PartialEq for #ident #ty_generics #where_clause {
                 #[inline]
-                fn eq(&self, v_other_: &Self) -> bool {
+                fn eq(&self, other: &Self) -> bool {
                     #eq_token_stream
 
                     true
