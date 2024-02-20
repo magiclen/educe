@@ -29,11 +29,14 @@ impl TraitHandler for CopyHandler {
         }
         .build_from_copy_meta(meta)?;
 
+        let mut field_types = vec![];
+
         // if `contains_clone` is true, the implementation is handled by the `Clone` attribute, and field attributes is also handled by the `Clone` attribute
         if !contains_clone {
             match &ast.data {
                 Data::Struct(data) => {
                     for field in data.fields.iter() {
+                        field_types.push(&field.ty);
                         let _ =
                             FieldAttributeBuilder.build_from_attributes(&field.attrs, traits)?;
                     }
@@ -46,6 +49,7 @@ impl TraitHandler for CopyHandler {
                         .build_from_attributes(&variant.attrs, traits)?;
 
                         for field in variant.fields.iter() {
+                            field_types.push(&field.ty);
                             let _ = FieldAttributeBuilder
                                 .build_from_attributes(&field.attrs, traits)?;
                         }
@@ -53,6 +57,7 @@ impl TraitHandler for CopyHandler {
                 },
                 Data::Union(data) => {
                     for field in data.fields.named.iter() {
+                        field_types.push(&field.ty);
                         let _ =
                             FieldAttributeBuilder.build_from_attributes(&field.attrs, traits)?;
                     }
@@ -61,21 +66,11 @@ impl TraitHandler for CopyHandler {
 
             let ident = &ast.ident;
 
-            /*
-                #[derive(Clone)]
-                struct B<T> {
-                    f1: PhantomData<T>,
-                }
-
-                impl<T> Copy for B<T> {
-
-                }
-
-                // The above code will throw a compile error because T have to be bound to `Copy`. However, it seems not to be necessary logically.
-            */
-            let bound = type_attribute.bound.into_where_predicates_by_generic_parameters(
+            let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
                 &ast.generics.params,
                 &syn::parse2(quote!(::core::marker::Copy)).unwrap(),
+                &field_types,
+                &[quote!{::core::clone::Clone}],
             );
 
             let where_clause = ast.generics.make_where_clause();
