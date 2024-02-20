@@ -33,10 +33,7 @@ impl TraitHandler for OrdHandler {
     }
 }
 
-fn supertraits(
-    #[allow(unused_variables)]
-    traits: &[Trait],
-) -> Vec<proc_macro2::TokenStream> {
+fn supertraits(#[allow(unused_variables)] traits: &[Trait]) -> Vec<proc_macro2::TokenStream> {
     let mut supertraits = vec![];
     supertraits.push(quote! {::core::cmp::Eq});
 
