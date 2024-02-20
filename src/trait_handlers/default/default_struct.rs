@@ -111,7 +111,7 @@ impl TraitHandler for DefaultStructHandler {
             &ast.generics.params,
             &syn::parse2(quote!(::core::default::Default)).unwrap(),
             &default_types,
-            Some((false, false, false)),
+            &[],
         );
 
         let where_clause = ast.generics.make_where_clause();

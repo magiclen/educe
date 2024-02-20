@@ -110,7 +110,7 @@ impl TraitHandler for DebugEnumHandler {
 
                                 if let Some(method) = field_attribute.method {
                                     block_token_stream.extend(super::common::create_format_arg(
-                                        &ast.generics.params,
+                                        ast,
                                         ty,
                                         &method,
                                         quote!(#field_name_var),
@@ -162,7 +162,7 @@ impl TraitHandler for DebugEnumHandler {
 
                                 if let Some(method) = field_attribute.method {
                                     block_token_stream.extend(super::common::create_format_arg(
-                                        &ast.generics.params,
+                                        ast,
                                         ty,
                                         &method,
                                         quote!(#field_name_var),
@@ -230,7 +230,7 @@ impl TraitHandler for DebugEnumHandler {
 
                                 if let Some(method) = field_attribute.method {
                                     block_token_stream.extend(super::common::create_format_arg(
-                                        &ast.generics.params,
+                                        ast,
                                         ty,
                                         &method,
                                         quote!(#field_name_var),
@@ -280,7 +280,7 @@ impl TraitHandler for DebugEnumHandler {
 
                                 if let Some(method) = field_attribute.method {
                                     block_token_stream.extend(super::common::create_format_arg(
-                                        &ast.generics.params,
+                                        ast,
                                         ty,
                                         &method,
                                         quote!(#field_name_var),
@@ -336,7 +336,7 @@ impl TraitHandler for DebugEnumHandler {
             &ast.generics.params,
             &syn::parse2(quote!(::core::fmt::Debug)).unwrap(),
             &debug_types,
-            Some((true, false, false)),
+            &[],
         );
 
         let where_clause = ast.generics.make_where_clause();

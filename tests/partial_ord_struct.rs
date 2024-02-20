@@ -1,7 +1,7 @@
 #![cfg(feature = "PartialOrd")]
 #![no_std]
 
-use core::cmp::Ordering;
+use core::{cmp::Ordering, marker::PhantomData};
 
 use educe::Educe;
 
@@ -526,4 +526,54 @@ fn bound_3() {
 
     assert!(Tuple(2) > Tuple(1));
     assert!(Tuple(1) < Tuple(2));
+}
+
+#[test]
+fn bound_4() {
+    trait Suitable {}
+    struct SuitableNotEq;
+    impl Suitable for SuitableNotEq {}
+    let phantom = PhantomData::<SuitableNotEq>;
+
+    #[derive(Educe)]
+    #[educe(PartialOrd)]
+    struct Struct<T, U> {
+        f1: T,
+        // PhantomData is Eq (all PhantomData are equal to all others)
+        f2: PhantomData<U>,
+    }
+
+    impl<T: PartialEq, U: Suitable> PartialEq for Struct<T, U> {
+        fn eq(&self, other: &Struct<T, U>) -> bool {
+            self.f1.eq(&other.f1)
+        }
+    }
+
+    #[derive(Educe)]
+    #[educe(Eq)]
+    struct Tuple<T, U>(T, PhantomData<U>);
+
+    impl<T: PartialEq, U: Suitable> PartialEq for Tuple<T, U> {
+        fn eq(&self, other: &Tuple<T, U>) -> bool {
+            self.0.eq(&other.0)
+        }
+    }
+    assert!(
+        Struct {
+            f1: 1, f2: phantom
+        } == Struct {
+            f1: 1, f2: phantom
+        }
+    );
+
+    assert!(
+        Struct {
+            f1: 1, f2: phantom
+        } != Struct {
+            f1: 2, f2: phantom
+        }
+    );
+
+    assert!(Tuple(1, phantom) == Tuple(1, phantom));
+    assert!(Tuple(1, phantom) != Tuple(2, phantom));
 }
