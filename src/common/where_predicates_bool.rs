@@ -87,7 +87,8 @@ pub(crate) fn meta_2_where_predicates(meta: &Meta) -> syn::Result<WherePredicate
 }
 
 #[inline]
-pub(crate) fn create_where_predicates_from_generic_parameters(
+#[allow(dead_code)]
+pub(crate) fn create_where_predicates_from_all_generic_parameters(
     params: &Punctuated<GenericParam, Comma>,
     bound_trait: &Path,
 ) -> WherePredicates {

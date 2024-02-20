@@ -1,7 +1,6 @@
 use syn::{punctuated::Punctuated, token::Comma, GenericParam, Meta, Path, Type, WherePredicate};
 
 use crate::common::where_predicates_bool::{
-    create_where_predicates_from_generic_parameters,
     create_where_predicates_from_generic_parameters_check_types, meta_2_where_predicates,
     WherePredicates, WherePredicatesOrBool,
 };
@@ -33,19 +32,6 @@ impl Bound {
 }
 
 impl Bound {
-    #[inline]
-    pub(crate) fn into_where_predicates_by_generic_parameters(
-        self,
-        params: &Punctuated<GenericParam, Comma>,
-        bound_trait: &Path,
-    ) -> Punctuated<WherePredicate, Comma> {
-        match self {
-            Self::Disabled => Punctuated::new(),
-            Self::Auto => create_where_predicates_from_generic_parameters(params, bound_trait),
-            Self::Custom(where_predicates) => where_predicates,
-        }
-    }
-
     #[inline]
     pub(crate) fn into_where_predicates_by_generic_parameters_check_types(
         self,
