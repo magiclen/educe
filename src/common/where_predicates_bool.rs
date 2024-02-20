@@ -18,21 +18,30 @@ pub(crate) enum WherePredicatesOrBool {
     Bool(bool),
 }
 
+impl WherePredicatesOrBool {
+    fn from_lit(lit: &Lit) -> syn::Result<Self> {
+        Ok(match lit {
+            Lit::Bool(lit) => Self::Bool(lit.value),
+            Lit::Str(lit) => match lit.parse_with(WherePredicates::parse_terminated) {
+                Ok(where_predicates) => Self::WherePredicates(where_predicates),
+                Err(_) if lit.value().is_empty() => Self::Bool(false),
+                Err(error) => return Err(error),
+            },
+            other => {
+                return Err(syn::Error::new(
+                    other.span(),
+                    "unexpected kind of literal (only boolean or string allowed)",
+                ))
+            },
+        })
+    }
+}
+
 impl Parse for WherePredicatesOrBool {
     #[inline]
     fn parse(input: ParseStream) -> syn::Result<Self> {
         if let Ok(lit) = input.parse::<Lit>() {
-            match lit {
-                Lit::Bool(lit) => return Ok(Self::Bool(lit.value)),
-                Lit::Str(lit) => {
-                    return match lit.parse_with(WherePredicates::parse_terminated) {
-                        Ok(where_predicates) => Ok(Self::WherePredicates(where_predicates)),
-                        Err(_) if lit.value().is_empty() => Ok(Self::Bool(false)),
-                        Err(error) => Err(error),
-                    }
-                },
-                _ => (),
-            }
+            return Self::from_lit(&lit);
         }
 
         Ok(Self::WherePredicates(input.parse_terminated(WherePredicate::parse, Token![,])?))
@@ -44,23 +53,7 @@ pub(crate) fn meta_name_value_2_where_predicates_bool(
     name_value: &MetaNameValue,
 ) -> syn::Result<WherePredicatesOrBool> {
     if let Expr::Lit(lit) = &name_value.value {
-        match &lit.lit {
-            Lit::Str(lit) => match lit.parse_with(WherePredicates::parse_terminated) {
-                Ok(where_predicates) => {
-                    return Ok(WherePredicatesOrBool::WherePredicates(where_predicates))
-                },
-                Err(_) if lit.value().is_empty() => {
-                    return Ok(WherePredicatesOrBool::Bool(false));
-                },
-                Err(error) => {
-                    return Err(error);
-                },
-            },
-            Lit::Bool(lit) => {
-                return Ok(WherePredicatesOrBool::Bool(lit.value));
-            },
-            _ => (),
-        }
+        return WherePredicatesOrBool::from_lit(&lit.lit);
     }
 
     Err(syn::Error::new(
