@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use quote::{quote, ToTokens};
 use syn::{
     parse::{Parse, ParseStream},
@@ -9,13 +7,14 @@ use syn::{
     Expr, GenericParam, Lit, Meta, MetaNameValue, Path, Token, Type, WherePredicate,
 };
 
-use super::{path::path_to_string, r#type::find_idents_in_type};
+use super::path::path_to_string;
 
 pub(crate) type WherePredicates = Punctuated<WherePredicate, Token![,]>;
 
 pub(crate) enum WherePredicatesOrBool {
     WherePredicates(WherePredicates),
     Bool(bool),
+    All,
 }
 
 impl Parse for WherePredicatesOrBool {
@@ -33,6 +32,10 @@ impl Parse for WherePredicatesOrBool {
                 },
                 _ => (),
             }
+        }
+
+        if let Ok(_star) = input.parse::<Token![*]>() {
+            return Ok(Self::All);
         }
 
         Ok(Self::WherePredicates(input.parse_terminated(WherePredicate::parse, Token![,])?))
@@ -89,7 +92,7 @@ pub(crate) fn meta_2_where_predicates(meta: &Meta) -> syn::Result<WherePredicate
 }
 
 #[inline]
-pub(crate) fn create_where_predicates_from_generic_parameters(
+pub(crate) fn create_where_predicates_from_all_generic_parameters(
     params: &Punctuated<GenericParam, Comma>,
     bound_trait: &Path,
 ) -> WherePredicates {
@@ -108,27 +111,18 @@ pub(crate) fn create_where_predicates_from_generic_parameters(
 
 #[inline]
 pub(crate) fn create_where_predicates_from_generic_parameters_check_types(
-    params: &Punctuated<GenericParam, Comma>,
     bound_trait: &Path,
     types: &[&Type],
-    recursive: Option<(bool, bool, bool)>,
+    supertraits: &[proc_macro2::TokenStream],
 ) -> WherePredicates {
     let mut where_predicates = Punctuated::new();
 
-    let mut set = HashSet::new();
-
     for t in types {
-        find_idents_in_type(&mut set, t, recursive);
+        where_predicates.push(syn::parse2(quote! { #t: #bound_trait }).unwrap());
     }
 
-    for param in params {
-        if let GenericParam::Type(ty) = param {
-            let ident = &ty.ident;
-
-            if set.contains(ident) {
-                where_predicates.push(syn::parse2(quote! { #ident: #bound_trait }).unwrap());
-            }
-        }
+    for supertrait in supertraits {
+        where_predicates.push(syn::parse2(quote! { Self: #supertrait }).unwrap());
     }
 
     where_predicates

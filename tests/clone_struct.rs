@@ -1,6 +1,8 @@
 #![cfg(feature = "Clone")]
 #![no_std]
 
+use core::marker::PhantomData;
+
 use educe::Educe;
 
 #[test]
@@ -168,4 +170,32 @@ fn bound_3() {
 
     assert_eq!(1, s.f1);
     assert_eq!(1, t.0);
+}
+
+#[test]
+fn bound_4() {
+    struct NotClone;
+
+    #[derive(Educe)]
+    // without `bound(*)` we get  E0034: multiple applicable items in scope
+    // when we call Struct<NotClone>.clone(), since .clone() is then ambiguous
+    #[educe(Clone(bound(*)))]
+    struct Struct<T> {
+        f1: PhantomData<T>,
+    }
+
+    trait ClashingFakeClone {
+        fn clone(&self) {}
+    }
+    impl ClashingFakeClone for Struct<NotClone> {}
+
+    let _: () = Struct {
+        f1: PhantomData::<NotClone>
+    }
+    .clone();
+
+    let _: Struct<_> = Struct {
+        f1: PhantomData::<()>
+    }
+    .clone();
 }
