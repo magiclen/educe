@@ -80,7 +80,7 @@ impl TraitHandler for DebugStructHandler {
 
                     if let Some(method) = field_attribute.method {
                         builder_token_stream.extend(super::common::create_format_arg(
-                            &ast.generics.params,
+                            ast,
                             ty,
                             &method,
                             quote!(&self.#field_name),
@@ -129,7 +129,7 @@ impl TraitHandler for DebugStructHandler {
 
                     if let Some(method) = field_attribute.method {
                         builder_token_stream.extend(super::common::create_format_arg(
-                            &ast.generics.params,
+                            ast,
                             ty,
                             &method,
                             quote!(&self.#field_name),

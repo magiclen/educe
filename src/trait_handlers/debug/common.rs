@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use quote::quote;
-use syn::{punctuated::Punctuated, token::Comma, GenericParam, Path, Type};
+use syn::{punctuated::Punctuated, token::Comma, DeriveInput, GenericParam, Path, Type};
 
 use crate::common::r#type::{dereference, find_idents_in_type};
 
@@ -23,7 +23,7 @@ pub(crate) fn create_debug_map_builder() -> proc_macro2::TokenStream {
 
 #[inline]
 pub(crate) fn create_format_arg(
-    params: &Punctuated<GenericParam, Comma>,
+    ast: &DeriveInput,
     ty: &Type,
     format_method: &Path,
     field: proc_macro2::TokenStream,
@@ -36,7 +36,7 @@ pub(crate) fn create_format_arg(
     // simply support one level generics (without considering bounds that use other generics)
     let mut filtered_params: Punctuated<GenericParam, Comma> = Punctuated::new();
 
-    for param in params.iter() {
+    for param in ast.generics.params.iter() {
         if let GenericParam::Type(ty) = param {
             let ident = &ty.ident;
 
