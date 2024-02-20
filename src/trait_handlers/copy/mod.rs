@@ -66,12 +66,13 @@ impl TraitHandler for CopyHandler {
 
             let ident = &ast.ident;
 
-            let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
-                &ast.generics.params,
-                &syn::parse2(quote!(::core::marker::Copy)).unwrap(),
-                &field_types,
-                &[quote!{::core::clone::Clone}],
-            );
+            let bound =
+                type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
+                    &ast.generics.params,
+                    &syn::parse2(quote!(::core::marker::Copy)).unwrap(),
+                    &field_types,
+                    &[quote! {::core::clone::Clone}],
+                );
 
             let where_clause = ast.generics.make_where_clause();
 
