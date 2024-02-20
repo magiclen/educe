@@ -21,8 +21,11 @@ impl TraitHandler for CloneUnionHandler {
         }
         .build_from_clone_meta(meta)?;
 
+        let mut field_types = vec![];
+
         if let Data::Union(data) = &ast.data {
             for field in data.fields.named.iter() {
+                field_types.push(&field.ty);
                 let _ = FieldAttributeBuilder {
                     enable_method: false
                 }
@@ -32,9 +35,11 @@ impl TraitHandler for CloneUnionHandler {
 
         let ident = &ast.ident;
 
-        let bound = type_attribute.bound.into_where_predicates_by_generic_parameters(
+        let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
             &ast.generics.params,
             &syn::parse2(quote!(::core::marker::Copy)).unwrap(),
+            &field_types,
+            &[],
         );
 
         let where_clause = ast.generics.make_where_clause();
