@@ -78,12 +78,13 @@ impl TraitHandler for EqHandler {
 
                 // The above code will throw a compile error because T have to be bound to `PartialEq`. However, it seems not to be necessary logically.
             */
-            let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
-                &ast.generics.params,
-                &syn::parse2(quote!(::core::cmp::PartialEq)).unwrap(),
-                &field_types,
-                &[quote!{::core::cmp::PartialEq}],
-            );
+            let bound =
+                type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
+                    &ast.generics.params,
+                    &syn::parse2(quote!(::core::cmp::PartialEq)).unwrap(),
+                    &field_types,
+                    &[quote! {::core::cmp::PartialEq}],
+                );
 
             let where_clause = ast.generics.make_where_clause();
 
