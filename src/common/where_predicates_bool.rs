@@ -106,15 +106,18 @@ pub(crate) fn create_where_predicates_from_generic_parameters(
 
 #[inline]
 pub(crate) fn create_where_predicates_from_generic_parameters_check_types(
-    _params: &Punctuated<GenericParam, Comma>,
     bound_trait: &Path,
     types: &[&Type],
-    _recursive: Option<(bool, bool, bool)>,
+    supertraits: &[proc_macro2::TokenStream],
 ) -> WherePredicates {
     let mut where_predicates = Punctuated::new();
 
     for t in types {
         where_predicates.push(syn::parse2(quote! { #t: #bound_trait }).unwrap());
+    }
+
+    for supertrait in supertraits {
+        where_predicates.push(syn::parse2(quote! { Self: #supertrait }).unwrap());
     }
 
     where_predicates

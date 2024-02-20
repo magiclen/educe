@@ -157,7 +157,7 @@ impl TraitHandler for DebugStructHandler {
             &ast.generics.params,
             &syn::parse2(quote!(::core::fmt::Debug)).unwrap(),
             &debug_types,
-            Some((true, false, false)),
+            &[],
         );
 
         let where_clause = ast.generics.make_where_clause();

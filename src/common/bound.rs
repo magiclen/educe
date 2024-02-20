@@ -49,18 +49,17 @@ impl Bound {
     #[inline]
     pub(crate) fn into_where_predicates_by_generic_parameters_check_types(
         self,
-        params: &Punctuated<GenericParam, Comma>,
+        _params: &Punctuated<GenericParam, Comma>,
         bound_trait: &Path,
         types: &[&Type],
-        recursive: Option<(bool, bool, bool)>,
+        supertraits: &[proc_macro2::TokenStream],
     ) -> Punctuated<WherePredicate, Comma> {
         match self {
             Self::Disabled => Punctuated::new(),
             Self::Auto => create_where_predicates_from_generic_parameters_check_types(
-                params,
                 bound_trait,
                 types,
-                recursive,
+                supertraits,
             ),
             Self::Custom(where_predicates) => where_predicates,
         }
