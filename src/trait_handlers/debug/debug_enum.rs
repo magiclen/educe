@@ -119,7 +119,7 @@ impl TraitHandler for DebugEnumHandler {
                                     block_token_stream.extend(if name_string.is_some() {
                                         quote! (builder.field(stringify!(#key), &arg);)
                                     } else {
-                                        quote! (builder.entry(&RawString(stringify!(#key)), &arg);)
+                                        quote! (builder.entry(&Educe__RawString(stringify!(#key)), &arg);)
                                     });
                                 } else {
                                     debug_types.push(ty);
@@ -127,7 +127,7 @@ impl TraitHandler for DebugEnumHandler {
                                     block_token_stream.extend(if name_string.is_some() {
                                         quote! (builder.field(stringify!(#key), #field_name_var);)
                                     } else {
-                                        quote! (builder.entry(&RawString(stringify!(#key)), #field_name_var);)
+                                        quote! (builder.entry(&Educe__RawString(stringify!(#key)), #field_name_var);)
                                     });
                                 }
 
@@ -239,7 +239,7 @@ impl TraitHandler for DebugEnumHandler {
                                     block_token_stream.extend(if name_string.is_some() {
                                         quote! (builder.field(stringify!(#key), &arg);)
                                     } else {
-                                        quote! (builder.entry(&RawString(stringify!(#key)), &arg);)
+                                        quote! (builder.entry(&Educe__RawString(stringify!(#key)), &arg);)
                                     });
                                 } else {
                                     debug_types.push(ty);
@@ -247,7 +247,7 @@ impl TraitHandler for DebugEnumHandler {
                                     block_token_stream.extend(if name_string.is_some() {
                                         quote! (builder.field(stringify!(#key), #field_name_var);)
                                     } else {
-                                        quote! (builder.entry(&RawString(stringify!(#key)), #field_name_var);)
+                                        quote! (builder.entry(&Educe__RawString(stringify!(#key)), #field_name_var);)
                                     });
                                 }
 

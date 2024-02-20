@@ -89,7 +89,7 @@ impl TraitHandler for DebugStructHandler {
                         builder_token_stream.extend(if name.is_some() {
                             quote! (builder.field(stringify!(#key), &arg);)
                         } else {
-                            quote! (builder.entry(&RawString(stringify!(#key)), &arg);)
+                            quote! (builder.entry(&Educe__RawString(stringify!(#key)), &arg);)
                         });
                     } else {
                         debug_types.push(ty);
@@ -97,7 +97,7 @@ impl TraitHandler for DebugStructHandler {
                         builder_token_stream.extend(if name.is_some() {
                             quote! (builder.field(stringify!(#key), &self.#field_name);)
                         } else {
-                            quote! (builder.entry(&RawString(stringify!(#key)), &self.#field_name);)
+                            quote! (builder.entry(&Educe__RawString(stringify!(#key)), &self.#field_name);)
                         });
                     }
 
