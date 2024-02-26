@@ -1,8 +1,6 @@
 #![cfg(feature = "Clone")]
 #![no_std]
 
-use core::{fmt::Debug, marker::PhantomData};
-
 use educe::Educe;
 
 #[test]
@@ -175,6 +173,8 @@ fn bound_3() {
 #[cfg(feature = "Debug")]
 #[test]
 fn leaking_bounds() {
+    use core::{fmt::Debug, marker::PhantomData};
+
     #[derive(Educe)]
     #[educe(Debug(bound(T: Debug)), Clone(bound(T: Clone)))]
     struct Struct<T> {

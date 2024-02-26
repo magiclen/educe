@@ -1,50 +1,59 @@
-[package]
-name = "educe"
-version = "0.5.11"
-authors = ["Magic Len <len@magiclen.org>"]
-edition = "2021"
-rust-version = "1.60"
-repository = "https://github.com/magiclen/educe"
-homepage = "https://magiclen.org/educe"
-keywords = ["derive", "macro", "trait", "field", "procedural"]
-categories = ["no-std", "rust-patterns"]
-description = "This crate offers procedural macros designed to facilitate the swift implementation of Rust's built-in traits."
-license = "MIT"
-include = ["src/**/*", "Cargo.toml", "README.md", "LICENSE"]
-
-[lib]
-proc-macro = true
 
 [dependencies]
-syn = "2"
-quote = "1"
-proc-macro2 = "1"
+proc-macro2="1"
+quote="1"
+syn="2"
 
-enum-ordinalize = { version = "4.2", default-features = false, features = ["derive"] }
+[dependencies.enum-ordinalize]
+default-features=false
+version="4.2"
+features=["derive"]
 
 [dev-dependencies]
-syn = { version = "2", features = ["full"] }
-assert-eq-float = "0.1"
-rustversion = "1"
+assert-eq-float="0.1"
+rustversion="1"
+
+[dev-dependencies.syn]
+version="2"
+features=["full"]
 
 [features]
-default = ["Debug", "Clone", "Copy", "PartialEq", "Eq", "PartialOrd", "Ord", "Hash", "Default", "Deref", "DerefMut", "Into"]
+Clone=[]
+Copy=[]
+Debug=[]
+Default=[]
+Deref=[]
+DerefMut=[]
+Eq=[]
+Hash=[]
+Into=[]
+Ord=[]
+PartialEq=[]
+PartialOrd=[]
+default=["Debug", "Clone", "Copy", "PartialEq", "Eq", "PartialOrd", "Ord", "Hash", "Default", "Deref", "DerefMut", "Into"]
+full=["syn/full"]
 
-full = ["syn/full"]
+[lib]
+proc-macro=true
 
-Debug = []
-Clone = []
-Copy = []
-PartialEq = []
-Eq = []
-PartialOrd = []
-Ord = []
-Hash = []
-Default = []
-Deref = []
-DerefMut = []
-Into = []
+[package]
+description="This crate offers procedural macros designed to facilitate the swift implementation of Rust's built-in traits."
+edition="2021"
+homepage="https://magiclen.org/educe"
+license="MIT"
+name="educe"
+repository="https://github.com/magiclen/educe"
+rust-version="1.60"
+version="0.5.11"
+authors=["Magic Len <len@magiclen.org>"]
+categories=["no-std", "rust-patterns"]
+include=["src/**/*", "Cargo.toml", "README.md", "LICENSE"]
+keywords=["derive", "macro", "trait", "field", "procedural"]
+
+[package.metadata]
+
+[package.metadata.docs]
 
 [package.metadata.docs.rs]
-all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
+all-features=true
+rustdoc-args=["--cfg", "docsrs"]
