@@ -12,7 +12,7 @@ pub(crate) struct PartialEqEnumHandler;
 impl TraitHandler for PartialEqEnumHandler {
     #[inline]
     fn trait_meta_handler(
-        ast: &mut DeriveInput,
+        ast: &DeriveInput,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
