@@ -12,7 +12,7 @@ pub(crate) struct CopyHandler;
 impl TraitHandler for CopyHandler {
     #[inline]
     fn trait_meta_handler(
-        ast: &mut DeriveInput,
+        ast: &DeriveInput,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
@@ -29,11 +29,14 @@ impl TraitHandler for CopyHandler {
         }
         .build_from_copy_meta(meta)?;
 
+        let mut field_types = vec![];
+
         // if `contains_clone` is true, the implementation is handled by the `Clone` attribute, and field attributes is also handled by the `Clone` attribute
         if !contains_clone {
             match &ast.data {
                 Data::Struct(data) => {
                     for field in data.fields.iter() {
+                        field_types.push(&field.ty);
                         let _ =
                             FieldAttributeBuilder.build_from_attributes(&field.attrs, traits)?;
                     }
@@ -46,6 +49,7 @@ impl TraitHandler for CopyHandler {
                         .build_from_attributes(&variant.attrs, traits)?;
 
                         for field in variant.fields.iter() {
+                            field_types.push(&field.ty);
                             let _ = FieldAttributeBuilder
                                 .build_from_attributes(&field.attrs, traits)?;
                         }
@@ -53,6 +57,7 @@ impl TraitHandler for CopyHandler {
                 },
                 Data::Union(data) => {
                     for field in data.fields.named.iter() {
+                        field_types.push(&field.ty);
                         let _ =
                             FieldAttributeBuilder.build_from_attributes(&field.attrs, traits)?;
                     }
@@ -61,30 +66,22 @@ impl TraitHandler for CopyHandler {
 
             let ident = &ast.ident;
 
-            /*
-                #[derive(Clone)]
-                struct B<T> {
-                    f1: PhantomData<T>,
-                }
+            let bound =
+                type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
+                    &ast.generics.params,
+                    &syn::parse2(quote!(::core::marker::Copy)).unwrap(),
+                    &field_types,
+                    &[quote! {::core::clone::Clone}],
+                );
 
-                impl<T> Copy for B<T> {
-
-                }
-
-                // The above code will throw a compile error because T have to be bound to `Copy`. However, it seems not to be necessary logically.
-            */
-            let bound = type_attribute.bound.into_where_predicates_by_generic_parameters(
-                &ast.generics.params,
-                &syn::parse2(quote!(::core::marker::Copy)).unwrap(),
-            );
-
-            let where_clause = ast.generics.make_where_clause();
+            let mut generics = ast.generics.clone();
+            let where_clause = generics.make_where_clause();
 
             for where_predicate in bound {
                 where_clause.predicates.push(where_predicate);
             }
 
-            let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
+            let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
             token_stream.extend(quote! {
                 impl #impl_generics ::core::marker::Copy for #ident #ty_generics #where_clause {

@@ -11,7 +11,7 @@ pub(crate) struct CloneUnionHandler;
 
 impl TraitHandler for CloneUnionHandler {
     fn trait_meta_handler(
-        ast: &mut DeriveInput,
+        ast: &DeriveInput,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
@@ -21,8 +21,11 @@ impl TraitHandler for CloneUnionHandler {
         }
         .build_from_clone_meta(meta)?;
 
+        let mut field_types = vec![];
+
         if let Data::Union(data) = &ast.data {
             for field in data.fields.named.iter() {
+                field_types.push(&field.ty);
                 let _ = FieldAttributeBuilder {
                     enable_method: false
                 }
@@ -32,18 +35,21 @@ impl TraitHandler for CloneUnionHandler {
 
         let ident = &ast.ident;
 
-        let bound = type_attribute.bound.into_where_predicates_by_generic_parameters(
+        let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
             &ast.generics.params,
             &syn::parse2(quote!(::core::marker::Copy)).unwrap(),
+            &field_types,
+            &[],
         );
 
-        let where_clause = ast.generics.make_where_clause();
+        let mut generics = ast.generics.clone();
+        let where_clause = generics.make_where_clause();
 
         for where_predicate in bound {
             where_clause.predicates.push(where_predicate);
         }
 
-        let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
+        let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         token_stream.extend(quote! {
             impl #impl_generics ::core::clone::Clone for #ident #ty_generics #where_clause {

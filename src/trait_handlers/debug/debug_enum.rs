@@ -8,7 +8,7 @@ pub(crate) struct DebugEnumHandler;
 
 impl TraitHandler for DebugEnumHandler {
     fn trait_meta_handler(
-        ast: &mut DeriveInput,
+        ast: &DeriveInput,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
@@ -110,7 +110,7 @@ impl TraitHandler for DebugEnumHandler {
 
                                 if let Some(method) = field_attribute.method {
                                     block_token_stream.extend(super::common::create_format_arg(
-                                        &ast.generics.params,
+                                        ast,
                                         ty,
                                         &method,
                                         quote!(#field_name_var),
@@ -162,7 +162,7 @@ impl TraitHandler for DebugEnumHandler {
 
                                 if let Some(method) = field_attribute.method {
                                     block_token_stream.extend(super::common::create_format_arg(
-                                        &ast.generics.params,
+                                        ast,
                                         ty,
                                         &method,
                                         quote!(#field_name_var),
@@ -230,7 +230,7 @@ impl TraitHandler for DebugEnumHandler {
 
                                 if let Some(method) = field_attribute.method {
                                     block_token_stream.extend(super::common::create_format_arg(
-                                        &ast.generics.params,
+                                        ast,
                                         ty,
                                         &method,
                                         quote!(#field_name_var),
@@ -280,7 +280,7 @@ impl TraitHandler for DebugEnumHandler {
 
                                 if let Some(method) = field_attribute.method {
                                     block_token_stream.extend(super::common::create_format_arg(
-                                        &ast.generics.params,
+                                        ast,
                                         ty,
                                         &method,
                                         quote!(#field_name_var),
@@ -336,16 +336,17 @@ impl TraitHandler for DebugEnumHandler {
             &ast.generics.params,
             &syn::parse2(quote!(::core::fmt::Debug)).unwrap(),
             &debug_types,
-            Some((true, false, false)),
+            &[],
         );
 
-        let where_clause = ast.generics.make_where_clause();
+        let mut generics = ast.generics.clone();
+        let where_clause = generics.make_where_clause();
 
         for where_predicate in bound {
             where_clause.predicates.push(where_predicate);
         }
 
-        let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
+        let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         token_stream.extend(quote! {
             impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
