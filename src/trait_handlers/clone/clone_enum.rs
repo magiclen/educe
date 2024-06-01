@@ -222,7 +222,7 @@ impl TraitHandler for CloneEnumHandler {
                 })
                 .unwrap(),
                 &clone_types,
-                Some((false, false, false)),
+                &[],
             );
         }
 

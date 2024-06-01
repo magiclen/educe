@@ -29,11 +29,14 @@ impl TraitHandler for EqHandler {
         }
         .build_from_eq_meta(meta)?;
 
+        let mut field_types = vec![];
+
         // if `contains_partial_eq` is true, the implementation is handled by the `PartialEq` attribute, and field attributes is also handled by the `PartialEq` attribute
         if !contains_partial_eq {
             match &ast.data {
                 Data::Struct(data) => {
                     for field in data.fields.iter() {
+                        field_types.push(&field.ty);
                         let _ =
                             FieldAttributeBuilder.build_from_attributes(&field.attrs, traits)?;
                     }
@@ -46,6 +49,7 @@ impl TraitHandler for EqHandler {
                         .build_from_attributes(&variant.attrs, traits)?;
 
                         for field in variant.fields.iter() {
+                            field_types.push(&field.ty);
                             let _ = FieldAttributeBuilder
                                 .build_from_attributes(&field.attrs, traits)?;
                         }
@@ -53,6 +57,7 @@ impl TraitHandler for EqHandler {
                 },
                 Data::Union(data) => {
                     for field in data.fields.named.iter() {
+                        field_types.push(&field.ty);
                         let _ =
                             FieldAttributeBuilder.build_from_attributes(&field.attrs, traits)?;
                     }
@@ -73,10 +78,13 @@ impl TraitHandler for EqHandler {
 
                 // The above code will throw a compile error because T have to be bound to `PartialEq`. However, it seems not to be necessary logically.
             */
-            let bound = type_attribute.bound.into_where_predicates_by_generic_parameters(
-                &ast.generics.params,
-                &syn::parse2(quote!(::core::cmp::PartialEq)).unwrap(),
-            );
+            let bound =
+                type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
+                    &ast.generics.params,
+                    &syn::parse2(quote!(::core::cmp::PartialEq)).unwrap(),
+                    &field_types,
+                    &[quote! {::core::cmp::PartialEq}],
+                );
 
             let where_clause = ast.generics.make_where_clause();
 

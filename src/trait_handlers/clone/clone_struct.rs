@@ -145,7 +145,7 @@ impl TraitHandler for CloneStructHandler {
                 })
                 .unwrap(),
                 &clone_types,
-                Some((false, false, false)),
+                &[],
             );
         }
 
