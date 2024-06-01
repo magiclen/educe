@@ -1,6 +1,7 @@
 use syn::{punctuated::Punctuated, token::Comma, GenericParam, Meta, Path, Type, WherePredicate};
 
 use crate::common::where_predicates_bool::{
+    create_where_predicates_from_all_generic_parameters,
     create_where_predicates_from_generic_parameters_check_types, meta_2_where_predicates,
     WherePredicates, WherePredicatesOrBool,
 };
@@ -9,6 +10,7 @@ pub(crate) enum Bound {
     Disabled,
     Auto,
     Custom(WherePredicates),
+    All,
 }
 
 impl Bound {
@@ -27,6 +29,7 @@ impl Bound {
                     Self::Disabled
                 }
             },
+            WherePredicatesOrBool::All => Self::All,
         })
     }
 }
@@ -35,7 +38,7 @@ impl Bound {
     #[inline]
     pub(crate) fn into_where_predicates_by_generic_parameters_check_types(
         self,
-        _params: &Punctuated<GenericParam, Comma>,
+        params: &Punctuated<GenericParam, Comma>,
         bound_trait: &Path,
         types: &[&Type],
         supertraits: &[proc_macro2::TokenStream],
@@ -48,6 +51,7 @@ impl Bound {
                 supertraits,
             ),
             Self::Custom(where_predicates) => where_predicates,
+            Self::All => create_where_predicates_from_all_generic_parameters(params, bound_trait),
         }
     }
 }

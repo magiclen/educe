@@ -14,6 +14,7 @@ pub(crate) type WherePredicates = Punctuated<WherePredicate, Token![,]>;
 pub(crate) enum WherePredicatesOrBool {
     WherePredicates(WherePredicates),
     Bool(bool),
+    All,
 }
 
 impl WherePredicatesOrBool {
@@ -40,6 +41,10 @@ impl Parse for WherePredicatesOrBool {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         if let Ok(lit) = input.parse::<Lit>() {
             return Self::from_lit(&lit);
+        }
+
+        if let Ok(_star) = input.parse::<Token![*]>() {
+            return Ok(Self::All);
         }
 
         Ok(Self::WherePredicates(input.parse_terminated(WherePredicate::parse, Token![,])?))
@@ -80,7 +85,6 @@ pub(crate) fn meta_2_where_predicates(meta: &Meta) -> syn::Result<WherePredicate
 }
 
 #[inline]
-#[allow(dead_code)]
 pub(crate) fn create_where_predicates_from_all_generic_parameters(
     params: &Punctuated<GenericParam, Comma>,
     bound_trait: &Path,
