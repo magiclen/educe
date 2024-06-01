@@ -536,14 +536,21 @@ fn bound_4() {
     let phantom = PhantomData::<SuitableNotEq>;
 
     #[derive(Educe)]
-    #[educe(Ord, PartialEq)]
+    #[educe(Ord)]
     struct Struct<T, U> {
         f1: T,
         // PhantomData is Eq (all PhantomData are equal to all others)
         f2: PhantomData<U>,
     }
 
+    impl<T: PartialEq, U: Suitable> PartialEq for Struct<T, U> {
+        fn eq(&self, other: &Struct<T, U>) -> bool {
+            self.f1.eq(&other.f1)
+        }
+    }
+
     impl<T: PartialEq, U: Suitable> Eq for Struct<T, U> {}
+
     impl<T: PartialOrd, U: Suitable> PartialOrd for Struct<T, U> {
         fn partial_cmp(&self, other: &Struct<T, U>) -> Option<Ordering> {
             self.f1.partial_cmp(&other.f1)
@@ -551,10 +558,17 @@ fn bound_4() {
     }
 
     #[derive(Educe)]
-    #[educe(Ord, PartialEq)]
+    #[educe(Ord)]
     struct Tuple<T, U>(T, PhantomData<U>);
 
+    impl<T: PartialEq, U: Suitable> PartialEq for Tuple<T, U> {
+        fn eq(&self, other: &Tuple<T, U>) -> bool {
+            self.0.eq(&other.0)
+        }
+    }
+
     impl<T: PartialEq, U: Suitable> Eq for Tuple<T, U> {}
+
     impl<T: PartialOrd, U: Suitable> PartialOrd for Tuple<T, U> {
         fn partial_cmp(&self, other: &Tuple<T, U>) -> Option<Ordering> {
             self.0.partial_cmp(&other.0)
