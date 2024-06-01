@@ -558,6 +558,7 @@ fn bound_4() {
             self.0.eq(&other.0)
         }
     }
+
     assert!(
         Struct {
             f1: 1, f2: phantom
