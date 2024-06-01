@@ -211,11 +211,11 @@ enum Enum<T, K> {
 
 In the above case, `T` is bound to the `Debug` trait, but `K` is not.
 
-Or, you can have `educe` replicate the behaviour of `std`'s `derive`'s,
-where a bound is produced for *every* generic parameter,
-without regard to how it's used in the structure:
+Or, you can have `educe` replicate the behaviour of `std`'s `derive`'s, where a bound is produced for *every* generic parameter, without regard to how it's used in the structure:
 
 ```rust
+use educe::Educe;
+
 #[derive(Educe)]
 #[educe(Debug(bound(*)))]
 struct Struct<T> {
@@ -224,13 +224,7 @@ struct Struct<T> {
 }
 ```
 
-This can be useful if you don't want to make the trait implementation
-part of your permanent public API.
-In this example,
-`Struct<T>` doesn't implement `Debug` unless `T` does.
-I.e., it has a `T: Debug` bound even though that's not needed right now.
-Later we might want to display `f`; we wouldn't then need to make
-a breaking API change by adding the bound.
+This can be useful if you don't want to make the trait implementation part of your permanent public API. In this example, `Struct<T>` doesn't implement `Debug` unless `T` does. I.e., it has a `T: Debug` bound even though that's not needed right now. Later we might want to display `f`; we wouldn't then need to make a breaking API change by adding the bound.
 
 This was the behaviour of `Trait(bound)` in educe 0.4.x and earlier.
 
@@ -357,6 +351,27 @@ enum Enum<T, K: A> {
 ```
 
 In the above case, `T` is bound to the `Clone` trait, but `K` is not.
+
+Or, you can have `educe` replicate the behaviour of `std`'s `derive`'s by using `bound(*)`. See the [`Debug`](#debug) section for more information.
+
+```rust
+use educe::Educe;
+
+trait A {
+    fn add(&self, rhs: u8) -> Self;
+}
+
+fn clone<T: A>(v: &T) -> T {
+    v.add(100)
+}
+
+#[derive(Educe)]
+#[educe(Clone(bound(*)))]
+struct Struct<T: A> {
+    #[educe(Clone(method(clone)))]
+    f: T,
+}
+```
 
 ###### Union
 
@@ -584,6 +599,21 @@ enum Enum<T, K> {
     V3(
         T
     ),
+}
+```
+
+In the above case, `T` is bound to the `PartialEq` trait, but `K` is not.
+
+You can have `educe` replicate the behaviour of `std`'s `derive`'s by using `bound(*)`. See the [`Debug`](#debug) section for more information.
+
+```rust
+use educe::Educe;
+
+#[derive(Educe)]
+#[educe(PartialEq(bound(*)))]
+struct Struct<T> {
+    #[educe(PartialEq(ignore))]
+    f: T,
 }
 ```
 
@@ -918,7 +948,7 @@ fn partial_cmp<T: A>(a: &T, b: &T) -> Option<Ordering> {
 }
 
 #[derive(PartialEq, Educe)]
-#[educe(PartialOrd(bound(T: std::cmp::PartialOrd, K: std::cmp::PartialOrd + A)))]
+#[educe(PartialOrd(bound(T: std::cmp::PartialOrd, K: PartialEq + A)))]
 enum Enum<T, K> {
     V1,
     V2 {
@@ -928,6 +958,21 @@ enum Enum<T, K> {
     V3(
         T
     ),
+}
+```
+
+In the above case, `T` is bound to the `PartialOrd` trait, but `K` is not.
+
+You can have `educe` replicate the behaviour of `std`'s `derive`'s by using `bound(*)`. See the [`Debug`](#debug) section for more information.
+
+```rust
+use educe::Educe;
+
+#[derive(PartialEq, Educe)]
+#[educe(PartialOrd(bound(*)))]
+struct Struct<T> {
+    #[educe(PartialOrd(ignore))]
+    f: T,
 }
 ```
 
@@ -1242,6 +1287,21 @@ enum Enum<T, K> {
     V3(
         T
     ),
+}
+```
+
+In the above case, `T` is bound to the `Hash` trait, but `K` is not.
+
+You can have `educe` replicate the behaviour of `std`'s `derive`'s by using `bound(*)`. See the [`Debug`](#debug) section for more information.
+
+```rust
+use educe::Educe;
+
+#[derive(Educe)]
+#[educe(Hash(bound(*)))]
+struct Struct<T> {
+    #[educe(Hash(ignore))]
+    f: T,
 }
 ```
 
