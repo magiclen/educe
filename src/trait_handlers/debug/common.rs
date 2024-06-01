@@ -8,9 +8,10 @@ use crate::common::r#type::{dereference, find_idents_in_type};
 #[inline]
 pub(crate) fn create_debug_map_builder() -> proc_macro2::TokenStream {
     quote!(
-        struct RawString(&'static str);
+        #[allow(non_camel_case_types)] // We're using __ to help avoid clashes.
+        struct Educe__RawString(&'static str);
 
-        impl ::core::fmt::Debug for RawString {
+        impl ::core::fmt::Debug for Educe__RawString {
             #[inline]
             fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
                 f.write_str(self.0)
