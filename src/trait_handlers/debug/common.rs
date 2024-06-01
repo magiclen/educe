@@ -1,9 +1,5 @@
-use std::collections::HashSet;
-
 use quote::quote;
-use syn::{punctuated::Punctuated, token::Comma, GenericParam, Path, Type};
-
-use crate::common::r#type::{dereference, find_idents_in_type};
+use syn::{DeriveInput, Path, Type};
 
 #[inline]
 pub(crate) fn create_debug_map_builder() -> proc_macro2::TokenStream {
@@ -24,41 +20,36 @@ pub(crate) fn create_debug_map_builder() -> proc_macro2::TokenStream {
 
 #[inline]
 pub(crate) fn create_format_arg(
-    params: &Punctuated<GenericParam, Comma>,
-    ty: &Type,
+    ast: &DeriveInput,
+    field_ty: &Type,
     format_method: &Path,
-    field: proc_macro2::TokenStream,
+    field_expr: proc_macro2::TokenStream,
 ) -> proc_macro2::TokenStream {
-    let ty = dereference(ty);
+    let ty_ident = &ast.ident;
 
-    let mut idents = HashSet::new();
-    find_idents_in_type(&mut idents, ty, Some((true, true, false)));
-
-    // simply support one level generics (without considering bounds that use other generics)
-    let mut filtered_params: Punctuated<GenericParam, Comma> = Punctuated::new();
-
-    for param in params.iter() {
-        if let GenericParam::Type(ty) = param {
-            let ident = &ty.ident;
-
-            if idents.contains(ident) {
-                filtered_params.push(param.clone());
-            }
-        }
-    }
+    // We use the complete original generics, not filtered by field,
+    // and include a PhantomData<Self> in our wrapper struct to use the generics.
+    //
+    // This avoids having to try to calculate the right *subset* of the generics
+    // relevant for this field, which is nontrivial and maybe impossible.
+    let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
     quote!(
         let arg = {
-            struct MyDebug<'a, #filtered_params>(&'a #ty);
+            #[allow(non_camel_case_types)] // We're using __ to help avoid clashes.
+            struct Educe__DebugField<V, M>(V, ::core::marker::PhantomData<M>);
 
-            impl<'a, #filtered_params> ::core::fmt::Debug for MyDebug<'a, #filtered_params> {
+            impl #impl_generics ::core::fmt::Debug
+                for Educe__DebugField<&#field_ty, #ty_ident #ty_generics>
+                #where_clause
+            {
                 #[inline]
-                fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-                    #format_method(self.0, f)
+                fn fmt(&self, educe__f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                    #format_method(self.0, educe__f)
                 }
             }
 
-            MyDebug(#field)
+            Educe__DebugField(#field_expr, ::core::marker::PhantomData::<Self>)
         };
     )
 }

@@ -4,6 +4,11 @@
 #[macro_use]
 extern crate alloc;
 
+use core::{
+    fmt::{self, Debug, Display},
+    marker::PhantomData,
+};
+
 use educe::Educe;
 
 #[test]
@@ -531,4 +536,58 @@ fn bound_3() {
     struct Tuple<T>(T);
 
     assert_eq!("Tuple(1)", format!("{:?}", Tuple(1)));
+}
+
+#[test]
+fn bound_4() {
+    use core::cell::RefCell;
+
+    #[derive(Educe)]
+    #[educe(Debug)]
+    struct Struct<T> {
+        f1: RefCell<T>,
+    }
+
+    assert_eq!(
+        "Struct { f1: RefCell { value: 1 } }",
+        format!("{:?}", Struct {
+            f1: RefCell::new(1)
+        })
+    );
+
+    #[derive(Educe)]
+    #[educe(Debug(bound(T: core::fmt::Debug)))]
+    struct Tuple<T>(RefCell<T>);
+
+    assert_eq!("Tuple(RefCell { value: 1 })", format!("{:?}", Tuple(RefCell::new(1))));
+}
+
+#[test]
+fn bound_5() {
+    struct DebugAsDisplay<T>(T);
+
+    struct NotDebug;
+
+    impl<T: Display> Debug for DebugAsDisplay<T> {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            Display::fmt(&self.0, f)
+        }
+    }
+
+    #[derive(Educe)]
+    #[educe(Debug)]
+    struct Struct<T, U, V> {
+        f1: Option<T>,
+        f2: DebugAsDisplay<U>,
+        f3: PhantomData<V>,
+    }
+
+    assert_eq!(
+        "Struct { f1: Some(1), f2: lit, f3: PhantomData<debug_struct::bound_5::NotDebug> }",
+        format!("{:?}", Struct {
+            f1: Some(1),
+            f2: DebugAsDisplay("lit"),
+            f3: PhantomData::<NotDebug>,
+        })
+    );
 }

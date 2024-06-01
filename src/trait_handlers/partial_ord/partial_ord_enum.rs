@@ -250,7 +250,7 @@ impl TraitHandler for PartialOrdEnumHandler {
             &ast.generics.params,
             &syn::parse2(quote!(::core::cmp::PartialOrd)).unwrap(),
             &partial_ord_types,
-            Some((true, false, false)),
+            &[quote! {::core::cmp::PartialEq}],
         );
 
         let where_clause = ast.generics.make_where_clause();
