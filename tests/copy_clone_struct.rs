@@ -6,10 +6,12 @@ use educe::Educe;
 
 #[test]
 fn empty() {
+    #[allow(dead_code)]
     #[derive(Educe)]
     #[educe(Copy, Clone)]
     struct Struct {}
 
+    #[allow(dead_code)]
     #[derive(Educe)]
     #[educe(Copy, Clone)]
     struct Tuple();

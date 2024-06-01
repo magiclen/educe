@@ -9,10 +9,12 @@ use educe::Educe;
 
 #[test]
 fn empty() {
+    #[allow(dead_code)]
     #[derive(Educe)]
     #[educe(Hash)]
     struct Struct {}
 
+    #[allow(dead_code)]
     #[derive(Educe)]
     #[educe(Hash)]
     struct Tuple();

@@ -7,6 +7,7 @@ use educe::Educe;
 
 #[test]
 fn empty() {
+    #[allow(dead_code)]
     #[derive(PartialEq, Eq, Educe)]
     #[educe(PartialOrd, Ord)]
     enum Enum {}

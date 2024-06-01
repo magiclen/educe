@@ -1984,7 +1984,7 @@ fn derive_input_handler(mut ast: DeriveInput) -> syn::Result<proc_macro2::TokenS
         }
     }
 
-    if trait_meta_map.get(&Trait::_Nothing).is_some() {
+    if trait_meta_map.contains_key(&Trait::_Nothing) {
         // avoid unused warnings
         let _ = &mut ast;
         let _ = &mut token_stream;

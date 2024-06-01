@@ -37,6 +37,7 @@ pub(crate) trait TraitHandler {
 }
 
 pub(crate) trait TraitHandlerMultiple {
+    #[allow(dead_code)]
     fn trait_meta_handler(
         ast: &mut DeriveInput,
         token_stream: &mut proc_macro2::TokenStream,
