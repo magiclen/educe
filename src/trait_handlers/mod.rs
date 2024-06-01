@@ -30,7 +30,7 @@ pub(crate) mod partial_ord;
 pub(crate) trait TraitHandler {
     #[allow(dead_code)]
     fn trait_meta_handler(
-        ast: &mut DeriveInput,
+        ast: &DeriveInput,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
@@ -40,7 +40,7 @@ pub(crate) trait TraitHandler {
 pub(crate) trait TraitHandlerMultiple {
     #[allow(dead_code)]
     fn trait_meta_handler(
-        ast: &mut DeriveInput,
+        ast: &DeriveInput,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &[Meta],

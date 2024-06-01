@@ -11,7 +11,7 @@ pub(crate) struct DefaultUnionHandler;
 
 impl TraitHandler for DefaultUnionHandler {
     fn trait_meta_handler(
-        ast: &mut DeriveInput,
+        ast: &DeriveInput,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
@@ -118,13 +118,14 @@ impl TraitHandler for DefaultUnionHandler {
             &[],
         );
 
-        let where_clause = ast.generics.make_where_clause();
+        let mut generics = ast.generics.clone();
+        let where_clause = generics.make_where_clause();
 
         for where_predicate in bound {
             where_clause.predicates.push(where_predicate);
         }
 
-        let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
+        let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         token_stream.extend(quote! {
             impl #impl_generics ::core::default::Default for #ident #ty_generics #where_clause {

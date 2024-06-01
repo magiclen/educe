@@ -1910,7 +1910,7 @@ use syn::{
 #[allow(unused)]
 use trait_handlers::{TraitHandler, TraitHandlerMultiple};
 
-fn derive_input_handler(mut ast: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
+fn derive_input_handler(ast: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     let mut token_stream = proc_macro2::TokenStream::new();
     let mut trait_meta_map: HashMap<Trait, Vec<Meta>> = HashMap::new();
 
@@ -1960,7 +1960,7 @@ fn derive_input_handler(mut ast: DeriveInput) -> syn::Result<proc_macro2::TokenS
     {
         if let Some(meta) = trait_meta_map.get(&Trait::Debug) {
             trait_handlers::debug::DebugHandler::trait_meta_handler(
-                &mut ast,
+                &ast,
                 &mut token_stream,
                 &traits,
                 &meta[0],
@@ -1972,7 +1972,7 @@ fn derive_input_handler(mut ast: DeriveInput) -> syn::Result<proc_macro2::TokenS
     {
         if let Some(meta) = trait_meta_map.get(&Trait::Clone) {
             trait_handlers::clone::CloneHandler::trait_meta_handler(
-                &mut ast,
+                &ast,
                 &mut token_stream,
                 &traits,
                 &meta[0],
@@ -1984,7 +1984,7 @@ fn derive_input_handler(mut ast: DeriveInput) -> syn::Result<proc_macro2::TokenS
     {
         if let Some(meta) = trait_meta_map.get(&Trait::Copy) {
             trait_handlers::copy::CopyHandler::trait_meta_handler(
-                &mut ast,
+                &ast,
                 &mut token_stream,
                 &traits,
                 &meta[0],
@@ -1996,7 +1996,7 @@ fn derive_input_handler(mut ast: DeriveInput) -> syn::Result<proc_macro2::TokenS
     {
         if let Some(meta) = trait_meta_map.get(&Trait::PartialEq) {
             trait_handlers::partial_eq::PartialEqHandler::trait_meta_handler(
-                &mut ast,
+                &ast,
                 &mut token_stream,
                 &traits,
                 &meta[0],
@@ -2008,7 +2008,7 @@ fn derive_input_handler(mut ast: DeriveInput) -> syn::Result<proc_macro2::TokenS
     {
         if let Some(meta) = trait_meta_map.get(&Trait::Eq) {
             trait_handlers::eq::EqHandler::trait_meta_handler(
-                &mut ast,
+                &ast,
                 &mut token_stream,
                 &traits,
                 &meta[0],
@@ -2020,7 +2020,7 @@ fn derive_input_handler(mut ast: DeriveInput) -> syn::Result<proc_macro2::TokenS
     {
         if let Some(meta) = trait_meta_map.get(&Trait::PartialOrd) {
             trait_handlers::partial_ord::PartialOrdHandler::trait_meta_handler(
-                &mut ast,
+                &ast,
                 &mut token_stream,
                 &traits,
                 &meta[0],
@@ -2032,7 +2032,7 @@ fn derive_input_handler(mut ast: DeriveInput) -> syn::Result<proc_macro2::TokenS
     {
         if let Some(meta) = trait_meta_map.get(&Trait::Ord) {
             trait_handlers::ord::OrdHandler::trait_meta_handler(
-                &mut ast,
+                &ast,
                 &mut token_stream,
                 &traits,
                 &meta[0],
@@ -2044,7 +2044,7 @@ fn derive_input_handler(mut ast: DeriveInput) -> syn::Result<proc_macro2::TokenS
     {
         if let Some(meta) = trait_meta_map.get(&Trait::Hash) {
             trait_handlers::hash::HashHandler::trait_meta_handler(
-                &mut ast,
+                &ast,
                 &mut token_stream,
                 &traits,
                 &meta[0],
@@ -2056,7 +2056,7 @@ fn derive_input_handler(mut ast: DeriveInput) -> syn::Result<proc_macro2::TokenS
     {
         if let Some(meta) = trait_meta_map.get(&Trait::Default) {
             trait_handlers::default::DefaultHandler::trait_meta_handler(
-                &mut ast,
+                &ast,
                 &mut token_stream,
                 &traits,
                 &meta[0],
@@ -2068,7 +2068,7 @@ fn derive_input_handler(mut ast: DeriveInput) -> syn::Result<proc_macro2::TokenS
     {
         if let Some(meta) = trait_meta_map.get(&Trait::Deref) {
             trait_handlers::deref::DerefHandler::trait_meta_handler(
-                &mut ast,
+                &ast,
                 &mut token_stream,
                 &traits,
                 &meta[0],
@@ -2080,7 +2080,7 @@ fn derive_input_handler(mut ast: DeriveInput) -> syn::Result<proc_macro2::TokenS
     {
         if let Some(meta) = trait_meta_map.get(&Trait::DerefMut) {
             trait_handlers::deref_mut::DerefMutHandler::trait_meta_handler(
-                &mut ast,
+                &ast,
                 &mut token_stream,
                 &traits,
                 &meta[0],
@@ -2092,7 +2092,7 @@ fn derive_input_handler(mut ast: DeriveInput) -> syn::Result<proc_macro2::TokenS
     {
         if let Some(meta) = trait_meta_map.get(&Trait::Into) {
             trait_handlers::into::IntoHandler::trait_meta_handler(
-                &mut ast,
+                &ast,
                 &mut token_stream,
                 &traits,
                 meta,
@@ -2102,7 +2102,7 @@ fn derive_input_handler(mut ast: DeriveInput) -> syn::Result<proc_macro2::TokenS
 
     if trait_meta_map.contains_key(&Trait::_Nothing) {
         // avoid unused warnings
-        let _ = &mut ast;
+        let _ = &ast;
         let _ = &mut token_stream;
         let _ = traits;
         unreachable!();
