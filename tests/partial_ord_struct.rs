@@ -550,7 +550,7 @@ fn bound_4() {
     }
 
     #[derive(Educe)]
-    #[educe(Eq)]
+    #[educe(PartialOrd)]
     struct Tuple<T, U>(T, PhantomData<U>);
 
     impl<T: PartialEq, U: Suitable> PartialEq for Tuple<T, U> {
