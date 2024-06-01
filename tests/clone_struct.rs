@@ -199,3 +199,23 @@ fn bound_4() {
     }
     .clone();
 }
+
+#[cfg(feature = "Debug")]
+#[test]
+fn leaking_bounds() {
+    use core::{fmt::Debug, marker::PhantomData};
+
+    #[derive(Educe)]
+    #[educe(Debug(bound(T: Debug)), Clone(bound(T: Clone)))]
+    struct Struct<T> {
+        x: PhantomData<T>,
+    }
+
+    #[derive(Clone)]
+    struct NotDebug;
+
+    let a = Struct {
+        x: PhantomData::<NotDebug>
+    };
+    let _b = a.clone();
+}

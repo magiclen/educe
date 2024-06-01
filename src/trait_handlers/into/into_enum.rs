@@ -14,7 +14,7 @@ pub(crate) struct IntoEnumHandler;
 impl TraitHandlerMultiple for IntoEnumHandler {
     #[inline]
     fn trait_meta_handler(
-        ast: &mut DeriveInput,
+        ast: &DeriveInput,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &[Meta],

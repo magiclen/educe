@@ -14,7 +14,7 @@ pub(crate) struct PartialOrdStructHandler;
 impl TraitHandler for PartialOrdStructHandler {
     #[inline]
     fn trait_meta_handler(
-        ast: &mut DeriveInput,
+        ast: &DeriveInput,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
@@ -88,13 +88,14 @@ impl TraitHandler for PartialOrdStructHandler {
             &[quote! {::core::cmp::PartialEq}],
         );
 
-        let where_clause = ast.generics.make_where_clause();
+        let mut generics = ast.generics.clone();
+        let where_clause = generics.make_where_clause();
 
         for where_predicate in bound {
             where_clause.predicates.push(where_predicate);
         }
 
-        let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
+        let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         token_stream.extend(quote! {
             impl #impl_generics ::core::cmp::PartialOrd for #ident #ty_generics #where_clause {
