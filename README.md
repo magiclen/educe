@@ -20,6 +20,19 @@ default-features = false
 
 ## Traits
 
+- [Debug](#debug)
+- [Clone](#clone)
+- [Copy](#copy)
+- [PartialEq](#partialeq)
+- [Eq](#eq)
+- [PartialOrd](#partialord)
+- [Ord](#ord)
+- [Hash](#hash)
+- [Default](#default)
+- [Deref](#deref)
+- [DerefMut](#derefmut)
+- [Into](#into)
+
 #### Debug
 
 Use `#[derive(Educe)]` and `#[educe(Debug)]` to implement the `Debug` trait for a struct, enum, or union. This allows you to modify the names of your types, variants, and fields. You can also choose to ignore specific fields or set a method to replace the `Debug` trait. Additionally, you have the option to format a struct as a tuple and vice versa.
