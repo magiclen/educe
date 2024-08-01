@@ -1,9 +1,15 @@
 #[allow(dead_code)]
 pub(crate) mod bound;
 #[allow(dead_code)]
+pub(crate) mod field_info;
+#[allow(dead_code)]
+pub(crate) mod ident_index;
+#[allow(dead_code)]
 pub(crate) mod path;
 #[allow(dead_code)]
 pub(crate) mod r#type;
+#[allow(dead_code)]
+pub(crate) mod variant_info;
 #[allow(dead_code)]
 pub(crate) mod where_predicates_bool;
 
@@ -20,18 +26,6 @@ pub(crate) mod expr;
 ))]
 #[allow(dead_code)]
 pub(crate) mod ident_bool;
-#[cfg(any(
-    feature = "Debug",
-    feature = "PartialEq",
-    feature = "PartialOrd",
-    feature = "Ord",
-    feature = "Hash",
-    feature = "Deref",
-    feature = "DerefMut",
-    feature = "Into"
-))]
-#[allow(dead_code)]
-pub(crate) mod ident_index;
 #[cfg(any(feature = "PartialOrd", feature = "Ord"))]
 #[allow(dead_code)]
 pub(crate) mod int;

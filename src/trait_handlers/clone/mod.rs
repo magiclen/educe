@@ -1,5 +1,4 @@
-mod clone_enum;
-mod clone_struct;
+mod clone_data;
 mod clone_union;
 mod models;
 
@@ -19,14 +18,8 @@ impl TraitHandler for CloneHandler {
         meta: &Meta,
     ) -> syn::Result<()> {
         match ast.data {
-            Data::Struct(_) => clone_struct::CloneStructHandler::trait_meta_handler(
-                ast,
-                token_stream,
-                traits,
-                meta,
-            ),
-            Data::Enum(_) => {
-                clone_enum::CloneEnumHandler::trait_meta_handler(ast, token_stream, traits, meta)
+            Data::Struct(_) | Data::Enum(_) => {
+                clone_data::CloneDataHandler::trait_meta_handler(ast, token_stream, traits, meta)
             },
             Data::Union(_) => {
                 clone_union::CloneUnionHandler::trait_meta_handler(ast, token_stream, traits, meta)
