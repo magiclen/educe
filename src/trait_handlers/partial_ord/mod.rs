@@ -28,7 +28,7 @@ impl TraitHandler for PartialOrdHandler {
         // if `contains_ord` is true, the implementation is handled by the `Ord` attribute
         if contains_ord {
             let _ = TypeAttributeBuilder {
-                enable_flag: true, enable_bound: false
+                enable_flag: true, enable_bound: true
             }
             .build_from_partial_ord_meta(meta)?;
 
