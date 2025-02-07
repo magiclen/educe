@@ -210,7 +210,7 @@ impl TraitHandler for OrdEnumHandler {
         } else {
             let discriminant_cmp = quote! {
                 unsafe {
-                    ::core::cmp::Ord::cmp(&*<*const _>::from(self).cast::<#discriminant_type>(), &*<*const _>::from(other).cast::<#discriminant_type>())
+                    ::core::cmp::Ord::cmp(&*<*const Self>::from(self).cast::<#discriminant_type>(), &*<*const Self>::from(other).cast::<#discriminant_type>())
                 }
             };
 

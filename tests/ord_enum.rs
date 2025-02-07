@@ -630,3 +630,11 @@ fn use_partial_ord_attr_ignore() {
     assert_eq!(Ordering::Less, Enum::Tuple(1, 2).cmp(&Enum::Tuple(1, 3)));
     assert_eq!(Ordering::Equal, Enum::Tuple(2, 2).cmp(&Enum::Tuple(1, 2)));
 }
+
+struct PoisonTypeInference;
+
+impl From<&PoisonTypeInference> for *const () {
+    fn from(value: &PoisonTypeInference) -> Self {
+        value as *const PoisonTypeInference as *const ()
+    }
+}
