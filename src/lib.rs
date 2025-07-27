@@ -179,7 +179,8 @@ enum Enum<T> {
 
 ###### Generic Parameters Bound to the `Debug` Trait or Others
 
-Generic parameters will be automatically bound to the `Debug` trait if necessary.
+Unlike the trait derives provided by the standard library,
+the types associated with each field or enum variant will be automatically bound to the `Debug` trait if necessary.
 
 ```rust
 # #[cfg(feature = "Debug")]
@@ -194,11 +195,13 @@ enum Enum<T, K> {
         f1: K,
     },
     V3(
-        T
+        Option<T>,
     ),
 }
 # }
 ```
+
+Here the derived bounds are `K: Debug, Option<T>: Debug`.
 
 Or you can set the where predicates by yourself.
 
@@ -214,7 +217,7 @@ fn fmt<D>(_s: &D, f: &mut Formatter<'_>) -> fmt::Result {
 }
 
 #[derive(Educe)]
-#[educe(Debug(bound(T: std::fmt::Debug)))]
+#[educe(Debug(bound(Option<T>: std::fmt::Debug)))]
 enum Enum<T, K> {
     V1,
     V2 {
@@ -222,13 +225,13 @@ enum Enum<T, K> {
         f1: K,
     },
     V3(
-        T
+        Option<T>,
     ),
 }
 # }
 ```
 
-In the above case, `T` is bound to the `Debug` trait, but `K` is not.
+In the above case, `Option<T>` is bound to the `Debug` trait, but `K` is not.
 
 Or, you can have `educe` replicate the behaviour of `std`'s `derive`'s, where a bound is produced for *every* generic parameter, without regard to how it's used in the structure:
 
@@ -239,14 +242,17 @@ use educe::Educe;
 
 #[derive(Educe)]
 #[educe(Debug(bound(*)))]
-struct Struct<T> {
+struct Struct<T, V> {
     #[educe(Debug(ignore))]
     f: T,
+    g: Option<V>,
 }
 # }
 ```
 
-This can be useful if you don't want to make the trait implementation part of your permanent public API. In this example, `Struct<T>` doesn't implement `Debug` unless `T` does. I.e., it has a `T: Debug` bound even though that's not needed right now. Later we might want to display `f`; we wouldn't then need to make a breaking API change by adding the bound.
+Here the derived bounds are `T: Debug, V: Debug`.
+
+This can be useful if you don't want to make the trait implementation part of your permanent public API. In this example, `Struct<T>` doesn't implement `Debug` unless `T` does. I.e., it has a `T: Debug` bound even though that's not needed right now. Later we might want to display `f`; we wouldn't then need to make a breaking API change by adding the bound. We can also change the type of `g` without affecting the `V: Debug` bound.
 
 This was the behaviour of `Trait(bound)` in educe 0.4.x and earlier.
 
@@ -336,7 +342,9 @@ enum Enum<T: A> {
 
 ###### Generic Parameters Bound to the `Clone` Trait or Others
 
-Generic parameters will be automatically bound to the `Clone` trait if necessary. If the `#[educe(Copy)]` attribute exists, they will be bound to the `Copy` trait.
+Unlike the trait derives provided by the standard library,
+the types associated with each field or enum variant will be automatically bound to the `Clone` trait if necessary.
+If the `#[educe(Copy)]` attribute exists, they will be bound to the `Copy` trait.
 
 ```rust
 # #[cfg(feature = "Clone")]
@@ -448,7 +456,8 @@ enum Enum {
 
 ###### Generic Parameters Bound to the `Copy` Trait or Others
 
-All generic parameters will be automatically bound to the `Copy` trait.
+Unlike the trait derives provided by the standard library,
+the types associated with each field or enum variant will be automatically bound to the `Copy` trait.
 
 ```rust
 # #[cfg(all(feature = "Clone", feature = "Copy"))]
@@ -618,7 +627,8 @@ enum Enum<T: A> {
 
 ###### Generic Parameters Bound to the `PartialEq` Trait or Others
 
-Generic parameters will be automatically bound to the `PartialEq` trait if necessary.
+Unlike the trait derives provided by the standard library,
+the types associated with each field or enum variant will be automatically bound to the `PartialEq` trait if necessary.
 
 ```rust
 # #[cfg(feature = "PartialEq")]
@@ -805,7 +815,8 @@ enum Enum<T: A> {
 
 ###### Generic Parameters Bound to the `PartialEq` Trait or Others
 
-Generic parameters will be automatically bound to the `PartialEq` trait if necessary.
+Unlike the trait derives provided by the standard library,
+the types associated with each field or enum variant will be automatically bound to the `PartialEq` trait if necessary.
 
 ```rust
 # #[cfg(all(feature = "PartialEq", feature = "Eq"))]
@@ -1020,7 +1031,8 @@ enum Enum {
 
 ###### Generic Parameters Bound to the `PartialOrd` Trait or Others
 
-Generic parameters will be automatically bound to the `PartialOrd` trait if necessary.
+Unlike the trait derives provided by the standard library,
+the types associated with each field or enum variant will be automatically bound to the `PartialOrd` trait if necessary.
 
 ```rust
 # #[cfg(feature = "PartialOrd")]
@@ -1255,7 +1267,8 @@ enum Enum {
 
 ###### Generic Parameters Bound to the `Ord` Trait or Others
 
-Generic parameters will be automatically bound to the `Ord` trait if necessary.
+Unlike the trait derives provided by the standard library,
+the types associated with each field or enum variant will be automatically bound to the `Ord` trait if necessary.
 
 ```rust
 # #[cfg(all(feature = "PartialOrd", feature = "Ord"))]
@@ -1406,7 +1419,8 @@ enum Enum<T> {
 
 ###### Generic Parameters Bound to the `Hash` Trait or Others
 
-Generic parameters will be automatically bound to the `Hash` trait if necessary.
+Unlike the trait derives provided by the standard library,
+the types associated with each field or enum variant will be automatically bound to the `Hash` trait if necessary.
 
 ```rust
 # #[cfg(feature = "Hash")]
@@ -1634,7 +1648,8 @@ union Union {
 
 ###### Generic Parameters Bound to the `Default` Trait or Others
 
-Generic parameters will be automatically bound to the `Default` trait if necessary.
+Unlike the trait derives provided by the standard library,
+the types associated with each field or enum variant will be automatically bound to the `Default` trait if necessary.
 
 ```rust
 # #[cfg(feature = "Default")]
@@ -1842,7 +1857,8 @@ enum Enum {
 
 ###### Generic Parameters Bound to the `Into` Trait or Others
 
-Generic parameters will be automatically bound to the `Into<type>` trait if necessary.
+Unlike the trait derives provided by the standard library,
+the types associated with each field or enum variant will be automatically bound to the `Into<type>` trait if necessary.
 
 ```rust
 # #[cfg(feature = "Into")]
