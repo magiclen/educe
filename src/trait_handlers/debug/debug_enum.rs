@@ -348,7 +348,16 @@ impl TraitHandler for DebugEnumHandler {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
+        let lint_attributes: Vec<_> = ast
+            .attrs
+            .iter()
+            .filter(|attribute| {
+                attribute.path().is_ident("allow") || attribute.path().is_ident("expect")
+            })
+            .collect();
+
         token_stream.extend(quote! {
+            #(#lint_attributes)*
             impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
                 #[inline]
                 fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
