@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use syn::{punctuated::Punctuated, Attribute, Meta, Token};
 
@@ -8,7 +8,7 @@ use crate::{
 };
 
 pub(crate) struct TypeAttribute {
-    pub(crate) types: HashMap<HashType, Bound>,
+    pub(crate) types: BTreeMap<HashType, Bound>,
 }
 
 #[derive(Debug)]
@@ -20,7 +20,7 @@ impl TypeAttributeBuilder {
     pub(crate) fn build_from_into_meta(&self, meta: &[Meta]) -> syn::Result<TypeAttribute> {
         debug_assert!(!meta.is_empty());
 
-        let mut types = HashMap::new();
+        let mut types = BTreeMap::new();
 
         for meta in meta {
             debug_assert!(meta.path().is_ident("Into"));
@@ -147,7 +147,7 @@ impl TypeAttributeBuilder {
         }
 
         Ok(output.unwrap_or(TypeAttribute {
-            types: HashMap::new()
+            types: BTreeMap::new()
         }))
     }
 }
