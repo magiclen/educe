@@ -1,26 +1,30 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
-use syn::{punctuated::Punctuated, Attribute, Meta, Path, Token};
+use syn::{Attribute, Meta, Path, Token, punctuated::Punctuated};
 
 use crate::{
-    common::{path::meta_2_path, r#type::TypeWithPunctuatedMeta, tools::HashType},
-    panic, Trait,
+    Trait,
+    common::{path::meta_2_path, tools::HashType, r#type::TypeWithPunctuatedMeta},
+    panic,
 };
 
+/// The parsed settings of a field-level `Into` attribute.
 pub(crate) struct FieldAttribute {
-    pub(crate) types: HashMap<HashType, Option<Path>>,
+    pub(crate) types: BTreeMap<HashType, Option<Path>>,
 }
 
 #[derive(Debug)]
+/// Parses field-level `Into` metas; the `enable_*` switches describe which parameters are allowed for the current shape of data.
 pub(crate) struct FieldAttributeBuilder {
     pub(crate) enable_types: bool,
 }
 
 impl FieldAttributeBuilder {
+    /// Parses one field-level `Into` meta into a `FieldAttribute`, rejecting parameters that are not enabled here.
     pub(crate) fn build_from_into_meta(&self, meta: &[Meta]) -> syn::Result<FieldAttribute> {
         debug_assert!(!meta.is_empty());
 
-        let mut types = HashMap::new();
+        let mut types = BTreeMap::new();
 
         for meta in meta {
             debug_assert!(meta.path().is_ident("Into"));
@@ -62,20 +66,20 @@ impl FieldAttributeBuilder {
                     let mut method_is_set = false;
 
                     let mut handler = |meta: Meta| -> syn::Result<bool> {
-                        if let Some(ident) = meta.path().get_ident() {
-                            if ident == "method" {
-                                let v = meta_2_path(&meta)?;
+                        if let Some(ident) = meta.path().get_ident()
+                            && ident == "method"
+                        {
+                            let v = meta_2_path(&meta)?;
 
-                                if method_is_set {
-                                    return Err(panic::parameter_reset(ident));
-                                }
-
-                                method_is_set = true;
-
-                                method = Some(v);
-
-                                return Ok(true);
+                            if method_is_set {
+                                return Err(panic::parameter_reset(ident));
                             }
+
+                            method_is_set = true;
+
+                            method = Some(v);
+
+                            return Ok(true);
                         }
 
                         Ok(false)
@@ -104,6 +108,7 @@ impl FieldAttributeBuilder {
         })
     }
 
+    /// Scans the `#[educe(...)]` attributes of a field and parses its `Into` meta if present.
     pub(crate) fn build_from_attributes(
         &self,
         attributes: &[Attribute],
@@ -116,26 +121,26 @@ impl FieldAttributeBuilder {
         for attribute in attributes.iter() {
             let path = attribute.path();
 
-            if path.is_ident("educe") {
-                if let Meta::List(list) = &attribute.meta {
-                    let result =
-                        list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
+            if path.is_ident("educe")
+                && let Meta::List(list) = &attribute.meta
+            {
+                let result =
+                    list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
 
-                    for meta in result {
-                        let path = meta.path();
+                for meta in result {
+                    let path = meta.path();
 
-                        let t = match Trait::from_path(path) {
-                            Some(t) => t,
-                            None => return Err(panic::unsupported_trait(meta.path())),
-                        };
+                    let t = match Trait::from_path(path) {
+                        Some(t) => t,
+                        None => return Err(panic::unsupported_trait(meta.path())),
+                    };
 
-                        if !traits.contains(&t) {
-                            return Err(panic::trait_not_used(path.get_ident().unwrap()));
-                        }
+                    if !traits.contains(&t) {
+                        return Err(panic::trait_not_used(path.get_ident().unwrap()));
+                    }
 
-                        if t == Trait::Into {
-                            v_meta.push(meta);
-                        }
+                    if t == Trait::Into {
+                        v_meta.push(meta);
                     }
                 }
             }
@@ -146,7 +151,7 @@ impl FieldAttributeBuilder {
         }
 
         Ok(output.unwrap_or_else(|| FieldAttribute {
-            types: HashMap::new()
+            types: BTreeMap::new()
         }))
     }
 }
