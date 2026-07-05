@@ -103,7 +103,6 @@ fn basic_3() {
     assert!(Enum::A > Enum::B);
 }
 
-#[rustversion::since(1.66)]
 #[test]
 fn basic_4() {
     #[derive(PartialEq, Educe)]

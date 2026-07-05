@@ -17,15 +17,14 @@ proc-macro = true
 
 [dependencies]
 syn = "2"
-quote = "1"
-proc-macro2 = "1"
+quote = "1.0.44"
+proc-macro2 = "1.0.80"
 
 enum-ordinalize = { version = "4.4", default-features = false, features = ["derive"] }
 
 [dev-dependencies]
 syn = { version = "2", features = ["full"] }
 assert-eq-float = "0.1"
-rustversion = "1"
 
 [features]
 default = ["Debug", "Clone", "Copy", "PartialEq", "Eq", "PartialOrd", "Ord", "Hash", "Default", "Deref", "DerefMut", "Into"]
