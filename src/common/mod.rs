@@ -1,6 +1,7 @@
 #[allow(dead_code)]
 // Shared building blocks for the trait handlers; most submodules are only compiled when a feature that needs them is enabled.
 pub(crate) mod attributes;
+#[allow(dead_code)]
 pub(crate) mod bound;
 #[allow(dead_code)]
 pub(crate) mod path;

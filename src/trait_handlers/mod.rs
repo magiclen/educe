@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use quote::ToTokens;
 use syn::{DeriveInput, Meta};
@@ -52,16 +52,13 @@ impl TraitHandlerContext {
     #[allow(dead_code)]
     pub(crate) fn inherit_from(&self, prerequisites: &[Trait], own: &mut WherePredicates) {
         // Compare predicates by their token strings because `WherePredicate` implements neither `Eq` nor `Hash`.
-        let mut seen: Vec<String> =
+        let mut seen: HashSet<String> =
             own.iter().map(|predicate| predicate.to_token_stream().to_string()).collect();
 
         for prerequisite in prerequisites {
             if let Some(predicates) = self.final_predicates.get(prerequisite) {
                 for predicate in predicates {
-                    let key = predicate.to_token_stream().to_string();
-
-                    if !seen.contains(&key) {
-                        seen.push(key);
+                    if seen.insert(predicate.to_token_stream().to_string()) {
                         own.push(predicate.clone());
                     }
                 }
@@ -70,6 +67,8 @@ impl TraitHandlerContext {
     }
 }
 
+// Every single-meta handler implements this trait; when `Into` is the only enabled feature none of them are compiled, so the trait would look unused.
+#[allow(dead_code)]
 pub(crate) trait TraitHandler {
     fn trait_meta_handler(
         ast: &DeriveInput,
@@ -80,6 +79,7 @@ pub(crate) trait TraitHandler {
     ) -> syn::Result<()>;
 }
 
+#[cfg(feature = "Into")]
 pub(crate) trait TraitHandlerMultiple {
     fn trait_meta_handler(
         ast: &DeriveInput,

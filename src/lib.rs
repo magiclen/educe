@@ -1807,8 +1807,10 @@ use syn::{
     parse_macro_input,
     punctuated::Punctuated,
 };
+#[cfg(feature = "Into")]
+use trait_handlers::TraitHandlerMultiple;
 #[allow(unused)]
-use trait_handlers::{TraitHandler, TraitHandlerContext, TraitHandlerMultiple};
+use trait_handlers::{TraitHandler, TraitHandlerContext};
 
 /// The entry point of the expansion: collects the traits requested by the `#[educe(...)]` attributes and dispatches each of them to its handler.
 ///

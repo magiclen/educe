@@ -12,8 +12,8 @@ use crate::{
 };
 
 /// Returns the traits whose recorded bounds `Eq` inherits when its own bound is automatic.
-pub(crate) fn prerequisites() -> Vec<Trait> {
-    vec![
+pub(crate) fn prerequisites() -> &'static [Trait] {
+    &[
         #[cfg(feature = "PartialEq")]
         Trait::PartialEq,
     ]
@@ -86,7 +86,7 @@ impl TraitHandler for EqHandler {
             );
 
         if bound_is_auto {
-            ctx.inherit_from(&prerequisites(), &mut bound);
+            ctx.inherit_from(prerequisites(), &mut bound);
         }
 
         ctx.record(Trait::Eq, &bound);

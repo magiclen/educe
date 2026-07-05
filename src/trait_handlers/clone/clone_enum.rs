@@ -2,12 +2,12 @@ use quote::{format_ident, quote};
 use syn::{Data, DeriveInput, Field, Fields, Meta, Type, Variant, punctuated::Punctuated};
 
 use super::models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder};
+// Only the bitwise-copy fast path, gated on the `Copy` trait, needs to inspect whether a field uses a type parameter.
+#[cfg(feature = "Copy")]
+use crate::common::r#type::type_uses_type_params;
 use crate::{
     TraitHandler,
-    common::{
-        bound::BOUND_EXCEPTIONS_CLONE, r#type::type_uses_type_params,
-        where_predicates_bool::WherePredicates,
-    },
+    common::{bound::BOUND_EXCEPTIONS_CLONE, where_predicates_bool::WherePredicates},
     supported_traits::Trait,
     trait_handlers::TraitHandlerContext,
 };

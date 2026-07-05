@@ -55,10 +55,7 @@ pub(crate) enum Trait {
 impl Trait {
     #[inline]
     pub(crate) fn from_path(path: &Path) -> Option<Self> {
-        let ident_string = match path.get_ident() {
-            Some(ident) => ident.to_string(),
-            None => return None,
-        };
+        let ident_string = path.get_ident()?.to_string();
 
         match ident_string.as_str() {
             #[cfg(feature = "Debug")]
