@@ -184,3 +184,58 @@ fn bound_3() {
 
     assert_eq!(1u8, s1.into());
 }
+
+#[allow(dead_code)]
+#[test]
+fn from_impl() {
+    // A concrete target type gets a `From` impl, so both directions of the conversion are available.
+    #[derive(Educe)]
+    #[educe(Into(u8))]
+    struct Struct {
+        f1: u8,
+    }
+
+    let s = Struct {
+        f1: 1
+    };
+
+    assert_eq!(1u8, u8::from(s));
+}
+
+#[allow(dead_code)]
+#[test]
+fn generic_target() {
+    extern crate alloc;
+
+    use alloc::vec::Vec;
+
+    // A generic target type whose type parameter is covered (here by `Vec`) gets a `From` impl, so both directions of the conversion are available.
+    #[derive(Educe)]
+    #[educe(Into(Vec<T>))]
+    struct Struct<T> {
+        f1: Vec<T>,
+    }
+
+    let s = Struct {
+        f1: alloc::vec![1, 2]
+    };
+
+    assert_eq!(alloc::vec![1, 2], Vec::from(s));
+}
+
+#[allow(dead_code)]
+#[test]
+fn force_into() {
+    // The `into` flag forces an `Into` impl for a concrete target type.
+    #[derive(Educe)]
+    #[educe(Into(u8, into))]
+    struct Struct {
+        f1: u8,
+    }
+
+    let s = Struct {
+        f1: 1
+    };
+
+    assert_eq!(1u8, Into::<u8>::into(s));
+}

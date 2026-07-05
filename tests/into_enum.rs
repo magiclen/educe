@@ -187,3 +187,23 @@ fn bound_3() {
 
     assert_eq!(1u8, s1.into());
 }
+
+#[allow(dead_code)]
+#[test]
+fn from_impl() {
+    // A concrete target type gets a `From` impl, so both directions of the conversion are available.
+    #[derive(Educe)]
+    #[educe(Into(u8))]
+    enum Enum {
+        Struct { f1: u8 },
+        Tuple(u8),
+    }
+
+    assert_eq!(
+        1u8,
+        u8::from(Enum::Struct {
+            f1: 1
+        })
+    );
+    assert_eq!(2u8, u8::from(Enum::Tuple(2)));
+}

@@ -1,7 +1,7 @@
 #![cfg(feature = "PartialOrd")]
 #![no_std]
 
-use core::{cmp::Ordering, marker::PhantomData};
+use core::cmp::Ordering;
 
 use educe::Educe;
 
@@ -528,53 +528,73 @@ fn bound_3() {
     assert!(Tuple(1) < Tuple(2));
 }
 
+#[cfg(feature = "Ord")]
 #[test]
 fn bound_4() {
-    trait Suitable {}
-    struct SuitableNotEq;
-    impl Suitable for SuitableNotEq {}
-    let phantom = PhantomData::<SuitableNotEq>;
-
-    #[derive(Educe)]
-    #[educe(PartialOrd)]
-    struct Struct<T, U> {
-        f1: T,
-        // PhantomData is Eq (all PhantomData are equal to all others)
-        f2: PhantomData<U>,
+    #[derive(PartialEq, Eq, Educe)]
+    #[educe(PartialOrd(bound(*)), Ord(bound(*)))]
+    struct Struct<T> {
+        f1: Option<T>,
     }
 
-    impl<T: PartialEq, U: Suitable> PartialEq for Struct<T, U> {
-        fn eq(&self, other: &Struct<T, U>) -> bool {
-            self.f1.eq(&other.f1)
-        }
-    }
-
-    #[derive(Educe)]
-    #[educe(PartialOrd)]
-    struct Tuple<T, U>(T, PhantomData<U>);
-
-    impl<T: PartialEq, U: Suitable> PartialEq for Tuple<T, U> {
-        fn eq(&self, other: &Tuple<T, U>) -> bool {
-            self.0.eq(&other.0)
-        }
-    }
-
+    // Explicit bounds can be set on `PartialOrd` and `Ord` separately.
     assert!(
         Struct {
-            f1: 1, f2: phantom
-        } == Struct {
-            f1: 1, f2: phantom
+            f1: Some(1)
+        } < Struct {
+            f1: Some(2)
         }
     );
+}
 
-    assert!(
-        Struct {
-            f1: 1, f2: phantom
-        } != Struct {
-            f1: 2, f2: phantom
-        }
-    );
+#[cfg(feature = "Ord")]
+#[test]
+fn rank_with_ord() {
+    #[derive(PartialEq, Eq, Educe)]
+    #[educe(PartialOrd, Ord)]
+    struct Struct {
+        #[educe(Ord(rank = 1))]
+        f1: u8,
+        #[educe(Ord(rank = 0))]
+        f2: u8,
+    }
 
-    assert!(Tuple(1, phantom) == Tuple(1, phantom));
-    assert!(Tuple(1, phantom) != Tuple(2, phantom));
+    // The `Ord` rank also applies to the generated `partial_cmp`, so both comparisons stay consistent.
+    let a = Struct {
+        f1: 2, f2: 1
+    };
+    let b = Struct {
+        f1: 1, f2: 2
+    };
+
+    assert!(a < b);
+    assert!(matches!(a.cmp(&b), core::cmp::Ordering::Less));
+}
+
+#[cfg(feature = "Ord")]
+#[test]
+fn use_ord_attr_method() {
+    use core::cmp::Ordering;
+
+    fn cmp(a: &u8, b: &u8) -> Ordering {
+        b.cmp(a)
+    }
+
+    // A field without its own `PartialOrd` attribute follows its `Ord` attribute, so `partial_cmp` stays consistent with `cmp`.
+    #[derive(PartialEq, Eq, Educe)]
+    #[educe(PartialOrd, Ord)]
+    struct Struct {
+        #[educe(Ord(method(cmp)))]
+        f1: u8,
+    }
+
+    let a = Struct {
+        f1: 1
+    };
+    let b = Struct {
+        f1: 2
+    };
+
+    assert!(a > b);
+    assert!(matches!(a.cmp(&b), Ordering::Greater));
 }
