@@ -1,6 +1,6 @@
 [package]
 name = "educe"
-version = "0.7.0"
+version = "0.7.1"
 authors = ["Magic Len <len@magiclen.org>"]
 edition = "2024"
 rust-version = "1.89"
