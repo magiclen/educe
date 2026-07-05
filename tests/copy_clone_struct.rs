@@ -1,8 +1,8 @@
 #![cfg(all(feature = "Copy", feature = "Clone"))]
 #![no_std]
 #![allow(clippy::clone_on_copy)]
-
-use core::marker::PhantomData;
+// The types in these tests only exist to exercise the derived impls, and `#[automatically_derived]` impls do not count as uses for dead-code analysis.
+#![allow(dead_code)]
 
 use educe::Educe;
 
@@ -115,70 +115,72 @@ fn bound_3() {
 }
 
 #[test]
-fn bound_4() {
+fn generic_1() {
     #[derive(Educe)]
     #[educe(Copy, Clone)]
-    struct Struct<T, U> {
-        f1: Option<T>,
-        f2: PhantomData<U>,
+    struct Struct<T> {
+        f1: T,
     }
 
     #[derive(Educe)]
     #[educe(Copy, Clone)]
-    struct Tuple<T, U>(Option<T>, PhantomData<U>);
+    struct Tuple<T>(T);
 
+    fn assert_copy<T: Copy>(_v: &T) {}
+
+    // A generic type argument that satisfies `Copy` makes the whole type `Copy`.
     let s = Struct {
-        f1: Some(1), f2: PhantomData::<core::fmt::Formatter>
-    }
-    .clone();
-    let t = Tuple(Some(1), PhantomData::<core::fmt::Formatter>).clone();
+        f1: 1
+    };
+    let t = Tuple(1);
 
-    assert_eq!(Some(1), s.f1);
-    assert_eq!(Some(1), t.0);
+    assert_copy(&s);
+    assert_copy(&t);
+
+    assert_eq!(1, s.clone().f1);
+    assert_eq!(1, t.clone().0);
 }
 
 #[test]
-fn bound_5() {
-    trait Suitable {}
-    struct SuitableNotClone;
-    impl Suitable for SuitableNotClone {}
-    let phantom = PhantomData::<SuitableNotClone>;
+fn generic_2() {
+    struct NotCopy;
 
-    fn copy<T: Copy>(t: &T) -> T {
-        *t
+    impl Clone for NotCopy {
+        fn clone(&self) -> Self {
+            NotCopy
+        }
     }
 
     #[derive(Educe)]
+    #[educe(Copy, Clone)]
+    struct Struct<T> {
+        f1: T,
+    }
+
+    // A type argument that is `Clone` but not `Copy` can still be cloned, like the built-in derives.
+    let s = Struct {
+        f1: NotCopy
+    };
+
+    let _ = s.clone();
+}
+
+#[test]
+fn generic_3() {
+    // The Copy impl can come from educe while the Clone impl comes from the built-in derive.
+    #[derive(Clone, Educe)]
     #[educe(Copy)]
-    struct Struct<T, U> {
+    struct Struct<T> {
         f1: Option<T>,
-        f2: PhantomData<U>,
     }
 
-    impl<T: Clone, U: Suitable> Clone for Struct<T, U> {
-        fn clone(&self) -> Self {
-            Struct {
-                f1: self.f1.clone(), f2: PhantomData
-            }
-        }
-    }
+    fn assert_copy<T: Copy>(_v: &T) {}
 
-    #[derive(Educe)]
-    #[educe(Copy)]
-    struct Tuple<T, U>(Option<T>, PhantomData<U>);
+    let s = Struct {
+        f1: Some(1)
+    };
 
-    impl<T: Clone, U: Suitable> Clone for Tuple<T, U> {
-        fn clone(&self) -> Self {
-            Tuple(self.0.clone(), PhantomData)
-        }
-    }
+    assert_copy(&s);
 
-    let s = copy(&Struct {
-        f1: Some(1), f2: phantom
-    });
-
-    let t = copy(&Tuple(Some(1), phantom));
-
-    assert_eq!(Some(1), s.f1);
-    assert_eq!(Some(1), t.0);
+    assert_eq!(Some(1), s.clone().f1);
 }

@@ -371,3 +371,25 @@ fn new() {
     assert_eq!(0, Struct::new().f1);
     assert_eq!(0, Tuple::new().0);
 }
+
+#[test]
+fn bound_4() {
+    use alloc::{collections::BTreeMap, vec::Vec};
+
+    struct NotDefault;
+
+    // These std containers default to an empty value, so their type arguments never receive a `Default` bound.
+    #[derive(Educe)]
+    #[educe(Default)]
+    struct Struct<T> {
+        f1: Vec<T>,
+        f2: Option<T>,
+        f3: BTreeMap<T, T>,
+    }
+
+    let s: Struct<NotDefault> = Struct::default();
+
+    assert!(s.f1.is_empty());
+    assert!(s.f2.is_none());
+    assert!(s.f3.is_empty());
+}

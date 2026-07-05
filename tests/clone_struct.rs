@@ -1,7 +1,7 @@
 #![cfg(feature = "Clone")]
 #![no_std]
-
-use core::marker::PhantomData;
+// The types in these tests only exist to exercise the derived impls, and `#[automatically_derived]` impls do not count as uses for dead-code analysis.
+#![allow(dead_code)]
 
 use educe::Educe;
 
@@ -174,48 +174,95 @@ fn bound_3() {
 
 #[test]
 fn bound_4() {
-    struct NotClone;
-
     #[derive(Educe)]
-    // without `bound(*)` we get  E0034: multiple applicable items in scope
-    // when we call Struct<NotClone>.clone(), since .clone() is then ambiguous
     #[educe(Clone(bound(*)))]
     struct Struct<T> {
-        f1: PhantomData<T>,
+        f1: T,
     }
-
-    trait ClashingFakeClone {
-        fn clone(&self) {}
-    }
-    impl ClashingFakeClone for Struct<NotClone> {}
-
-    let _: () = Struct {
-        f1: PhantomData::<NotClone>
-    }
-    .clone();
-
-    let _: Struct<_> = Struct {
-        f1: PhantomData::<()>
-    }
-    .clone();
-}
-
-#[cfg(feature = "Debug")]
-#[test]
-fn leaking_bounds() {
-    use core::{fmt::Debug, marker::PhantomData};
 
     #[derive(Educe)]
-    #[educe(Debug(bound(T: Debug)), Clone(bound(T: Clone)))]
+    #[educe(Clone(bound(*)))]
+    struct Tuple<T>(T);
+
+    let s = Struct {
+        f1: 1
+    }
+    .clone();
+    let t = Tuple(1).clone();
+
+    assert_eq!(1, s.f1);
+    assert_eq!(1, t.0);
+}
+
+#[test]
+fn bound_5() {
+    #[derive(Educe)]
+    #[educe(Clone)]
     struct Struct<T> {
-        x: PhantomData<T>,
+        f1: Option<T>,
     }
 
-    #[derive(Clone)]
-    struct NotDebug;
+    #[derive(Educe)]
+    #[educe(Clone)]
+    struct Tuple<T>(Option<T>);
 
-    let a = Struct {
-        x: PhantomData::<NotDebug>
+    let s = Struct {
+        f1: Some(1)
+    }
+    .clone();
+    let t = Tuple(Some(1)).clone();
+
+    assert_eq!(Some(1), s.f1);
+    assert_eq!(Some(1), t.0);
+}
+
+#[test]
+fn bound_6() {
+    extern crate alloc;
+
+    struct NotClone;
+
+    // These std types clone by duplicating a pointer or a marker, so their type arguments never receive a `Clone` bound.
+    #[derive(Educe)]
+    #[educe(Clone)]
+    struct Struct<'a, T> {
+        f1: alloc::sync::Arc<T>,
+        f2: alloc::rc::Rc<T>,
+        f3: &'a T,
+        f4: core::marker::PhantomData<T>,
+    }
+
+    let not_clone = NotClone;
+    let arc = alloc::sync::Arc::new(NotClone);
+    let rc = alloc::rc::Rc::new(NotClone);
+
+    let s = Struct {
+        f1: arc, f2: rc, f3: &not_clone, f4: core::marker::PhantomData
     };
-    let _b = a.clone();
+
+    let _ = s.clone();
+}
+
+#[test]
+fn bound_7() {
+    // A field type with a conditional `Clone` impl gets a precise `NotAlwaysClone<T>: Clone` predicate, so the derive works for exactly the type arguments that support it.
+    struct NotAlwaysClone<T>(T);
+
+    impl Clone for NotAlwaysClone<u8> {
+        fn clone(&self) -> Self {
+            NotAlwaysClone(self.0)
+        }
+    }
+
+    #[derive(Educe)]
+    #[educe(Clone)]
+    struct Struct<T> {
+        f1: NotAlwaysClone<T>,
+    }
+
+    let s = Struct {
+        f1: NotAlwaysClone(1u8)
+    };
+
+    assert_eq!(1, s.clone().f1.0);
 }

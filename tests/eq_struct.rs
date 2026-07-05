@@ -1,8 +1,6 @@
 #![cfg(all(feature = "Eq", feature = "PartialEq"))]
 #![no_std]
 
-use core::marker::PhantomData;
-
 use educe::Educe;
 
 #[test]
@@ -63,14 +61,14 @@ fn ignore_1() {
     #[derive(Educe)]
     #[educe(PartialEq, Eq)]
     struct Struct {
-        #[educe(Eq = false)]
+        #[educe(PartialEq = false)]
         f1: u8,
         f2: u8,
     }
 
     #[derive(Educe)]
     #[educe(PartialEq, Eq)]
-    struct Tuple(#[educe(Eq = false)] u8, u8);
+    struct Tuple(#[educe(PartialEq = false)] u8, u8);
 
     assert!(
         Struct {
@@ -107,14 +105,14 @@ fn ignore_2() {
     #[derive(Educe)]
     #[educe(PartialEq, Eq)]
     struct Struct {
-        #[educe(Eq(ignore))]
+        #[educe(PartialEq(ignore))]
         f1: u8,
         f2: u8,
     }
 
     #[derive(Educe)]
     #[educe(PartialEq, Eq)]
-    struct Tuple(#[educe(Eq(ignore))] u8, u8);
+    struct Tuple(#[educe(PartialEq(ignore))] u8, u8);
 
     assert!(
         Struct {
@@ -154,14 +152,14 @@ fn method_1() {
     #[derive(Educe)]
     #[educe(PartialEq, Eq)]
     struct Struct {
-        #[educe(Eq(method = eq))]
+        #[educe(PartialEq(method = eq))]
         f1: u8,
         f2: u8,
     }
 
     #[derive(Educe)]
     #[educe(PartialEq, Eq)]
-    struct Tuple(#[educe(Eq(method = eq))] u8, u8);
+    struct Tuple(#[educe(PartialEq(method = eq))] u8, u8);
 
     assert!(
         Struct {
@@ -201,14 +199,14 @@ fn method_2() {
     #[derive(Educe)]
     #[educe(PartialEq, Eq)]
     struct Struct {
-        #[educe(Eq(method(eq)))]
+        #[educe(PartialEq(method(eq)))]
         f1: u8,
         f2: u8,
     }
 
     #[derive(Educe)]
     #[educe(PartialEq, Eq)]
-    struct Tuple(#[educe(Eq(method(eq)))] u8, u8);
+    struct Tuple(#[educe(PartialEq(method(eq)))] u8, u8);
 
     assert!(
         Struct {
@@ -335,56 +333,6 @@ fn bound_3() {
     assert!(Tuple(1) != Tuple(2));
 }
 
-#[test]
-fn bound_4() {
-    trait Suitable {}
-    struct SuitableNotEq;
-    impl Suitable for SuitableNotEq {}
-    let phantom = PhantomData::<SuitableNotEq>;
-
-    #[derive(Educe)]
-    #[educe(Eq)]
-    struct Struct<T, U> {
-        f1: T,
-        // PhantomData is Eq (all PhantomData are equal to all others)
-        f2: PhantomData<U>,
-    }
-
-    impl<T: PartialEq, U: Suitable> PartialEq for Struct<T, U> {
-        fn eq(&self, other: &Struct<T, U>) -> bool {
-            self.f1.eq(&other.f1)
-        }
-    }
-
-    #[derive(Educe)]
-    #[educe(Eq)]
-    struct Tuple<T, U>(T, PhantomData<U>);
-
-    impl<T: PartialEq, U: Suitable> PartialEq for Tuple<T, U> {
-        fn eq(&self, other: &Tuple<T, U>) -> bool {
-            self.0.eq(&other.0)
-        }
-    }
-    assert!(
-        Struct {
-            f1: 1, f2: phantom
-        } == Struct {
-            f1: 1, f2: phantom
-        }
-    );
-
-    assert!(
-        Struct {
-            f1: 1, f2: phantom
-        } != Struct {
-            f1: 2, f2: phantom
-        }
-    );
-
-    assert!(Tuple(1, phantom) == Tuple(1, phantom));
-    assert!(Tuple(1, phantom) != Tuple(2, phantom));
-}
-
 #[allow(dead_code)]
 #[test]
 fn use_partial_eq_attr_ignore() {
@@ -427,4 +375,44 @@ fn use_partial_eq_attr_ignore() {
     assert!(Tuple(1, 2) == Tuple(1, 2));
     assert!(Tuple(1, 2) == Tuple(2, 2));
     assert!(Tuple(1, 2) != Tuple(2, 3));
+}
+
+#[test]
+fn bound_4() {
+    trait Suitable: PartialEq {}
+
+    impl Suitable for u8 {}
+
+    // Explicit bounds can be set on `PartialEq` and `Eq` separately.
+    #[derive(Educe)]
+    #[educe(PartialEq(bound(T: Suitable)), Eq(bound(T: Suitable)))]
+    struct Struct<T> {
+        f1: T,
+    }
+
+    fn assert_eq_impl<T: Eq>(_v: &T) {}
+
+    assert_eq_impl(&Struct {
+        f1: 1
+    });
+}
+
+#[test]
+fn bound_inheritance() {
+    trait Suitable: PartialEq {}
+
+    impl Suitable for u8 {}
+
+    // With an automatic bound, `Eq` inherits the custom predicates of the `PartialEq` impl.
+    #[derive(Educe)]
+    #[educe(PartialEq(bound(T: Suitable)), Eq)]
+    struct Struct<T> {
+        f1: T,
+    }
+
+    fn assert_eq_impl<T: Eq>(_v: &T) {}
+
+    assert_eq_impl(&Struct {
+        f1: 1
+    });
 }

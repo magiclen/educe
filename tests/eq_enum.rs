@@ -62,11 +62,11 @@ fn ignore_1() {
     #[educe(PartialEq, Eq)]
     enum Enum {
         Struct {
-            #[educe(Eq = false)]
+            #[educe(PartialEq = false)]
             f1: u8,
             f2: u8,
         },
-        Tuple(#[educe(Eq = false)] u8, u8),
+        Tuple(#[educe(PartialEq = false)] u8, u8),
     }
 
     assert!(
@@ -105,11 +105,11 @@ fn ignore_2() {
     #[educe(PartialEq, Eq)]
     enum Enum {
         Struct {
-            #[educe(Eq(ignore))]
+            #[educe(PartialEq(ignore))]
             f1: u8,
             f2: u8,
         },
-        Tuple(#[educe(Eq(ignore))] u8, u8),
+        Tuple(#[educe(PartialEq(ignore))] u8, u8),
     }
 
     assert!(
@@ -151,11 +151,11 @@ fn method_1() {
     #[educe(PartialEq, Eq)]
     enum Enum {
         Struct {
-            #[educe(Eq(method = eq))]
+            #[educe(PartialEq(method = eq))]
             f1: u8,
             f2: u8,
         },
-        Tuple(#[educe(Eq(method = eq))] u8, u8),
+        Tuple(#[educe(PartialEq(method = eq))] u8, u8),
     }
 
     assert!(
@@ -197,11 +197,11 @@ fn method_2() {
     #[educe(PartialEq, Eq)]
     enum Enum {
         Struct {
-            #[educe(Eq(method(eq)))]
+            #[educe(PartialEq(method(eq)))]
             f1: u8,
             f2: u8,
         },
-        Tuple(#[educe(Eq(method(eq)))] u8, u8),
+        Tuple(#[educe(PartialEq(method(eq)))] u8, u8),
     }
 
     assert!(

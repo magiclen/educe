@@ -24,7 +24,7 @@ fn empty() {
     }
 
     assert!(matches!(Enum::default(), Enum::Struct {}));
-    assert!(matches!(Enum2::default(), Enum2::Tuple {}));
+    assert!(matches!(Enum2::default(), Enum2::Tuple()));
 }
 
 #[allow(dead_code)]

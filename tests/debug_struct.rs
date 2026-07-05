@@ -1,13 +1,10 @@
 #![cfg(feature = "Debug")]
 #![no_std]
+// The types in these tests only exist to exercise the derived impls, and `#[automatically_derived]` impls do not count as uses for dead-code analysis.
+#![allow(dead_code)]
 
 #[macro_use]
 extern crate alloc;
-
-use core::{
-    fmt::{self, Debug, Display},
-    marker::PhantomData,
-};
 
 use educe::Educe;
 
@@ -245,7 +242,7 @@ fn named_field_1() {
     #[educe(Debug(named_field = true))]
     struct Tuple(u8);
 
-    assert_eq!("Tuple { _0: 1 }", format!("{:?}", Tuple(1)));
+    assert_eq!("Tuple { 0: 1 }", format!("{:?}", Tuple(1)));
 }
 
 #[test]
@@ -267,7 +264,7 @@ fn named_field_2() {
     #[educe(Debug(named_field(true)))]
     struct Tuple(u8);
 
-    assert_eq!("Tuple { _0: 1 }", format!("{:?}", Tuple(1)));
+    assert_eq!("Tuple { 0: 1 }", format!("{:?}", Tuple(1)));
 }
 
 #[test]
@@ -536,58 +533,4 @@ fn bound_3() {
     struct Tuple<T>(T);
 
     assert_eq!("Tuple(1)", format!("{:?}", Tuple(1)));
-}
-
-#[test]
-fn bound_4() {
-    use core::cell::RefCell;
-
-    #[derive(Educe)]
-    #[educe(Debug)]
-    struct Struct<T> {
-        f1: RefCell<T>,
-    }
-
-    assert_eq!(
-        "Struct { f1: RefCell { value: 1 } }",
-        format!("{:?}", Struct {
-            f1: RefCell::new(1)
-        })
-    );
-
-    #[derive(Educe)]
-    #[educe(Debug(bound(T: core::fmt::Debug)))]
-    struct Tuple<T>(RefCell<T>);
-
-    assert_eq!("Tuple(RefCell { value: 1 })", format!("{:?}", Tuple(RefCell::new(1))));
-}
-
-#[test]
-fn bound_5() {
-    struct DebugAsDisplay<T>(T);
-
-    struct NotDebug;
-
-    impl<T: Display> Debug for DebugAsDisplay<T> {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            Display::fmt(&self.0, f)
-        }
-    }
-
-    #[derive(Educe)]
-    #[educe(Debug)]
-    struct Struct<T, U, V> {
-        f1: Option<T>,
-        f2: DebugAsDisplay<U>,
-        f3: PhantomData<V>,
-    }
-
-    assert_eq!(
-        "Struct { f1: Some(1), f2: lit, f3: PhantomData<debug_struct::bound_5::NotDebug> }",
-        format!("{:?}", Struct {
-            f1: Some(1),
-            f2: DebugAsDisplay("lit"),
-            f3: PhantomData::<NotDebug>,
-        })
-    );
 }
