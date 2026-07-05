@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use proc_macro2::Literal;
 use quote::{format_ident, quote};
 use syn::{Data, DeriveInput, Field, Fields, Ident, Meta, Path, Type, spanned::Spanned};
 
@@ -40,20 +41,35 @@ impl TraitHandler for PartialOrdEnumHandler {
 
         let mut partial_cmp_token_stream = proc_macro2::TokenStream::new();
 
-        let discriminant_type = DiscriminantType::from_ast(ast)?;
+        let (discriminant_type, discriminant_values) = DiscriminantType::from_ast(ast)?;
 
         let mut arms_token_stream = proc_macro2::TokenStream::new();
+
+        // Maps every variant to its discriminant, used to order variants before their fields are compared.
+        let mut key_arms_token_stream = proc_macro2::TokenStream::new();
 
         let mut all_unit = true;
 
         if let Data::Enum(data) = &ast.data {
-            for variant in data.variants.iter() {
+            for (variant_index, variant) in data.variants.iter().enumerate() {
                 let _ = TypeAttributeBuilder {
                     enable_flag: false, enable_bound: false
                 }
                 .build_from_attributes(&variant.attrs, traits)?;
 
                 let variant_ident = &variant.ident;
+
+                let discriminant = Literal::i128_unsuffixed(discriminant_values[variant_index]);
+
+                let key_pattern = match &variant.fields {
+                    Fields::Unit => quote!(Self::#variant_ident),
+                    Fields::Named(_) => quote!(Self::#variant_ident { .. }),
+                    Fields::Unnamed(_) => quote!(Self::#variant_ident ( .. )),
+                };
+
+                key_arms_token_stream.extend(quote! {
+                    #key_pattern => #discriminant,
+                });
 
                 let built_in_partial_cmp: Path =
                     syn::parse2(quote!(::core::cmp::PartialOrd::partial_cmp)).unwrap();
@@ -239,27 +255,26 @@ impl TraitHandler for PartialOrdEnumHandler {
         if arms_token_stream.is_empty() {
             partial_cmp_token_stream.extend(quote!(Some(::core::cmp::Ordering::Equal)));
         } else {
-            // Compare the discriminants by reinterpreting the leading bytes of the enum values as the discriminant integer type.
-            // This relies on the enum layout starting with its discriminant, which holds for the default representation and for explicit primitive representations.
-            // The cast goes through `<*const Self>` explicitly so that an exotic `From<&Type>` impl in scope cannot poison type inference.
-            let discriminant_cmp = quote! {
-                // TODO SAFETY
-                unsafe {
-                    ::core::cmp::Ord::cmp(&*<*const Self>::from(self).cast::<#discriminant_type>(), &*<*const Self>::from(other).cast::<#discriminant_type>())
-                }
+            // Order variants by their discriminant, which is computed at expansion time so that no unsafe assumption about the in-memory layout of the enum is needed; this reproduces the ordering of the standard `PartialOrd` derive.
+            let discriminant = quote! {
+                let discriminant = |this: &Self| -> #discriminant_type {
+                    match this {
+                        #key_arms_token_stream
+                    }
+                };
             };
 
             partial_cmp_token_stream.extend(if all_unit {
                 quote! {
-                    match #discriminant_cmp {
-                        ::core::cmp::Ordering::Equal => Some(::core::cmp::Ordering::Equal),
-                        ::core::cmp::Ordering::Greater => Some(::core::cmp::Ordering::Greater),
-                        ::core::cmp::Ordering::Less => Some(::core::cmp::Ordering::Less),
-                    }
+                    #discriminant
+
+                    Some(::core::cmp::Ord::cmp(&discriminant(self), &discriminant(other)))
                 }
             } else {
                 quote! {
-                    match #discriminant_cmp {
+                    #discriminant
+
+                    match ::core::cmp::Ord::cmp(&discriminant(self), &discriminant(other)) {
                         ::core::cmp::Ordering::Equal => {
                             match self {
                                 #arms_token_stream

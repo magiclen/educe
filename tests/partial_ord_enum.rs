@@ -581,3 +581,23 @@ fn bound_3() {
     assert!(Tuple(2) > Tuple(1));
     assert!(Tuple(1) < Tuple(2));
 }
+
+#[test]
+fn discriminant_layout() {
+    use core::num::NonZeroU8;
+
+    // The niche in `NonZeroU8` means the discriminant is not stored at the start of the value, so the ordering must be derived from the discriminant itself rather than from the leading bytes.
+    #[derive(PartialEq, Educe)]
+    #[educe(PartialOrd)]
+    enum Enum {
+        A(NonZeroU8),
+        B,
+    }
+
+    assert!(Enum::A(NonZeroU8::new(255).unwrap()) < Enum::B);
+    assert_eq!(Some(Ordering::Less), Enum::A(NonZeroU8::new(1).unwrap()).partial_cmp(&Enum::B));
+    assert_eq!(
+        Some(Ordering::Greater),
+        Enum::B.partial_cmp(&Enum::A(NonZeroU8::new(255).unwrap()))
+    );
+}

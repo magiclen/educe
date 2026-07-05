@@ -5,7 +5,7 @@ use syn::{Data, DeriveInput, Expr, Lit, Meta, Token, UnOp, punctuated::Punctuate
 #[derive(Debug)]
 /// The integer type that holds the discriminant values of an enum.
 ///
-/// The enum comparison handlers read the discriminant by reinterpreting the leading bytes of an enum value as this type, so it has to match the actual layout.
+/// The enum comparison handlers order variants by their discriminant values, and this type is the one those values are compared as, so it has to match the type the compiler picks for the enum.
 pub(crate) enum DiscriminantType {
     ISize,
     I8,
@@ -68,11 +68,13 @@ impl ToTokens for DiscriminantType {
 }
 
 impl DiscriminantType {
-    /// Determines the discriminant type of an enum.
+    /// Determines the discriminant type of an enum together with the discriminant value of every variant, in declaration order.
     ///
-    /// An explicit `#[repr(intN)]` attribute wins; otherwise the explicit discriminant expressions are evaluated (implicit ones count up from the previous value) and the smallest integer type that covers their range is chosen, mirroring what the compiler does for the default representation.
-    pub(crate) fn from_ast(ast: &DeriveInput) -> syn::Result<Self> {
+    /// An explicit `#[repr(intN)]` attribute decides the type; otherwise the smallest integer type that covers the range of the discriminant values is chosen, mirroring what the compiler does for the default representation. The values themselves are always computed by evaluating the explicit discriminant expressions (implicit ones count up from the previous value), which is exactly the order `core::mem::discriminant` would follow.
+    pub(crate) fn from_ast(ast: &DeriveInput) -> syn::Result<(Self, Vec<i128>)> {
         if let Data::Enum(data) = &ast.data {
+            let mut repr = None;
+
             for attr in ast.attrs.iter() {
                 if attr.path().is_ident("repr") {
                     // #[repr(u8)], #[repr(u16)], ..., etc.
@@ -80,16 +82,22 @@ impl DiscriminantType {
                         let result =
                             list.parse_args_with(Punctuated::<Ident, Token![,]>::parse_terminated)?;
 
-                        if let Some(value) = result.into_iter().next()
-                            && let Some(t) = Self::parse_str(value.to_string())
-                        {
-                            return Ok(t);
+                        for value in result {
+                            if let Some(t) = Self::parse_str(value.to_string()) {
+                                repr = Some(t);
+                                break;
+                            }
                         }
+                    }
+
+                    if repr.is_some() {
+                        break;
                     }
                 }
             }
 
             // Track the smallest and largest discriminant values while walking the variants; `counter` is the value the next variant gets when it has no explicit discriminant.
+            let mut values = Vec::with_capacity(data.variants.len());
             let mut min = i128::MAX;
             let mut max = i128::MIN;
             let mut counter = 0i128;
@@ -147,6 +155,8 @@ impl DiscriminantType {
                     }
                 }
 
+                values.push(counter);
+
                 if min > counter {
                     min = counter;
                 }
@@ -158,7 +168,9 @@ impl DiscriminantType {
                 counter = counter.saturating_add(1);
             }
 
-            Ok(if min >= i8::MIN as i128 && max <= i8::MAX as i128 {
+            let discriminant_type = if let Some(t) = repr {
+                t
+            } else if min >= i8::MIN as i128 && max <= i8::MAX as i128 {
                 Self::I8
             } else if min >= i16::MIN as i128 && max <= i16::MAX as i128 {
                 Self::I16
@@ -168,7 +180,9 @@ impl DiscriminantType {
                 Self::I64
             } else {
                 Self::I128
-            })
+            };
+
+            Ok((discriminant_type, values))
         } else {
             Err(syn::Error::new_spanned(ast, "not an enum"))
         }
