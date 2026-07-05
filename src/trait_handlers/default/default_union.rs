@@ -1,21 +1,26 @@
 use quote::quote;
-use syn::{spanned::Spanned, Data, DeriveInput, Field, Meta, Type};
+use syn::{Data, DeriveInput, Field, Meta, Type};
 
 use super::{
-    models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder},
     TraitHandler,
+    models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder},
 };
-use crate::Trait;
+use crate::{Trait, common::bound::BOUND_EXCEPTIONS_DEFAULT, trait_handlers::TraitHandlerContext};
 
+/// Generates the `Default` implementation for a union.
 pub(crate) struct DefaultUnionHandler;
 
 impl TraitHandler for DefaultUnionHandler {
     fn trait_meta_handler(
         ast: &DeriveInput,
+        _ctx: &mut TraitHandlerContext,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
     ) -> syn::Result<()> {
+        let generated_impl_attributes =
+            crate::common::attributes::generated_impl_attributes(&ast.attrs);
+
         let type_attribute = TypeAttributeBuilder {
             enable_flag:       true,
             enable_new:        true,
@@ -78,7 +83,7 @@ impl TraitHandler for DefaultUnionHandler {
                             if let Some(default_field) = default_field {
                                 default_field
                             } else {
-                                return Err(super::panic::no_default_field(meta.span()));
+                                return Err(super::panic::no_default_field(meta));
                             }
                         }
                     };
@@ -115,10 +120,12 @@ impl TraitHandler for DefaultUnionHandler {
             &ast.generics.params,
             &syn::parse2(quote!(::core::default::Default)).unwrap(),
             &default_types,
-            &[],
+            &ast.ident,
+            &BOUND_EXCEPTIONS_DEFAULT,
         );
 
         let mut generics = ast.generics.clone();
+
         let where_clause = generics.make_where_clause();
 
         for where_predicate in bound {
@@ -128,6 +135,7 @@ impl TraitHandler for DefaultUnionHandler {
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         token_stream.extend(quote! {
+            #generated_impl_attributes
             impl #impl_generics ::core::default::Default for #ident #ty_generics #where_clause {
                 #[inline]
                 fn default() -> Self {

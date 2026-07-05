@@ -1,5 +1,5 @@
 use proc_macro2::Span;
-use syn::{punctuated::Punctuated, spanned::Spanned, Attribute, Expr, Meta, Token, Type};
+use syn::{Attribute, Expr, Meta, Token, Type, punctuated::Punctuated, spanned::Spanned};
 
 use crate::{
     common::expr::{auto_adjust_expr, meta_2_expr},
@@ -7,18 +7,21 @@ use crate::{
     supported_traits::Trait,
 };
 
+/// The parsed settings of a field-level `Default` attribute.
 pub(crate) struct FieldAttribute {
     pub(crate) flag:       bool,
     pub(crate) expression: Option<Expr>,
     pub(crate) span:       Span,
 }
 
+/// Parses field-level `Default` metas; the `enable_*` switches describe which parameters are allowed for the current shape of data.
 pub(crate) struct FieldAttributeBuilder {
     pub(crate) enable_flag:       bool,
     pub(crate) enable_expression: bool,
 }
 
 impl FieldAttributeBuilder {
+    /// Parses one field-level `Default` meta into a `FieldAttribute`, rejecting parameters that are not enabled here.
     pub(crate) fn build_from_default_meta(
         &self,
         meta: &Meta,
@@ -117,6 +120,7 @@ impl FieldAttributeBuilder {
         })
     }
 
+    /// Scans the `#[educe(...)]` attributes of a field and parses its `Default` meta if present.
     pub(crate) fn build_from_attributes(
         &self,
         attributes: &[Attribute],
@@ -128,30 +132,30 @@ impl FieldAttributeBuilder {
         for attribute in attributes.iter() {
             let path = attribute.path();
 
-            if path.is_ident("educe") {
-                if let Meta::List(list) = &attribute.meta {
-                    let result =
-                        list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
+            if path.is_ident("educe")
+                && let Meta::List(list) = &attribute.meta
+            {
+                let result =
+                    list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
 
-                    for meta in result {
-                        let path = meta.path();
+                for meta in result {
+                    let path = meta.path();
 
-                        let t = match Trait::from_path(path) {
-                            Some(t) => t,
-                            None => return Err(panic::unsupported_trait(meta.path())),
-                        };
+                    let t = match Trait::from_path(path) {
+                        Some(t) => t,
+                        None => return Err(panic::unsupported_trait(meta.path())),
+                    };
 
-                        if !traits.contains(&t) {
-                            return Err(panic::trait_not_used(path.get_ident().unwrap()));
+                    if !traits.contains(&t) {
+                        return Err(panic::trait_not_used(path.get_ident().unwrap()));
+                    }
+
+                    if t == Trait::Default {
+                        if output.is_some() {
+                            return Err(panic::reuse_a_trait(path.get_ident().unwrap()));
                         }
 
-                        if t == Trait::Default {
-                            if output.is_some() {
-                                return Err(panic::reuse_a_trait(path.get_ident().unwrap()));
-                            }
-
-                            output = Some(self.build_from_default_meta(&meta, ty)?);
-                        }
+                        output = Some(self.build_from_default_meta(&meta, ty)?);
                     }
                 }
             }

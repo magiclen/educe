@@ -1,15 +1,17 @@
 use proc_macro2::Span;
-use syn::{punctuated::Punctuated, spanned::Spanned, Attribute, Expr, Meta, Token};
+use syn::{Attribute, Expr, Meta, Token, punctuated::Punctuated, spanned::Spanned};
 
 use crate::{
+    Trait,
     common::{
         bound::Bound,
         expr::{auto_adjust_expr, meta_2_expr},
         ident_bool::meta_2_bool_allow_path,
     },
-    panic, Trait,
+    panic,
 };
 
+/// The parsed settings of a type-level (or variant-level) `Default` attribute.
 pub(crate) struct TypeAttribute {
     pub(crate) flag:       bool,
     pub(crate) new:        bool,
@@ -19,6 +21,7 @@ pub(crate) struct TypeAttribute {
 }
 
 #[derive(Debug)]
+/// Parses `Default` metas; the `enable_*` switches describe which parameters are allowed at the current position.
 pub(crate) struct TypeAttributeBuilder {
     pub(crate) enable_flag:       bool,
     pub(crate) enable_new:        bool,
@@ -27,6 +30,7 @@ pub(crate) struct TypeAttributeBuilder {
 }
 
 impl TypeAttributeBuilder {
+    /// Parses one `Default` meta into a `TypeAttribute`, rejecting parameters that are not enabled here.
     pub(crate) fn build_from_default_meta(&self, meta: &Meta) -> syn::Result<TypeAttribute> {
         debug_assert!(meta.path().is_ident("Default"));
 
@@ -164,6 +168,7 @@ impl TypeAttributeBuilder {
         })
     }
 
+    /// Scans the `#[educe(...)]` attributes of an item (typically an enum variant) and parses its `Default` meta if present.
     pub(crate) fn build_from_attributes(
         &self,
         attributes: &[Attribute],
@@ -174,30 +179,30 @@ impl TypeAttributeBuilder {
         for attribute in attributes.iter() {
             let path = attribute.path();
 
-            if path.is_ident("educe") {
-                if let Meta::List(list) = &attribute.meta {
-                    let result =
-                        list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
+            if path.is_ident("educe")
+                && let Meta::List(list) = &attribute.meta
+            {
+                let result =
+                    list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
 
-                    for meta in result {
-                        let path = meta.path();
+                for meta in result {
+                    let path = meta.path();
 
-                        let t = match Trait::from_path(path) {
-                            Some(t) => t,
-                            None => return Err(panic::unsupported_trait(meta.path())),
-                        };
+                    let t = match Trait::from_path(path) {
+                        Some(t) => t,
+                        None => return Err(panic::unsupported_trait(meta.path())),
+                    };
 
-                        if !traits.contains(&t) {
-                            return Err(panic::trait_not_used(path.get_ident().unwrap()));
+                    if !traits.contains(&t) {
+                        return Err(panic::trait_not_used(path.get_ident().unwrap()));
+                    }
+
+                    if t == Trait::Default {
+                        if output.is_some() {
+                            return Err(panic::reuse_a_trait(path.get_ident().unwrap()));
                         }
 
-                        if t == Trait::Default {
-                            if output.is_some() {
-                                return Err(panic::reuse_a_trait(path.get_ident().unwrap()));
-                            }
-
-                            output = Some(self.build_from_default_meta(&meta)?);
-                        }
+                        output = Some(self.build_from_default_meta(&meta)?);
                     }
                 }
             }
