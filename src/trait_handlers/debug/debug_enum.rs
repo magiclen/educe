@@ -1,18 +1,27 @@
-use quote::{format_ident, quote, ToTokens};
+use quote::{ToTokens, format_ident, quote};
 use syn::{Data, DeriveInput, Fields, Meta, Type};
 
 use super::models::{FieldAttributeBuilder, FieldName, TypeAttributeBuilder, TypeName};
-use crate::{common::path::path_to_string, supported_traits::Trait, trait_handlers::TraitHandler};
+use crate::{
+    common::{bound::BOUND_EXCEPTIONS_DEBUG, path::path_to_string},
+    supported_traits::Trait,
+    trait_handlers::{TraitHandler, TraitHandlerContext},
+};
 
+/// Generates the `Debug` implementation for an enum.
 pub(crate) struct DebugEnumHandler;
 
 impl TraitHandler for DebugEnumHandler {
     fn trait_meta_handler(
         ast: &DeriveInput,
+        _ctx: &mut TraitHandlerContext,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
     ) -> syn::Result<()> {
+        let generated_impl_attributes =
+            crate::common::attributes::generated_impl_attributes(&ast.attrs);
+
         let type_attribute = TypeAttributeBuilder {
             enable_flag:        true,
             enable_unsafe:      false,
@@ -98,10 +107,13 @@ impl TraitHandler for DebugEnumHandler {
                                     continue;
                                 }
 
+                                // The displayed field name is a plain string, matching the tuple-variant handling below.
                                 let key = match field_attribute.name {
-                                    FieldName::Custom(name) => name,
-                                    FieldName::Default => field_name_real.clone(),
+                                    FieldName::Custom(name) => name.to_string(),
+                                    FieldName::Default => field_name_real.to_string(),
                                 };
+
+                                let key = syn::LitStr::new(&key, proc_macro2::Span::call_site());
 
                                 pattern_token_stream
                                     .extend(quote!(#field_name_real: #field_name_var,));
@@ -117,17 +129,17 @@ impl TraitHandler for DebugEnumHandler {
                                     ));
 
                                     block_token_stream.extend(if name_string.is_some() {
-                                        quote! (builder.field(stringify!(#key), &arg);)
+                                        quote! (builder.field(#key, &arg);)
                                     } else {
-                                        quote! (builder.entry(&Educe__RawString(stringify!(#key)), &arg);)
+                                        quote! (builder.entry(&Educe__RawString(#key), &arg);)
                                     });
                                 } else {
                                     debug_types.push(ty);
 
                                     block_token_stream.extend(if name_string.is_some() {
-                                        quote! (builder.field(stringify!(#key), #field_name_var);)
+                                        quote! (builder.field(#key, #field_name_var);)
                                     } else {
-                                        quote! (builder.entry(&Educe__RawString(stringify!(#key)), #field_name_var);)
+                                        quote! (builder.entry(&Educe__RawString(#key), #field_name_var);)
                                     });
                                 }
 
@@ -219,10 +231,13 @@ impl TraitHandler for DebugEnumHandler {
 
                                 let field_name_var = format_ident!("_{}", index);
 
+                                // The displayed field name is a plain string, so a tuple field can be shown with its real name `0`, which is not a valid ident.
                                 let key = match field_attribute.name {
-                                    FieldName::Custom(name) => name,
-                                    FieldName::Default => field_name_var.clone(),
+                                    FieldName::Custom(name) => name.to_string(),
+                                    FieldName::Default => index.to_string(),
                                 };
+
+                                let key = syn::LitStr::new(&key, proc_macro2::Span::call_site());
 
                                 pattern_token_stream.extend(quote!(#field_name_var,));
 
@@ -237,17 +252,17 @@ impl TraitHandler for DebugEnumHandler {
                                     ));
 
                                     block_token_stream.extend(if name_string.is_some() {
-                                        quote! (builder.field(stringify!(#key), &arg);)
+                                        quote! (builder.field(#key, &arg);)
                                     } else {
-                                        quote! (builder.entry(&Educe__RawString(stringify!(#key)), &arg);)
+                                        quote! (builder.entry(&Educe__RawString(#key), &arg);)
                                     });
                                 } else {
                                     debug_types.push(ty);
 
                                     block_token_stream.extend(if name_string.is_some() {
-                                        quote! (builder.field(stringify!(#key), #field_name_var);)
+                                        quote! (builder.field(#key, #field_name_var);)
                                     } else {
-                                        quote! (builder.entry(&Educe__RawString(stringify!(#key)), #field_name_var);)
+                                        quote! (builder.entry(&Educe__RawString(#key), #field_name_var);)
                                     });
                                 }
 
@@ -336,10 +351,12 @@ impl TraitHandler for DebugEnumHandler {
             &ast.generics.params,
             &syn::parse2(quote!(::core::fmt::Debug)).unwrap(),
             &debug_types,
-            &[],
+            &ast.ident,
+            &BOUND_EXCEPTIONS_DEBUG,
         );
 
         let mut generics = ast.generics.clone();
+
         let where_clause = generics.make_where_clause();
 
         for where_predicate in bound {
@@ -349,6 +366,7 @@ impl TraitHandler for DebugEnumHandler {
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         token_stream.extend(quote! {
+            #generated_impl_attributes
             impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
                 #[inline]
                 fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
