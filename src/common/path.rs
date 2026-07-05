@@ -1,6 +1,7 @@
 use quote::ToTokens;
-use syn::{spanned::Spanned, Expr, Lit, LitStr, Meta, MetaNameValue, Path};
+use syn::{Expr, Lit, LitStr, Meta, MetaNameValue, Path};
 
+// These helpers parse path parameters such as `method(my_function)` or `method = "my_function"`.
 #[inline]
 pub(crate) fn meta_name_value_2_path(name_value: &MetaNameValue) -> syn::Result<Path> {
     match &name_value.value {
@@ -13,8 +14,8 @@ pub(crate) fn meta_name_value_2_path(name_value: &MetaNameValue) -> syn::Result<
         _ => (),
     }
 
-    Err(syn::Error::new(
-        name_value.value.span(),
+    Err(syn::Error::new_spanned(
+        &name_value.value,
         format!("expected `{path} = Path`", path = path_to_string(&name_value.path)),
     ))
 }
@@ -30,8 +31,8 @@ pub(crate) fn meta_2_path(meta: &Meta) -> syn::Result<Path> {
                 list.parse_args()
             }
         },
-        Meta::Path(path) => Err(syn::Error::new(
-            path.span(),
+        Meta::Path(path) => Err(syn::Error::new_spanned(
+            path,
             format!("expected `{path} = Path` or `{path}(Path)`", path = path_to_string(path)),
         )),
     }

@@ -1,4 +1,5 @@
 #[cfg(any(feature = "PartialOrd", feature = "Ord"))]
+// Small standalone tools that need to be shared by several trait handlers.
 mod discriminant_type;
 
 #[cfg(any(feature = "PartialOrd", feature = "Ord"))]

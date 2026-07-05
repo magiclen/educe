@@ -7,9 +7,12 @@ use std::{
 
 use proc_macro2::Span;
 use quote::ToTokens;
-use syn::{spanned::Spanned, Path, Type};
+use syn::{Path, Type, spanned::Spanned};
 
 #[derive(Debug, Clone)]
+/// A type made comparable and hashable by its canonical token string, so it can serve as an ordered map key.
+///
+/// The span of the original tokens is kept for error reporting.
 pub(crate) struct HashType(String, Span);
 
 impl PartialEq for HashType {

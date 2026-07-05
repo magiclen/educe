@@ -1,9 +1,11 @@
 use core::fmt::{self, Display, Formatter};
 
 use proc_macro2::Span;
-use syn::{spanned::Spanned, Ident, Path, Variant};
+use syn::{Ident, Path, Variant};
 
-use crate::{common::path::path_to_string, Trait};
+use crate::{Trait, common::path::path_to_string};
+
+// This module centralizes the error constructors, so the error messages stay consistent across the handlers.
 
 struct DisplayStringSlice<'a>(&'a [&'static str]);
 
@@ -46,20 +48,19 @@ pub(crate) fn derive_attribute_not_set_up_yet() -> syn::Error {
 
 #[inline]
 pub(crate) fn attribute_incorrect_place(name: &Ident) -> syn::Error {
-    syn::Error::new(name.span(), format!("the `{name}` attribute cannot be placed here"))
+    syn::Error::new_spanned(name, format!("the `{name}` attribute cannot be placed here"))
 }
 
 #[inline]
-pub(crate) fn attribute_incorrect_format_with_span(
+pub(crate) fn attribute_incorrect_format(
     name: &Ident,
-    span: Span,
     correct_usage: &[&'static str],
 ) -> syn::Error {
     if correct_usage.is_empty() {
         attribute_incorrect_place(name)
     } else {
-        syn::Error::new(
-            span,
+        syn::Error::new_spanned(
+            name,
             format!(
                 "you are using an incorrect format of the `{name}` attribute{}",
                 DisplayStringSlice(correct_usage)
@@ -69,16 +70,8 @@ pub(crate) fn attribute_incorrect_format_with_span(
 }
 
 #[inline]
-pub(crate) fn attribute_incorrect_format(
-    name: &Ident,
-    correct_usage: &[&'static str],
-) -> syn::Error {
-    attribute_incorrect_format_with_span(name, name.span(), correct_usage)
-}
-
-#[inline]
 pub(crate) fn parameter_reset(name: &Ident) -> syn::Error {
-    syn::Error::new(name.span(), format!("you are trying to reset the `{name}` parameter"))
+    syn::Error::new_spanned(name, format!("you are trying to reset the `{name}` parameter"))
 }
 
 #[inline]
@@ -88,43 +81,36 @@ pub(crate) fn educe_format_incorrect(name: &Ident) -> syn::Error {
 
 #[inline]
 pub(crate) fn unsupported_trait(name: &Path) -> syn::Error {
-    let span = name.span();
+    let name_string = match name.get_ident() {
+        Some(name) => name.to_string(),
+        None => path_to_string(name),
+    };
 
-    match name.get_ident() {
-        Some(name) => syn::Error::new(
-            span,
-            format!("unsupported trait `{name}`, available traits:{DisplayTraits}"),
-        ),
-        None => {
-            let name = path_to_string(name);
-
-            syn::Error::new(
-                span,
-                format!("unsupported trait `{name}`, available traits:{DisplayTraits}"),
-            )
-        },
-    }
+    syn::Error::new_spanned(
+        name,
+        format!("unsupported trait `{name_string}`, available traits:{DisplayTraits}"),
+    )
 }
 
 #[inline]
 pub(crate) fn reuse_a_trait(name: &Ident) -> syn::Error {
-    syn::Error::new(name.span(), format!("the trait `{name}` is used repeatedly"))
+    syn::Error::new_spanned(name, format!("the trait `{name}` is used repeatedly"))
 }
 
 #[inline]
 pub(crate) fn trait_not_used(name: &Ident) -> syn::Error {
-    syn::Error::new(name.span(), format!("the trait `{name}` is not used"))
+    syn::Error::new_spanned(name, format!("the trait `{name}` is not used"))
 }
 
 #[inline]
 pub(crate) fn trait_not_support_union(name: &Ident) -> syn::Error {
-    syn::Error::new(name.span(), format!("the trait `{name}` does not support to a union"))
+    syn::Error::new_spanned(name, format!("the trait `{name}` does not support to a union"))
 }
 
 #[inline]
 pub(crate) fn trait_not_support_unit_variant(name: &Ident, variant: &Variant) -> syn::Error {
-    syn::Error::new(
-        variant.span(),
+    syn::Error::new_spanned(
+        variant,
         format!("the trait `{name}` cannot be implemented for an enum which has unit variants"),
     )
 }
