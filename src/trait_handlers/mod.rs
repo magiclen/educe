@@ -1,6 +1,9 @@
+use std::collections::HashMap;
+
+use quote::ToTokens;
 use syn::{DeriveInput, Meta};
 
-use crate::Trait;
+use crate::{Trait, common::where_predicates_bool::WherePredicates};
 
 #[cfg(feature = "Clone")]
 pub(crate) mod clone;
@@ -27,10 +30,50 @@ pub(crate) mod partial_eq;
 #[cfg(feature = "PartialOrd")]
 pub(crate) mod partial_ord;
 
-pub(crate) trait TraitHandler {
+/// Shared state that flows through all trait handlers during a single `#[derive(Educe)]` expansion.
+///
+/// Its main job is to let a trait inherit the where predicates of its prerequisite traits, e.g. `Ord` inherits the predicates of `Eq` and `PartialOrd`.
+#[derive(Default)]
+pub(crate) struct TraitHandlerContext {
+    /// The final where predicates that each handled trait has actually emitted, keyed by trait.
+    final_predicates: HashMap<Trait, WherePredicates>,
+}
+
+impl TraitHandlerContext {
+    /// Records the where predicates that a trait impl has emitted, so that traits handled later can inherit them.
     #[allow(dead_code)]
+    pub(crate) fn record(&mut self, t: Trait, predicates: &WherePredicates) {
+        self.final_predicates.insert(t, predicates.clone());
+    }
+
+    /// Appends the recorded predicates of every prerequisite trait to `own`, skipping predicates that are already present.
+    ///
+    /// Prerequisites that were not handled by Educe (e.g. implemented manually by the user) simply have no record and contribute nothing.
+    #[allow(dead_code)]
+    pub(crate) fn inherit_from(&self, prerequisites: &[Trait], own: &mut WherePredicates) {
+        // Compare predicates by their token strings because `WherePredicate` implements neither `Eq` nor `Hash`.
+        let mut seen: Vec<String> =
+            own.iter().map(|predicate| predicate.to_token_stream().to_string()).collect();
+
+        for prerequisite in prerequisites {
+            if let Some(predicates) = self.final_predicates.get(prerequisite) {
+                for predicate in predicates {
+                    let key = predicate.to_token_stream().to_string();
+
+                    if !seen.contains(&key) {
+                        seen.push(key);
+                        own.push(predicate.clone());
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub(crate) trait TraitHandler {
     fn trait_meta_handler(
         ast: &DeriveInput,
+        ctx: &mut TraitHandlerContext,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
@@ -38,9 +81,9 @@ pub(crate) trait TraitHandler {
 }
 
 pub(crate) trait TraitHandlerMultiple {
-    #[allow(dead_code)]
     fn trait_meta_handler(
         ast: &DeriveInput,
+        ctx: &mut TraitHandlerContext,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &[Meta],
