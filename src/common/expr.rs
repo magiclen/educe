@@ -1,5 +1,5 @@
-use quote::{quote, ToTokens};
-use syn::{spanned::Spanned, Expr, Lit, Meta, Type};
+use quote::{ToTokens, quote};
+use syn::{Expr, Lit, Meta, Type};
 
 use super::path::path_to_string;
 
@@ -13,8 +13,8 @@ pub(crate) fn meta_2_expr(meta: &Meta) -> syn::Result<Expr> {
     match &meta {
         Meta::NameValue(name_value) => Ok(name_value.value.clone()),
         Meta::List(list) => list.parse_args::<Expr>(),
-        Meta::Path(path) => Err(syn::Error::new(
-            path.span(),
+        Meta::Path(path) => Err(syn::Error::new_spanned(
+            path,
             format!("expected `{path} = Expr` or `{path}(Expr)`", path = path_to_string(path)),
         )),
     }
@@ -86,16 +86,15 @@ pub(crate) fn auto_adjust_expr(expr: Expr, ty: Option<&Type>) -> Expr {
                     }
                 },
                 Lit::ByteStr(_) => {
-                    if let Some(Type::Reference(ty)) = ty {
-                        if let Type::Array(ty) = ty.elem.as_ref() {
-                            if let Type::Path(ty) = ty.elem.as_ref() {
-                                let ty_string = ty.into_token_stream().to_string();
+                    if let Some(Type::Reference(ty)) = ty
+                        && let Type::Array(ty) = ty.elem.as_ref()
+                        && let Type::Path(ty) = ty.elem.as_ref()
+                    {
+                        let ty_string = ty.into_token_stream().to_string();
 
-                                if ty_string == "u8" {
-                                    // don't call into
-                                    return expr;
-                                }
-                            }
+                        if ty_string == "u8" {
+                            // don't call into
+                            return expr;
                         }
                     }
                 },

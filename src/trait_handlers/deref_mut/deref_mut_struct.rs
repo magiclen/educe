@@ -1,22 +1,27 @@
 use quote::quote;
-use syn::{spanned::Spanned, Data, DeriveInput, Field, Meta, Type};
+use syn::{Data, DeriveInput, Field, Meta, Type};
 
 use super::{
-    models::{FieldAttributeBuilder, TypeAttributeBuilder},
     TraitHandler,
+    models::{FieldAttributeBuilder, TypeAttributeBuilder},
 };
-use crate::{common::ident_index::IdentOrIndex, Trait};
+use crate::{Trait, common::ident_index::IdentOrIndex, trait_handlers::TraitHandlerContext};
 
+/// Generates the `DerefMut` implementation for a struct.
 pub(crate) struct DerefMutStructHandler;
 
 impl TraitHandler for DerefMutStructHandler {
     #[inline]
     fn trait_meta_handler(
         ast: &DeriveInput,
+        _ctx: &mut TraitHandlerContext,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
     ) -> syn::Result<()> {
+        let generated_impl_attributes =
+            crate::common::attributes::generated_impl_attributes(&ast.attrs);
+
         let _ = TypeAttributeBuilder {
             enable_flag: true
         }
@@ -28,6 +33,7 @@ impl TraitHandler for DerefMutStructHandler {
             let (index, field) = {
                 let fields = &data.fields;
 
+                // With exactly one field, that field is the `DerefMut` target automatically; otherwise exactly one field has to be marked with `#[educe(DerefMut)]`.
                 if fields.len() == 1 {
                     let field = fields.into_iter().next().unwrap();
 
@@ -60,7 +66,7 @@ impl TraitHandler for DerefMutStructHandler {
                     if let Some(deref_field) = deref_field {
                         deref_field
                     } else {
-                        return Err(super::panic::no_deref_mut_field(meta.span()));
+                        return Err(super::panic::no_deref_mut_field(meta));
                     }
                 }
             };
@@ -79,6 +85,7 @@ impl TraitHandler for DerefMutStructHandler {
         let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
         token_stream.extend(quote! {
+            #generated_impl_attributes
             impl #impl_generics ::core::ops::DerefMut for #ident #ty_generics #where_clause {
                 #[inline]
                 fn deref_mut(&mut self) -> &mut Self::Target {

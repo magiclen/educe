@@ -1,21 +1,32 @@
 use quote::{format_ident, quote};
-use syn::{punctuated::Punctuated, Data, DeriveInput, Field, Fields, Meta, Type, Variant};
+use syn::{Data, DeriveInput, Field, Fields, Meta, Type, Variant, punctuated::Punctuated};
 
 use super::models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder};
+// Only the bitwise-copy fast path, gated on the `Copy` trait, needs to inspect whether a field uses a type parameter.
+#[cfg(feature = "Copy")]
+use crate::common::r#type::type_uses_type_params;
 use crate::{
-    common::where_predicates_bool::WherePredicates, supported_traits::Trait, TraitHandler,
+    TraitHandler,
+    common::{bound::BOUND_EXCEPTIONS_CLONE, where_predicates_bool::WherePredicates},
+    supported_traits::Trait,
+    trait_handlers::TraitHandlerContext,
 };
 
+/// Generates the `Clone` implementation for an enum.
 pub(crate) struct CloneEnumHandler;
 
 impl TraitHandler for CloneEnumHandler {
     #[inline]
     fn trait_meta_handler(
         ast: &DeriveInput,
+        ctx: &mut TraitHandlerContext,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
     ) -> syn::Result<()> {
+        let generated_impl_attributes =
+            crate::common::attributes::generated_impl_attributes(&ast.attrs);
+
         let type_attribute = TypeAttributeBuilder {
             enable_flag: true, enable_bound: true
         }
@@ -59,20 +70,29 @@ impl TraitHandler for CloneEnumHandler {
                 variants.push((variant, variant_fields));
             }
 
+            // Like the built-in derives, `clone` can be a plain bitwise copy only when `Copy` is derived together, no generic type parameter is involved, and no field uses a custom clone method.
+            // When generic type parameters are involved, a field-wise clone keeps the `Clone` impl usable for type arguments that are `Clone` but not `Copy`.
             #[cfg(feature = "Copy")]
-            let contains_copy = !has_custom_clone_method && traits.contains(&Trait::Copy);
+            let use_bitwise_copy = !has_custom_clone_method
+                && traits.contains(&Trait::Copy)
+                && !data.variants.iter().any(|variant| {
+                    variant
+                        .fields
+                        .iter()
+                        .any(|field| type_uses_type_params(&field.ty, &ast.generics.params))
+                });
 
             #[cfg(not(feature = "Copy"))]
-            let contains_copy = false;
+            let use_bitwise_copy = false;
 
-            if contains_copy {
+            if use_bitwise_copy {
                 clone_token_stream.extend(quote!(*self));
             }
 
             let mut clone_types: Vec<&Type> = Vec::new();
 
             if variants.is_empty() {
-                if !contains_copy {
+                if !use_bitwise_copy {
                     clone_token_stream.extend(quote!(unreachable!()));
                     clone_from_token_stream.extend(quote!(let _ = source;));
                 }
@@ -198,7 +218,7 @@ impl TraitHandler for CloneEnumHandler {
                     }
                 }
 
-                if !contains_copy {
+                if !use_bitwise_copy {
                     clone_token_stream.extend(quote! {
                         match self {
                             #clone_variants_token_stream
@@ -213,17 +233,16 @@ impl TraitHandler for CloneEnumHandler {
                 }
             }
 
+            // The bound trait is always `Clone`; the `Copy` impl is emitted by the `Copy` handler with its own bounds.
             bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
                 &ast.generics.params,
-                &syn::parse2(if contains_copy {
-                    quote!(::core::marker::Copy)
-                } else {
-                    quote!(::core::clone::Clone)
-                })
-                .unwrap(),
+                &syn::parse2(quote!(::core::clone::Clone)).unwrap(),
                 &clone_types,
-                &[],
+                &ast.ident,
+                &BOUND_EXCEPTIONS_CLONE,
             );
+
+            ctx.record(Trait::Clone, &bound);
         }
 
         let clone_from_fn_token_stream = if clone_from_token_stream.is_empty() {
@@ -240,6 +259,7 @@ impl TraitHandler for CloneEnumHandler {
         let ident = &ast.ident;
 
         let mut generics = ast.generics.clone();
+
         let where_clause = generics.make_where_clause();
 
         for where_predicate in bound {
@@ -249,6 +269,7 @@ impl TraitHandler for CloneEnumHandler {
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         token_stream.extend(quote! {
+            #generated_impl_attributes
             impl #impl_generics ::core::clone::Clone for #ident #ty_generics #where_clause {
                 #[inline]
                 fn clone(&self) -> Self {
@@ -258,14 +279,6 @@ impl TraitHandler for CloneEnumHandler {
                 #clone_from_fn_token_stream
             }
         });
-
-        #[cfg(feature = "Copy")]
-        if traits.contains(&Trait::Copy) {
-            token_stream.extend(quote! {
-                impl #impl_generics ::core::marker::Copy for #ident #ty_generics #where_clause {
-                }
-            });
-        }
 
         Ok(())
     }

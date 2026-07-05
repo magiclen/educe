@@ -1,21 +1,29 @@
-use quote::{format_ident, quote};
+use quote::quote;
 use syn::{Data, DeriveInput, Fields, Meta, Type};
 
 use super::{
-    models::{FieldAttributeBuilder, FieldName, TypeAttributeBuilder, TypeName},
     TraitHandler,
+    models::{FieldAttributeBuilder, FieldName, TypeAttributeBuilder, TypeName},
 };
-use crate::{common::ident_index::IdentOrIndex, Trait};
+use crate::{
+    Trait,
+    common::{bound::BOUND_EXCEPTIONS_DEBUG, ident_index::IdentOrIndex},
+    trait_handlers::TraitHandlerContext,
+};
 
 pub struct DebugStructHandler;
 
 impl TraitHandler for DebugStructHandler {
     fn trait_meta_handler(
         ast: &DeriveInput,
+        _ctx: &mut TraitHandlerContext,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
     ) -> syn::Result<()> {
+        let generated_impl_attributes =
+            crate::common::attributes::generated_impl_attributes(&ast.attrs);
+
         let is_tuple = {
             if let Data::Struct(data) = &ast.data {
                 matches!(data.fields, Fields::Unnamed(_))
@@ -63,18 +71,22 @@ impl TraitHandler for DebugStructHandler {
                         continue;
                     }
 
+                    // The displayed field name is a plain string, so a tuple field can be shown with its real name `0`, which is not a valid ident.
                     let (key, field_name) = match field_attribute.name {
-                        FieldName::Custom(name) => {
-                            (name, IdentOrIndex::from_ident_with_index(field.ident.as_ref(), index))
-                        },
+                        FieldName::Custom(name) => (
+                            name.to_string(),
+                            IdentOrIndex::from_ident_with_index(field.ident.as_ref(), index),
+                        ),
                         FieldName::Default => {
                             if let Some(ident) = field.ident.as_ref() {
-                                (ident.clone(), IdentOrIndex::from(ident))
+                                (ident.to_string(), IdentOrIndex::from(ident))
                             } else {
-                                (format_ident!("_{}", index), IdentOrIndex::from(index))
+                                (index.to_string(), IdentOrIndex::from(index))
                             }
                         },
                     };
+
+                    let key = syn::LitStr::new(&key, proc_macro2::Span::call_site());
 
                     let ty = &field.ty;
 
@@ -87,17 +99,17 @@ impl TraitHandler for DebugStructHandler {
                         ));
 
                         builder_token_stream.extend(if name.is_some() {
-                            quote! (builder.field(stringify!(#key), &arg);)
+                            quote! (builder.field(#key, &arg);)
                         } else {
-                            quote! (builder.entry(&Educe__RawString(stringify!(#key)), &arg);)
+                            quote! (builder.entry(&Educe__RawString(#key), &arg);)
                         });
                     } else {
                         debug_types.push(ty);
 
                         builder_token_stream.extend(if name.is_some() {
-                            quote! (builder.field(stringify!(#key), &self.#field_name);)
+                            quote! (builder.field(#key, &self.#field_name);)
                         } else {
-                            quote! (builder.entry(&Educe__RawString(stringify!(#key)), &self.#field_name);)
+                            quote! (builder.entry(&Educe__RawString(#key), &self.#field_name);)
                         });
                     }
 
@@ -157,10 +169,12 @@ impl TraitHandler for DebugStructHandler {
             &ast.generics.params,
             &syn::parse2(quote!(::core::fmt::Debug)).unwrap(),
             &debug_types,
-            &[],
+            &ast.ident,
+            &BOUND_EXCEPTIONS_DEBUG,
         );
 
         let mut generics = ast.generics.clone();
+
         let where_clause = generics.make_where_clause();
 
         for where_predicate in bound {
@@ -170,6 +184,7 @@ impl TraitHandler for DebugStructHandler {
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         token_stream.extend(quote! {
+            #generated_impl_attributes
             impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
                 #[inline]
                 fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {

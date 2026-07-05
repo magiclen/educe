@@ -1,5 +1,5 @@
 use quote::ToTokens;
-use syn::{spanned::Spanned, Meta};
+use syn::Meta;
 
 #[inline]
 pub(crate) fn union_without_unsafe(meta: &Meta) -> syn::Error {
@@ -11,8 +11,8 @@ pub(crate) fn union_without_unsafe(meta: &Meta) -> syn::Error {
         _ => unreachable!(),
     }
 
-    syn::Error::new(
-        meta.span(),
+    syn::Error::new_spanned(
+        meta,
         format!(
             "a union's `Hash` implementation is not precise, because it ignores the type of \
              fields\n* If your union doesn't care about that, use `#[educe({s})]` to implement \

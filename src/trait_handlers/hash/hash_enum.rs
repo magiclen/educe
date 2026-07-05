@@ -2,21 +2,26 @@ use quote::{format_ident, quote};
 use syn::{Data, DeriveInput, Fields, Meta, Path, Type};
 
 use super::{
-    models::{FieldAttributeBuilder, TypeAttributeBuilder},
     TraitHandler,
+    models::{FieldAttributeBuilder, TypeAttributeBuilder},
 };
-use crate::Trait;
+use crate::{Trait, common::bound::BOUND_EXCEPTIONS_HASH, trait_handlers::TraitHandlerContext};
 
+/// Generates the `Hash` implementation for an enum.
 pub(crate) struct HashEnumHandler;
 
 impl TraitHandler for HashEnumHandler {
     #[inline]
     fn trait_meta_handler(
         ast: &DeriveInput,
+        _ctx: &mut TraitHandlerContext,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
     ) -> syn::Result<()> {
+        let generated_impl_attributes =
+            crate::common::attributes::generated_impl_attributes(&ast.attrs);
+
         let type_attribute =
             TypeAttributeBuilder {
                 enable_flag: true, enable_unsafe: false, enable_bound: true
@@ -143,10 +148,12 @@ impl TraitHandler for HashEnumHandler {
             &ast.generics.params,
             &syn::parse2(quote!(::core::hash::Hash)).unwrap(),
             &hash_types,
-            &[],
+            &ast.ident,
+            &BOUND_EXCEPTIONS_HASH,
         );
 
         let mut generics = ast.generics.clone();
+
         let where_clause = generics.make_where_clause();
 
         for where_predicate in bound {
@@ -156,6 +163,7 @@ impl TraitHandler for HashEnumHandler {
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         token_stream.extend(quote! {
+            #generated_impl_attributes
             impl #impl_generics ::core::hash::Hash for #ident #ty_generics #where_clause {
                 #[inline]
                 fn hash<H: ::core::hash::Hasher>(&self, state: &mut H) {

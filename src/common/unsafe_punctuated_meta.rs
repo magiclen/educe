@@ -1,9 +1,12 @@
 use syn::{
+    Meta, Token,
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
-    Meta, Token,
 };
 
+/// The parsed content of an attribute list that may start with the `unsafe` keyword, e.g. `Debug(unsafe, name = false)`.
+///
+/// The unsafe marker is how a user opts in to the byte-based union implementations.
 pub(crate) struct UnsafePunctuatedMeta {
     pub(crate) list:       Punctuated<Meta, Token![,]>,
     pub(crate) has_unsafe: bool,

@@ -1,13 +1,14 @@
 use proc_macro2::Ident;
-use syn::{punctuated::Punctuated, Attribute, Meta, Token};
+use syn::{Attribute, Meta, Token, punctuated::Punctuated};
 
 use crate::{
+    Trait,
     common::{
         bound::Bound,
-        ident_bool::{meta_2_bool, meta_2_ident_and_bool, meta_name_value_2_ident, IdentOrBool},
+        ident_bool::{IdentOrBool, meta_2_bool, meta_2_ident_and_bool, meta_name_value_2_ident},
         unsafe_punctuated_meta::UnsafePunctuatedMeta,
     },
-    panic, Trait,
+    panic,
 };
 
 #[derive(Debug, Clone)]
@@ -28,6 +29,7 @@ impl TypeName {
     }
 }
 
+/// The parsed settings of a type-level (or variant-level) `Debug` attribute.
 pub(crate) struct TypeAttribute {
     pub(crate) has_unsafe:  bool,
     pub(crate) name:        TypeName,
@@ -36,6 +38,7 @@ pub(crate) struct TypeAttribute {
 }
 
 #[derive(Debug)]
+/// Parses `Debug` metas; the `enable_*` switches describe which parameters are allowed at the current position.
 pub(crate) struct TypeAttributeBuilder {
     pub(crate) enable_flag:        bool,
     pub(crate) enable_unsafe:      bool,
@@ -47,6 +50,7 @@ pub(crate) struct TypeAttributeBuilder {
 }
 
 impl TypeAttributeBuilder {
+    /// Parses one `Debug` meta into a `TypeAttribute`, rejecting parameters that are not enabled here.
     pub(crate) fn build_from_debug_meta(&self, meta: &Meta) -> syn::Result<TypeAttribute> {
         debug_assert!(meta.path().is_ident("Debug"));
 
@@ -215,6 +219,7 @@ impl TypeAttributeBuilder {
         })
     }
 
+    /// Scans the `#[educe(...)]` attributes of an item (typically an enum variant) and parses its `Debug` meta if present.
     pub(crate) fn build_from_attributes(
         &self,
         attributes: &[Attribute],
@@ -225,30 +230,30 @@ impl TypeAttributeBuilder {
         for attribute in attributes.iter() {
             let path = attribute.path();
 
-            if path.is_ident("educe") {
-                if let Meta::List(list) = &attribute.meta {
-                    let result =
-                        list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
+            if path.is_ident("educe")
+                && let Meta::List(list) = &attribute.meta
+            {
+                let result =
+                    list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
 
-                    for meta in result {
-                        let path = meta.path();
+                for meta in result {
+                    let path = meta.path();
 
-                        let t = match Trait::from_path(path) {
-                            Some(t) => t,
-                            None => return Err(panic::unsupported_trait(meta.path())),
-                        };
+                    let t = match Trait::from_path(path) {
+                        Some(t) => t,
+                        None => return Err(panic::unsupported_trait(meta.path())),
+                    };
 
-                        if !traits.contains(&t) {
-                            return Err(panic::trait_not_used(path.get_ident().unwrap()));
+                    if !traits.contains(&t) {
+                        return Err(panic::trait_not_used(path.get_ident().unwrap()));
+                    }
+
+                    if t == Trait::Debug {
+                        if output.is_some() {
+                            return Err(panic::reuse_a_trait(path.get_ident().unwrap()));
                         }
 
-                        if t == Trait::Debug {
-                            if output.is_some() {
-                                return Err(panic::reuse_a_trait(path.get_ident().unwrap()));
-                            }
-
-                            output = Some(self.build_from_debug_meta(&meta)?);
-                        }
+                        output = Some(self.build_from_debug_meta(&meta)?);
                     }
                 }
             }

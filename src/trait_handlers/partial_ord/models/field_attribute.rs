@@ -1,5 +1,5 @@
 use proc_macro2::Span;
-use syn::{punctuated::Punctuated, spanned::Spanned, Attribute, Meta, Path, Token};
+use syn::{Attribute, Meta, Path, Token, punctuated::Punctuated, spanned::Spanned};
 
 use crate::{
     common::{
@@ -11,13 +11,17 @@ use crate::{
     supported_traits::Trait,
 };
 
+/// The parsed settings of a field-level `PartialOrd` attribute.
 pub(crate) struct FieldAttribute {
-    pub(crate) ignore:    bool,
-    pub(crate) method:    Option<Path>,
-    pub(crate) rank:      isize,
-    pub(crate) rank_span: Option<Span>,
+    pub(crate) ignore:                  bool,
+    pub(crate) method:                  Option<Path>,
+    /// Whether the method comes from a fallback `Ord` field attribute; such a method returns `Ordering` instead of `Option<Ordering>`, so the generated `partial_cmp` has to wrap its result in `Some`.
+    pub(crate) method_returns_ordering: bool,
+    pub(crate) rank:                    isize,
+    pub(crate) rank_span:               Option<Span>,
 }
 
+/// Parses field-level `PartialOrd` metas; the `enable_*` switches describe which parameters are allowed for the current shape of data.
 pub(crate) struct FieldAttributeBuilder {
     pub(crate) enable_ignore: bool,
     pub(crate) enable_method: bool,
@@ -26,8 +30,10 @@ pub(crate) struct FieldAttributeBuilder {
 }
 
 impl FieldAttributeBuilder {
+    /// Parses one field-level `PartialOrd` meta into a `FieldAttribute`, rejecting parameters that are not enabled here.
     pub(crate) fn build_from_partial_ord_meta(&self, meta: &Meta) -> syn::Result<FieldAttribute> {
-        debug_assert!(meta.path().is_ident("PartialOrd"));
+        // An `Ord` meta is also accepted here because `build_from_attributes` may fall back to the `Ord` field attribute when `Ord` is derived together.
+        debug_assert!(meta.path().is_ident("PartialOrd") || meta.path().is_ident("Ord"));
 
         let mut ignore = false;
         let mut method = None;
@@ -154,11 +160,13 @@ impl FieldAttributeBuilder {
         Ok(FieldAttribute {
             ignore,
             method,
+            method_returns_ordering: false,
             rank,
             rank_span,
         })
     }
 
+    /// Scans the `#[educe(...)]` attributes of a field and parses its `PartialOrd` meta if present.
     pub(crate) fn build_from_attributes(
         &self,
         attributes: &[Attribute],
@@ -166,43 +174,63 @@ impl FieldAttributeBuilder {
     ) -> syn::Result<FieldAttribute> {
         let mut output = None;
 
+        // When `Ord` is derived together and a field has no `PartialOrd` attribute of its own, the field's `Ord` attribute is used instead, so that `partial_cmp` stays consistent with `cmp` like in educe 0.5.x where the `Ord` handler generated both impls.
+        #[cfg(feature = "Ord")]
+        let mut fallback = None;
+
         for attribute in attributes.iter() {
             let path = attribute.path();
 
-            if path.is_ident("educe") {
-                if let Meta::List(list) = &attribute.meta {
-                    let result =
-                        list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
+            if path.is_ident("educe")
+                && let Meta::List(list) = &attribute.meta
+            {
+                let result =
+                    list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
 
-                    for meta in result {
-                        let path = meta.path();
+                for meta in result {
+                    let path = meta.path();
 
-                        let t = match Trait::from_path(path) {
-                            Some(t) => t,
-                            None => return Err(panic::unsupported_trait(meta.path())),
-                        };
+                    let t = match Trait::from_path(path) {
+                        Some(t) => t,
+                        None => return Err(panic::unsupported_trait(meta.path())),
+                    };
 
-                        if !traits.contains(&t) {
-                            return Err(panic::trait_not_used(path.get_ident().unwrap()));
+                    if !traits.contains(&t) {
+                        return Err(panic::trait_not_used(path.get_ident().unwrap()));
+                    }
+
+                    if t == Trait::PartialOrd {
+                        if output.is_some() {
+                            return Err(panic::reuse_a_trait(path.get_ident().unwrap()));
                         }
 
-                        if t == Trait::PartialOrd {
-                            if output.is_some() {
-                                return Err(panic::reuse_a_trait(path.get_ident().unwrap()));
-                            }
+                        output = Some(self.build_from_partial_ord_meta(&meta)?);
+                    }
 
-                            output = Some(self.build_from_partial_ord_meta(&meta)?);
-                        }
+                    // A malformed `Ord` attribute is silently skipped here; the `Ord` handler itself reports it with the proper usage message.
+                    #[cfg(feature = "Ord")]
+                    if t == Trait::Ord
+                        && fallback.is_none()
+                        && let Ok(mut field_attribute) = self.build_from_partial_ord_meta(&meta)
+                    {
+                        // An `Ord` comparison method returns `Ordering`, so the generated `partial_cmp` has to wrap its result in `Some`.
+                        field_attribute.method_returns_ordering = field_attribute.method.is_some();
+
+                        fallback = Some(field_attribute);
                     }
                 }
             }
         }
 
+        #[cfg(feature = "Ord")]
+        let output = output.or(fallback);
+
         Ok(output.unwrap_or(FieldAttribute {
-            ignore:    false,
-            method:    None,
-            rank:      self.rank,
-            rank_span: None,
+            ignore:                  false,
+            method:                  None,
+            method_returns_ordering: false,
+            rank:                    self.rank,
+            rank_span:               None,
         }))
     }
 }

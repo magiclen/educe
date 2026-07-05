@@ -2,21 +2,26 @@ use quote::{format_ident, quote};
 use syn::{Data, DeriveInput, Fields, Meta, Type};
 
 use super::{
-    models::{FieldAttributeBuilder, TypeAttributeBuilder},
     TraitHandler,
+    models::{FieldAttributeBuilder, TypeAttributeBuilder},
 };
-use crate::Trait;
+use crate::{Trait, common::bound::BOUND_EXCEPTIONS_EQUALITY, trait_handlers::TraitHandlerContext};
 
+/// Generates the `PartialEq` implementation for an enum.
 pub(crate) struct PartialEqEnumHandler;
 
 impl TraitHandler for PartialEqEnumHandler {
     #[inline]
     fn trait_meta_handler(
         ast: &DeriveInput,
+        ctx: &mut TraitHandlerContext,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
     ) -> syn::Result<()> {
+        let generated_impl_attributes =
+            crate::common::attributes::generated_impl_attributes(&ast.attrs);
+
         let type_attribute =
             TypeAttributeBuilder {
                 enable_flag: true, enable_unsafe: false, enable_bound: true
@@ -182,10 +187,14 @@ impl TraitHandler for PartialEqEnumHandler {
             &ast.generics.params,
             &syn::parse2(quote!(::core::cmp::PartialEq)).unwrap(),
             &partial_eq_types,
-            &[],
+            &ast.ident,
+            &BOUND_EXCEPTIONS_EQUALITY,
         );
 
+        ctx.record(Trait::PartialEq, &bound);
+
         let mut generics = ast.generics.clone();
+
         let where_clause = generics.make_where_clause();
 
         for where_predicate in bound {
@@ -195,6 +204,7 @@ impl TraitHandler for PartialEqEnumHandler {
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         token_stream.extend(quote! {
+            #generated_impl_attributes
             impl #impl_generics ::core::cmp::PartialEq for #ident #ty_generics #where_clause {
                 #[inline]
                 fn eq(&self, other: &Self) -> bool {
@@ -204,14 +214,6 @@ impl TraitHandler for PartialEqEnumHandler {
                 }
             }
         });
-
-        #[cfg(feature = "Eq")]
-        if traits.contains(&Trait::Eq) {
-            token_stream.extend(quote! {
-                impl #impl_generics ::core::cmp::Eq for #ident #ty_generics #where_clause {
-                }
-            });
-        }
 
         Ok(())
     }

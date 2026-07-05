@@ -20,6 +20,9 @@ use syn::Path;
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Ordinalize)]
 #[ordinalize(impl_trait = false)]
 #[ordinalize(variants(pub(crate) const VARIANTS))]
+/// Every trait that Educe can derive, each gated behind a cargo feature of the same name.
+///
+/// `_Nothing` is a sentinel that only exists so the enum is never empty, no matter which features are enabled.
 pub(crate) enum Trait {
     #[cfg(feature = "Debug")]
     Debug,
@@ -52,10 +55,7 @@ pub(crate) enum Trait {
 impl Trait {
     #[inline]
     pub(crate) fn from_path(path: &Path) -> Option<Self> {
-        let ident_string = match path.get_ident() {
-            Some(ident) => ident.to_string(),
-            None => return None,
-        };
+        let ident_string = path.get_ident()?.to_string();
 
         match ident_string.as_str() {
             #[cfg(feature = "Debug")]

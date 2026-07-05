@@ -1,5 +1,5 @@
 use proc_macro2::Span;
-use syn::{punctuated::Punctuated, spanned::Spanned, Attribute, Meta, Path, Token};
+use syn::{Attribute, Meta, Path, Token, punctuated::Punctuated, spanned::Spanned};
 
 use crate::{
     common::{
@@ -11,6 +11,7 @@ use crate::{
     supported_traits::Trait,
 };
 
+/// The parsed settings of a field-level `Ord` attribute.
 pub(crate) struct FieldAttribute {
     pub(crate) ignore:    bool,
     pub(crate) method:    Option<Path>,
@@ -18,6 +19,7 @@ pub(crate) struct FieldAttribute {
     pub(crate) rank_span: Option<Span>,
 }
 
+/// Parses field-level `Ord` metas; the `enable_*` switches describe which parameters are allowed for the current shape of data.
 pub(crate) struct FieldAttributeBuilder {
     pub(crate) enable_ignore: bool,
     pub(crate) enable_method: bool,
@@ -26,6 +28,7 @@ pub(crate) struct FieldAttributeBuilder {
 }
 
 impl FieldAttributeBuilder {
+    /// Parses one field-level `Ord` meta into a `FieldAttribute`, rejecting parameters that are not enabled here.
     pub(crate) fn build_from_ord_meta(&self, meta: &Meta) -> syn::Result<FieldAttribute> {
         debug_assert!(meta.path().is_ident("Ord") || meta.path().is_ident("PartialOrd"));
 
@@ -159,6 +162,7 @@ impl FieldAttributeBuilder {
         })
     }
 
+    /// Scans the `#[educe(...)]` attributes of a field and parses its `Ord` meta if present.
     pub(crate) fn build_from_attributes(
         &self,
         attributes: &[Attribute],
@@ -166,46 +170,56 @@ impl FieldAttributeBuilder {
     ) -> syn::Result<FieldAttribute> {
         let mut output = None;
 
+        // When `PartialOrd` is derived together and a field has no `Ord` attribute of its own, the `ignore` and `rank` settings of the field's `PartialOrd` attribute are used instead, so that `cmp` stays consistent with `partial_cmp`.
+        #[cfg(feature = "PartialOrd")]
+        let mut fallback = None;
+
         for attribute in attributes.iter() {
             let path = attribute.path();
 
-            if path.is_ident("educe") {
-                if let Meta::List(list) = &attribute.meta {
-                    let result =
-                        list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
+            if path.is_ident("educe")
+                && let Meta::List(list) = &attribute.meta
+            {
+                let result =
+                    list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
 
-                    for meta in result {
-                        let path = meta.path();
+                for meta in result {
+                    let path = meta.path();
 
-                        let t = match Trait::from_path(path) {
-                            Some(t) => t,
-                            None => return Err(panic::unsupported_trait(meta.path())),
-                        };
+                    let t = match Trait::from_path(path) {
+                        Some(t) => t,
+                        None => return Err(panic::unsupported_trait(meta.path())),
+                    };
 
-                        if !traits.contains(&t) {
-                            return Err(panic::trait_not_used(path.get_ident().unwrap()));
+                    if !traits.contains(&t) {
+                        return Err(panic::trait_not_used(path.get_ident().unwrap()));
+                    }
+
+                    if t == Trait::Ord {
+                        if output.is_some() {
+                            return Err(panic::reuse_a_trait(path.get_ident().unwrap()));
                         }
 
-                        if t == Trait::Ord {
-                            if output.is_some() {
-                                return Err(panic::reuse_a_trait(path.get_ident().unwrap()));
-                            }
+                        output = Some(self.build_from_ord_meta(&meta)?);
+                    }
 
-                            output = Some(self.build_from_ord_meta(&meta)?);
-                        }
+                    // A malformed `PartialOrd` attribute is silently skipped here; the `PartialOrd` handler itself reports it with the proper usage message.
+                    #[cfg(feature = "PartialOrd")]
+                    if t == Trait::PartialOrd
+                        && fallback.is_none()
+                        && let Ok(mut field_attribute) = self.build_from_ord_meta(&meta)
+                    {
+                        // A `PartialOrd` comparison method returns `Option<Ordering>` and cannot be used by the generated `cmp`, so only `ignore` and `rank` are taken over.
+                        field_attribute.method = None;
 
-                        #[cfg(feature = "PartialOrd")]
-                        if traits.contains(&Trait::PartialOrd) && t == Trait::PartialOrd {
-                            if output.is_some() {
-                                return Err(panic::reuse_a_trait(path.get_ident().unwrap()));
-                            }
-
-                            output = Some(self.build_from_ord_meta(&meta)?);
-                        }
+                        fallback = Some(field_attribute);
                     }
                 }
             }
         }
+
+        #[cfg(feature = "PartialOrd")]
+        let output = output.or(fallback);
 
         Ok(output.unwrap_or(FieldAttribute {
             ignore:    false,

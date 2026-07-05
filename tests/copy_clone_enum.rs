@@ -1,6 +1,8 @@
 #![cfg(all(feature = "Copy", feature = "Clone"))]
 #![no_std]
 #![allow(clippy::clone_on_copy)]
+// The types in these tests only exist to exercise the derived impls, and `#[automatically_derived]` impls do not count as uses for dead-code analysis.
+#![allow(dead_code)]
 
 use educe::Educe;
 

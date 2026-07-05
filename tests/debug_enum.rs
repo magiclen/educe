@@ -1,5 +1,7 @@
 #![cfg(feature = "Debug")]
 #![no_std]
+// The types in these tests only exist to exercise the derived impls, and `#[automatically_derived]` impls do not count as uses for dead-code analysis.
+#![allow(dead_code)]
 
 #[macro_use]
 extern crate alloc;
@@ -253,7 +255,7 @@ fn named_field_1() {
             f1: 1
         })
     );
-    assert_eq!("Tuple { _0: 1 }", format!("{:?}", Enum::Tuple(1)));
+    assert_eq!("Tuple { 0: 1 }", format!("{:?}", Enum::Tuple(1)));
 }
 
 #[test]
@@ -273,7 +275,7 @@ fn named_field_2() {
             f1: 1
         })
     );
-    assert_eq!("Tuple { _0: 1 }", format!("{:?}", Enum::Tuple(1)));
+    assert_eq!("Tuple { 0: 1 }", format!("{:?}", Enum::Tuple(1)));
 }
 
 #[test]
@@ -302,7 +304,7 @@ fn named_field_3() {
             f1: 1
         })
     );
-    assert_eq!("Tuple { _0: Hi }", format!("{:?}", Enum::Tuple(1)));
+    assert_eq!("Tuple { 0: Hi }", format!("{:?}", Enum::Tuple(1)));
 }
 
 #[test]

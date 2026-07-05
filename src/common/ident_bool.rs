@@ -1,7 +1,6 @@
 use syn::{
-    parse::{Parse, ParseStream},
-    spanned::Spanned,
     Expr, Ident, Lit, LitBool, LitStr, Meta, MetaNameValue,
+    parse::{Parse, ParseStream},
 };
 
 use super::path::path_to_string;
@@ -23,7 +22,7 @@ impl Parse for IdentOrBool {
                         Ok(ident) => Ok(Self::Ident(ident)),
                         Err(_) if lit.value().is_empty() => Ok(Self::Bool(false)),
                         Err(error) => Err(error),
-                    }
+                    };
                 },
                 _ => (),
             }
@@ -49,8 +48,8 @@ pub(crate) fn meta_name_value_2_ident(name_value: &MetaNameValue) -> syn::Result
         _ => (),
     }
 
-    Err(syn::Error::new(
-        name_value.value.span(),
+    Err(syn::Error::new_spanned(
+        &name_value.value,
         format!("expected `{path} = Ident`", path = path_to_string(&name_value.path)),
     ))
 }
@@ -66,23 +65,24 @@ pub(crate) fn meta_2_ident(meta: &Meta) -> syn::Result<Ident> {
                 list.parse_args()
             }
         },
-        Meta::Path(path) => Err(syn::Error::new(
-            path.span(),
+        Meta::Path(path) => Err(syn::Error::new_spanned(
+            path,
             format!("expected `{path} = Ident` or `{path}(Ident)`", path = path_to_string(path)),
         )),
     }
 }
 
+// The helpers in this module parse the small `name = value` and flag-style parameters that appear inside the educe attributes.
 #[inline]
 pub(crate) fn meta_name_value_2_bool(name_value: &MetaNameValue) -> syn::Result<bool> {
-    if let Expr::Lit(lit) = &name_value.value {
-        if let Lit::Bool(b) = &lit.lit {
-            return Ok(b.value);
-        }
+    if let Expr::Lit(lit) = &name_value.value
+        && let Lit::Bool(b) = &lit.lit
+    {
+        return Ok(b.value);
     }
 
-    Err(syn::Error::new(
-        name_value.value.span(),
+    Err(syn::Error::new_spanned(
+        &name_value.value,
         format!("expected `{path} = false`", path = path_to_string(&name_value.path)),
     ))
 }
@@ -92,8 +92,8 @@ pub(crate) fn meta_2_bool(meta: &Meta) -> syn::Result<bool> {
     match &meta {
         Meta::NameValue(name_value) => meta_name_value_2_bool(name_value),
         Meta::List(list) => Ok(list.parse_args::<LitBool>()?.value),
-        Meta::Path(path) => Err(syn::Error::new(
-            path.span(),
+        Meta::Path(path) => Err(syn::Error::new_spanned(
+            path,
             format!("expected `{path} = false` or `{path}(false)`", path = path_to_string(path)),
         )),
     }
@@ -136,8 +136,8 @@ pub(crate) fn meta_name_value_2_ident_and_bool(
         _ => (),
     }
 
-    Err(syn::Error::new(
-        name_value.value.span(),
+    Err(syn::Error::new_spanned(
+        &name_value.value,
         format!(
             "expected `{path} = Ident` or `{path} = false`",
             path = path_to_string(&name_value.path)
@@ -150,8 +150,8 @@ pub(crate) fn meta_2_ident_and_bool(meta: &Meta) -> syn::Result<IdentOrBool> {
     match &meta {
         Meta::NameValue(name_value) => meta_name_value_2_ident_and_bool(name_value),
         Meta::List(list) => list.parse_args::<IdentOrBool>(),
-        Meta::Path(path) => Err(syn::Error::new(
-            path.span(),
+        Meta::Path(path) => Err(syn::Error::new_spanned(
+            path,
             format!(
                 "expected `{path} = Ident`, `{path}(Ident)`, `{path} = false`, or `{path}(false)`",
                 path = path_to_string(path)

@@ -1,18 +1,21 @@
-use syn::{punctuated::Punctuated, Attribute, Meta, Token};
+use syn::{Attribute, Meta, Token, punctuated::Punctuated};
 
-use crate::{common::bound::Bound, panic, Trait};
+use crate::{Trait, common::bound::Bound, panic};
 
+/// The parsed settings of a type-level (or variant-level) `Eq` attribute.
 pub(crate) struct TypeAttribute {
     pub(crate) bound: Bound,
 }
 
 #[derive(Debug)]
+/// Parses `Eq` metas; the `enable_*` switches describe which parameters are allowed at the current position.
 pub(crate) struct TypeAttributeBuilder {
     pub(crate) enable_flag:  bool,
     pub(crate) enable_bound: bool,
 }
 
 impl TypeAttributeBuilder {
+    /// Parses one `Eq` meta into a `TypeAttribute`, rejecting parameters that are not enabled here.
     pub(crate) fn build_from_eq_meta(&self, meta: &Meta) -> syn::Result<TypeAttribute> {
         debug_assert!(meta.path().is_ident("Eq"));
 
@@ -55,24 +58,24 @@ impl TypeAttributeBuilder {
                 let mut bound_is_set = false;
 
                 let mut handler = |meta: Meta| -> syn::Result<bool> {
-                    if let Some(ident) = meta.path().get_ident() {
-                        if ident == "bound" {
-                            if !self.enable_bound {
-                                return Ok(false);
-                            }
-
-                            let v = Bound::from_meta(&meta)?;
-
-                            if bound_is_set {
-                                return Err(panic::parameter_reset(ident));
-                            }
-
-                            bound_is_set = true;
-
-                            bound = v;
-
-                            return Ok(true);
+                    if let Some(ident) = meta.path().get_ident()
+                        && ident == "bound"
+                    {
+                        if !self.enable_bound {
+                            return Ok(false);
                         }
+
+                        let v = Bound::from_meta(&meta)?;
+
+                        if bound_is_set {
+                            return Err(panic::parameter_reset(ident));
+                        }
+
+                        bound_is_set = true;
+
+                        bound = v;
+
+                        return Ok(true);
                     }
 
                     Ok(false)
@@ -94,6 +97,7 @@ impl TypeAttributeBuilder {
         })
     }
 
+    /// Scans the `#[educe(...)]` attributes of an item (typically an enum variant) and parses its `Eq` meta if present.
     pub(crate) fn build_from_attributes(
         &self,
         attributes: &[Attribute],
@@ -104,30 +108,30 @@ impl TypeAttributeBuilder {
         for attribute in attributes.iter() {
             let path = attribute.path();
 
-            if path.is_ident("educe") {
-                if let Meta::List(list) = &attribute.meta {
-                    let result =
-                        list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
+            if path.is_ident("educe")
+                && let Meta::List(list) = &attribute.meta
+            {
+                let result =
+                    list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
 
-                    for meta in result {
-                        let path = meta.path();
+                for meta in result {
+                    let path = meta.path();
 
-                        let t = match Trait::from_path(path) {
-                            Some(t) => t,
-                            None => return Err(panic::unsupported_trait(meta.path())),
-                        };
+                    let t = match Trait::from_path(path) {
+                        Some(t) => t,
+                        None => return Err(panic::unsupported_trait(meta.path())),
+                    };
 
-                        if !traits.contains(&t) {
-                            return Err(panic::trait_not_used(path.get_ident().unwrap()));
+                    if !traits.contains(&t) {
+                        return Err(panic::trait_not_used(path.get_ident().unwrap()));
+                    }
+
+                    if t == Trait::Eq {
+                        if output.is_some() {
+                            return Err(panic::reuse_a_trait(path.get_ident().unwrap()));
                         }
 
-                        if t == Trait::Eq {
-                            if output.is_some() {
-                                return Err(panic::reuse_a_trait(path.get_ident().unwrap()));
-                            }
-
-                            output = Some(self.build_from_eq_meta(&meta)?);
-                        }
+                        output = Some(self.build_from_eq_meta(&meta)?);
                     }
                 }
             }

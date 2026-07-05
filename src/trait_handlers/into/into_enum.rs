@@ -1,35 +1,40 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use quote::{format_ident, quote};
 use syn::{Data, DeriveInput, Field, Fields, Ident, Meta, Path, Type};
 
 use super::{
-    models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder},
     TraitHandlerMultiple,
+    models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder},
 };
-use crate::{panic, Trait};
+use crate::{Trait, panic, trait_handlers::TraitHandlerContext};
 
+/// Generates the `Into` implementation for an enum.
 pub(crate) struct IntoEnumHandler;
 
 impl TraitHandlerMultiple for IntoEnumHandler {
     #[inline]
     fn trait_meta_handler(
         ast: &DeriveInput,
+        _ctx: &mut TraitHandlerContext,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &[Meta],
     ) -> syn::Result<()> {
+        let generated_impl_attributes =
+            crate::common::attributes::generated_impl_attributes(&ast.attrs);
+
         let type_attribute = TypeAttributeBuilder {
             enable_types: true
         }
         .build_from_into_meta(meta)?;
 
         if let Data::Enum(data) = &ast.data {
-            let field_attributes: Vec<HashMap<usize, FieldAttribute>> = {
+            let field_attributes: Vec<BTreeMap<usize, FieldAttribute>> = {
                 let mut map = Vec::new();
 
                 for variant in data.variants.iter() {
-                    let mut field_map = HashMap::new();
+                    let mut field_map = BTreeMap::new();
 
                     let _ = TypeAttributeBuilder {
                         enable_types: false
@@ -57,10 +62,17 @@ impl TraitHandlerMultiple for IntoEnumHandler {
                 map
             };
 
-            for (target_ty, bound) in type_attribute.types {
+            for (target_ty, target) in type_attribute.types {
+                // By default a `From` impl is generated because it provides `Into` for free; the `into` flag asks for a direct `Into` impl instead.
+                let generate_from = !target.force_into;
+
+                let bound = target.bound;
+
                 let mut into_types: Vec<&Type> = Vec::new();
 
                 let mut arms_token_stream = proc_macro2::TokenStream::new();
+
+                let enum_ident = &ast.ident;
 
                 type Variants<'a> =
                     Vec<(&'a Ident, bool, usize, Ident, &'a Type, Option<&'a Path>)>;
@@ -97,16 +109,15 @@ impl TraitHandlerMultiple for IntoEnumHandler {
                             let mut into_field: Option<(usize, &Field, Option<&Path>)> = None;
 
                             for (index, field) in fields.iter().enumerate() {
-                                if let Some(field_attribute) = field_attributes.get(&index) {
-                                    if let Some((key, method)) =
+                                if let Some(field_attribute) = field_attributes.get(&index)
+                                    && let Some((key, method)) =
                                         field_attribute.types.get_key_value(&target_ty)
-                                    {
-                                        if into_field.is_some() {
-                                            return Err(super::panic::multiple_into_fields(key));
-                                        }
-
-                                        into_field = Some((index, field, method.as_ref()));
+                                {
+                                    if into_field.is_some() {
+                                        return Err(super::panic::multiple_into_fields(key));
                                     }
+
+                                    into_field = Some((index, field, method.as_ref()));
                                 }
                             }
 
@@ -175,24 +186,23 @@ impl TraitHandlerMultiple for IntoEnumHandler {
                         pattern_token_stream.extend(quote!( #field_name, .. ));
 
                         arms_token_stream.extend(
-                            quote!( Self::#variant_ident ( #pattern_token_stream ) => #body_token_stream, ),
+                            quote!( #enum_ident::#variant_ident ( #pattern_token_stream ) => #body_token_stream, ),
                         );
                     } else {
                         pattern_token_stream.extend(quote!( #field_name, .. ));
 
                         arms_token_stream.extend(
-                            quote!( Self::#variant_ident { #pattern_token_stream } => #body_token_stream, ),
+                            quote!( #enum_ident::#variant_ident { #pattern_token_stream } => #body_token_stream, ),
                         );
                     }
                 }
 
                 let ident = &ast.ident;
 
-                let bound = bound.into_where_predicates_by_generic_parameters_check_types(
+                let bound = bound.into_where_predicates_by_generic_parameters_check_types_shallow(
                     &ast.generics.params,
                     &syn::parse2(quote!(::core::convert::Into<#target_ty>)).unwrap(),
                     &into_types,
-                    &[],
                 );
 
                 // clone generics in order to not to affect other Into<T> implementations
@@ -206,12 +216,27 @@ impl TraitHandlerMultiple for IntoEnumHandler {
 
                 let (impl_generics, ty_generics, _) = ast.generics.split_for_impl();
 
-                token_stream.extend(quote! {
-                    impl #impl_generics ::core::convert::Into<#target_ty> for #ident #ty_generics #where_clause {
-                        #[inline]
-                        fn into(self) -> #target_ty {
-                            match self {
-                                #arms_token_stream
+                token_stream.extend(if generate_from {
+                    quote! {
+                        #generated_impl_attributes
+                        impl #impl_generics ::core::convert::From<#ident #ty_generics> for #target_ty #where_clause {
+                            #[inline]
+                            fn from(value: #ident #ty_generics) -> Self {
+                                match value {
+                                    #arms_token_stream
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    quote! {
+                        #generated_impl_attributes
+                        impl #impl_generics ::core::convert::Into<#target_ty> for #ident #ty_generics #where_clause {
+                            #[inline]
+                            fn into(self) -> #target_ty {
+                                match self {
+                                    #arms_token_stream
+                                }
                             }
                         }
                     }

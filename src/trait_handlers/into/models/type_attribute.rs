@@ -1,26 +1,37 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
-use syn::{punctuated::Punctuated, Attribute, Meta, Token};
+use syn::{Attribute, Meta, Token, punctuated::Punctuated};
 
 use crate::{
-    common::{bound::Bound, r#type::TypeWithPunctuatedMeta, tools::HashType},
-    panic, Trait,
+    Trait,
+    common::{bound::Bound, tools::HashType, r#type::TypeWithPunctuatedMeta},
+    panic,
 };
 
+/// The settings of one conversion target declared by `#[educe(Into(type, ...))]`.
+pub(crate) struct IntoTarget {
+    pub(crate) bound:      Bound,
+    /// The bare `into` flag, which asks the handler to generate a direct `Into` impl instead of the default `From` impl.
+    pub(crate) force_into: bool,
+}
+
+/// The parsed settings of a type-level (or variant-level) `Into` attribute.
 pub(crate) struct TypeAttribute {
-    pub(crate) types: HashMap<HashType, Bound>,
+    pub(crate) types: BTreeMap<HashType, IntoTarget>,
 }
 
 #[derive(Debug)]
+/// Parses `Into` metas; the `enable_*` switches describe which parameters are allowed at the current position.
 pub(crate) struct TypeAttributeBuilder {
     pub(crate) enable_types: bool,
 }
 
 impl TypeAttributeBuilder {
+    /// Parses one `Into` meta into a `TypeAttribute`, rejecting parameters that are not enabled here.
     pub(crate) fn build_from_into_meta(&self, meta: &[Meta]) -> syn::Result<TypeAttribute> {
         debug_assert!(!meta.is_empty());
 
-        let mut types = HashMap::new();
+        let mut types = BTreeMap::new();
 
         for meta in meta {
             debug_assert!(meta.path().is_ident("Into"));
@@ -32,6 +43,7 @@ impl TypeAttributeBuilder {
                     usage.push(stringify!(#[educe(Into(type))]));
                     usage.push(stringify!(#[educe(Into(type, bound = false))]));
                     usage.push(stringify!(#[educe(Into(type, bound(where_predicates)))]));
+                    usage.push(stringify!(#[educe(Into(type, into))]));
                 }
 
                 usage
@@ -57,10 +69,12 @@ impl TypeAttributeBuilder {
                         list: result,
                     } = list.parse_args()?;
 
-                    let ty = super::super::common::to_hash_type(&ty);
+                    let hash_ty = super::super::common::to_hash_type(&ty);
 
                     let mut bound = Bound::Auto;
                     let mut bound_is_set = false;
+
+                    let mut force_into = false;
 
                     let mut handler = |meta: Meta| -> syn::Result<bool> {
                         if let Some(ident) = meta.path().get_ident() {
@@ -74,6 +88,17 @@ impl TypeAttributeBuilder {
                                 bound_is_set = true;
 
                                 bound = v;
+
+                                return Ok(true);
+                            }
+
+                            // The bare `into` flag forces an `Into` impl for this target.
+                            if ident == "into" && matches!(meta, Meta::Path(_)) {
+                                if force_into {
+                                    return Err(panic::parameter_reset(ident));
+                                }
+
+                                force_into = true;
 
                                 return Ok(true);
                             }
@@ -91,11 +116,14 @@ impl TypeAttributeBuilder {
                         }
                     }
 
-                    if types.contains_key(&ty) {
-                        return Err(super::super::panic::reset_a_type(&ty));
+                    if types.contains_key(&hash_ty) {
+                        return Err(super::super::panic::reset_a_type(&hash_ty));
                     }
 
-                    types.insert(ty, bound);
+                    types.insert(hash_ty, IntoTarget {
+                        bound,
+                        force_into,
+                    });
                 },
             }
         }
@@ -105,6 +133,7 @@ impl TypeAttributeBuilder {
         })
     }
 
+    /// Scans the `#[educe(...)]` attributes of an item (typically an enum variant) and parses its `Into` meta if present.
     pub(crate) fn build_from_attributes(
         &self,
         attributes: &[Attribute],
@@ -117,26 +146,26 @@ impl TypeAttributeBuilder {
         for attribute in attributes.iter() {
             let path = attribute.path();
 
-            if path.is_ident("educe") {
-                if let Meta::List(list) = &attribute.meta {
-                    let result =
-                        list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
+            if path.is_ident("educe")
+                && let Meta::List(list) = &attribute.meta
+            {
+                let result =
+                    list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
 
-                    for meta in result {
-                        let path = meta.path();
+                for meta in result {
+                    let path = meta.path();
 
-                        let t = match Trait::from_path(path) {
-                            Some(t) => t,
-                            None => return Err(panic::unsupported_trait(meta.path())),
-                        };
+                    let t = match Trait::from_path(path) {
+                        Some(t) => t,
+                        None => return Err(panic::unsupported_trait(meta.path())),
+                    };
 
-                        if !traits.contains(&t) {
-                            return Err(panic::trait_not_used(path.get_ident().unwrap()));
-                        }
+                    if !traits.contains(&t) {
+                        return Err(panic::trait_not_used(path.get_ident().unwrap()));
+                    }
 
-                        if t == Trait::Into {
-                            v_meta.push(meta);
-                        }
+                    if t == Trait::Into {
+                        v_meta.push(meta);
                     }
                 }
             }
@@ -147,7 +176,7 @@ impl TypeAttributeBuilder {
         }
 
         Ok(output.unwrap_or(TypeAttribute {
-            types: HashMap::new()
+            types: BTreeMap::new()
         }))
     }
 }

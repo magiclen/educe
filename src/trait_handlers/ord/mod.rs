@@ -1,30 +1,36 @@
+use crate::trait_handlers::TraitHandlerContext;
 mod models;
 mod ord_enum;
 mod ord_struct;
 mod panic;
 
-use quote::quote;
 use syn::{Data, DeriveInput, Meta};
 
 use super::TraitHandler;
 use crate::Trait;
 
+/// Dispatches the `Ord` derive to the specialized handler for the shape of the input.
 pub(crate) struct OrdHandler;
 
 impl TraitHandler for OrdHandler {
     #[inline]
     fn trait_meta_handler(
         ast: &DeriveInput,
+        ctx: &mut TraitHandlerContext,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
     ) -> syn::Result<()> {
         match ast.data {
-            Data::Struct(_) => {
-                ord_struct::OrdStructHandler::trait_meta_handler(ast, token_stream, traits, meta)
-            },
+            Data::Struct(_) => ord_struct::OrdStructHandler::trait_meta_handler(
+                ast,
+                ctx,
+                token_stream,
+                traits,
+                meta,
+            ),
             Data::Enum(_) => {
-                ord_enum::OrdEnumHandler::trait_meta_handler(ast, token_stream, traits, meta)
+                ord_enum::OrdEnumHandler::trait_meta_handler(ast, ctx, token_stream, traits, meta)
             },
             Data::Union(_) => {
                 Err(crate::panic::trait_not_support_union(meta.path().get_ident().unwrap()))
@@ -33,17 +39,12 @@ impl TraitHandler for OrdHandler {
     }
 }
 
-fn supertraits(#[allow(unused_variables)] traits: &[Trait]) -> Vec<proc_macro2::TokenStream> {
-    let mut supertraits = vec![];
-    supertraits.push(quote! {::core::cmp::Eq});
-
-    // We mustn't add the PartialOrd bound to the educed PartialOrd impl.
-    // When we're educing PartialOrd we can leave it off the Ord impl too,
-    // since we *know* Self is going to be PartialOrd.
-    #[cfg(feature = "PartialOrd")]
-    if !traits.contains(&Trait::PartialOrd) {
-        supertraits.push(quote! {::core::cmp::PartialOrd});
-    };
-
-    supertraits
+/// Returns the traits whose recorded bounds `Ord` inherits when its own bound is automatic.
+pub(crate) fn prerequisites() -> &'static [Trait] {
+    &[
+        #[cfg(feature = "Eq")]
+        Trait::Eq,
+        #[cfg(feature = "PartialOrd")]
+        Trait::PartialOrd,
+    ]
 }
