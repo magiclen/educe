@@ -2,18 +2,26 @@ use quote::quote;
 use syn::{Data, DeriveInput, Meta};
 
 use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
-use crate::{supported_traits::Trait, trait_handlers::TraitHandler};
+use crate::{
+    supported_traits::Trait,
+    trait_handlers::{TraitHandler, TraitHandlerContext},
+};
 
+/// Generates the `Hash` implementation for a union.
 pub(crate) struct HashUnionHandler;
 
 impl TraitHandler for HashUnionHandler {
     #[inline]
     fn trait_meta_handler(
         ast: &DeriveInput,
+        _ctx: &mut TraitHandlerContext,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
     ) -> syn::Result<()> {
+        let generated_impl_attributes =
+            crate::common::attributes::generated_impl_attributes(&ast.attrs);
+
         let type_attribute =
             TypeAttributeBuilder {
                 enable_flag: true, enable_unsafe: true, enable_bound: false
@@ -38,9 +46,12 @@ impl TraitHandler for HashUnionHandler {
         let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
         token_stream.extend(quote! {
+            #generated_impl_attributes
             impl #impl_generics ::core::hash::Hash for #ident #ty_generics #where_clause {
                 #[inline]
                 fn hash<H: ::core::hash::Hasher>(&self, state: &mut H) {
+                    // The whole memory of the union is hashed byte by byte on purpose, including any padding bytes, because the active field cannot be known at runtime.
+                    // The user opted in to this behavior with the `unsafe` keyword in the attribute.
                     let size = ::core::mem::size_of::<Self>();
                     let data = unsafe { ::core::slice::from_raw_parts(self as *const Self as *const u8, size) };
 

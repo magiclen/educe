@@ -1,4 +1,4 @@
-use syn::{punctuated::Punctuated, Attribute, Meta, Path, Token};
+use syn::{Attribute, Meta, Path, Token, punctuated::Punctuated};
 
 use crate::{
     common::{
@@ -9,17 +9,20 @@ use crate::{
     supported_traits::Trait,
 };
 
+/// The parsed settings of a field-level `Hash` attribute.
 pub(crate) struct FieldAttribute {
     pub(crate) ignore: bool,
     pub(crate) method: Option<Path>,
 }
 
+/// Parses field-level `Hash` metas; the `enable_*` switches describe which parameters are allowed for the current shape of data.
 pub(crate) struct FieldAttributeBuilder {
     pub(crate) enable_ignore: bool,
     pub(crate) enable_method: bool,
 }
 
 impl FieldAttributeBuilder {
+    /// Parses one field-level `Hash` meta into a `FieldAttribute`, rejecting parameters that are not enabled here.
     pub(crate) fn build_from_hash_meta(&self, meta: &Meta) -> syn::Result<FieldAttribute> {
         debug_assert!(meta.path().is_ident("Hash"));
 
@@ -126,6 +129,7 @@ impl FieldAttributeBuilder {
         })
     }
 
+    /// Scans the `#[educe(...)]` attributes of a field and parses its `Hash` meta if present.
     pub(crate) fn build_from_attributes(
         &self,
         attributes: &[Attribute],
@@ -136,30 +140,30 @@ impl FieldAttributeBuilder {
         for attribute in attributes.iter() {
             let path = attribute.path();
 
-            if path.is_ident("educe") {
-                if let Meta::List(list) = &attribute.meta {
-                    let result =
-                        list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
+            if path.is_ident("educe")
+                && let Meta::List(list) = &attribute.meta
+            {
+                let result =
+                    list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
 
-                    for meta in result {
-                        let path = meta.path();
+                for meta in result {
+                    let path = meta.path();
 
-                        let t = match Trait::from_path(path) {
-                            Some(t) => t,
-                            None => return Err(panic::unsupported_trait(meta.path())),
-                        };
+                    let t = match Trait::from_path(path) {
+                        Some(t) => t,
+                        None => return Err(panic::unsupported_trait(meta.path())),
+                    };
 
-                        if !traits.contains(&t) {
-                            return Err(panic::trait_not_used(path.get_ident().unwrap()));
+                    if !traits.contains(&t) {
+                        return Err(panic::trait_not_used(path.get_ident().unwrap()));
+                    }
+
+                    if t == Trait::Hash {
+                        if output.is_some() {
+                            return Err(panic::reuse_a_trait(path.get_ident().unwrap()));
                         }
 
-                        if t == Trait::Hash {
-                            if output.is_some() {
-                                return Err(panic::reuse_a_trait(path.get_ident().unwrap()));
-                            }
-
-                            output = Some(self.build_from_hash_meta(&meta)?);
-                        }
+                        output = Some(self.build_from_hash_meta(&meta)?);
                     }
                 }
             }

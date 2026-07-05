@@ -1,25 +1,31 @@
 use quote::quote;
-use syn::{spanned::Spanned, Data, DeriveInput, Field, Meta};
+use syn::{Data, DeriveInput, Field, Meta};
 
 use super::{
-    models::{FieldAttributeBuilder, TypeAttributeBuilder},
     TraitHandler,
+    models::{FieldAttributeBuilder, TypeAttributeBuilder},
 };
 use crate::{
-    common::{ident_index::IdentOrIndex, r#type::dereference_changed},
     Trait,
+    common::{ident_index::IdentOrIndex, r#type::dereference_changed},
+    trait_handlers::TraitHandlerContext,
 };
 
+/// Generates the `Deref` implementation for a struct.
 pub(crate) struct DerefStructHandler;
 
 impl TraitHandler for DerefStructHandler {
     #[inline]
     fn trait_meta_handler(
         ast: &DeriveInput,
+        _ctx: &mut TraitHandlerContext,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
     ) -> syn::Result<()> {
+        let generated_impl_attributes =
+            crate::common::attributes::generated_impl_attributes(&ast.attrs);
+
         let _ = TypeAttributeBuilder {
             enable_flag: true
         }
@@ -32,6 +38,7 @@ impl TraitHandler for DerefStructHandler {
             let (index, field) = {
                 let fields = &data.fields;
 
+                // With exactly one field, that field is the `Deref` target automatically; otherwise exactly one field has to be marked with `#[educe(Deref)]`.
                 if fields.len() == 1 {
                     let field = fields.into_iter().next().unwrap();
 
@@ -64,7 +71,7 @@ impl TraitHandler for DerefStructHandler {
                     if let Some(deref_field) = deref_field {
                         deref_field
                     } else {
-                        return Err(super::panic::no_deref_field(meta.span()));
+                        return Err(super::panic::no_deref_field(meta));
                     }
                 }
             };
@@ -88,6 +95,7 @@ impl TraitHandler for DerefStructHandler {
         let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
         token_stream.extend(quote! {
+            #generated_impl_attributes
             impl #impl_generics ::core::ops::Deref for #ident #ty_generics #where_clause {
                 type Target = #target_token_stream;
 

@@ -1,4 +1,5 @@
 use proc_macro2::Span;
+use syn::Meta;
 
 #[inline]
 pub(crate) fn multiple_default_fields(span: Span) -> syn::Error {
@@ -6,8 +7,8 @@ pub(crate) fn multiple_default_fields(span: Span) -> syn::Error {
 }
 
 #[inline]
-pub(crate) fn no_default_field(span: Span) -> syn::Error {
-    syn::Error::new(span, "there is no field set as default")
+pub(crate) fn no_default_field(meta: &Meta) -> syn::Error {
+    syn::Error::new_spanned(meta, "there is no field set as default")
 }
 
 #[inline]
@@ -16,6 +17,6 @@ pub(crate) fn multiple_default_variants(span: Span) -> syn::Error {
 }
 
 #[inline]
-pub(crate) fn no_default_variant(span: Span) -> syn::Error {
-    syn::Error::new(span, "there is no variant set as default")
+pub(crate) fn no_default_variant(meta: &Meta) -> syn::Error {
+    syn::Error::new_spanned(meta, "there is no variant set as default")
 }
