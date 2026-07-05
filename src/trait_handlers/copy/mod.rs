@@ -12,8 +12,8 @@ use crate::{
 };
 
 /// Returns the traits whose recorded bounds `Copy` inherits when its own bound is automatic.
-pub(crate) fn prerequisites() -> Vec<Trait> {
-    vec![
+pub(crate) fn prerequisites() -> &'static [Trait] {
+    &[
         #[cfg(feature = "Clone")]
         Trait::Clone,
     ]
@@ -87,7 +87,7 @@ impl TraitHandler for CopyHandler {
 
         // `Copy` requires `Clone`, so an automatic bound also has to carry the predicates of the `Clone` impl that Educe just emitted.
         if bound_is_auto {
-            ctx.inherit_from(&prerequisites(), &mut bound);
+            ctx.inherit_from(prerequisites(), &mut bound);
         }
 
         ctx.record(Trait::Copy, &bound);

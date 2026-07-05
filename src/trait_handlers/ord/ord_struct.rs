@@ -105,7 +105,7 @@ impl TraitHandler for OrdStructHandler {
             );
 
         if bound_is_auto {
-            ctx.inherit_from(&super::prerequisites(), &mut bound);
+            ctx.inherit_from(super::prerequisites(), &mut bound);
         }
 
         ctx.record(Trait::Ord, &bound);

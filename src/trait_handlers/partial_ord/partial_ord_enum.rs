@@ -287,7 +287,7 @@ impl TraitHandler for PartialOrdEnumHandler {
             );
 
         if bound_is_auto {
-            ctx.inherit_from(&super::prerequisites(), &mut bound);
+            ctx.inherit_from(super::prerequisites(), &mut bound);
         }
 
         ctx.record(Trait::PartialOrd, &bound);

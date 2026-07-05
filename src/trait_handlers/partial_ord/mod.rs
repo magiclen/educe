@@ -44,8 +44,8 @@ impl TraitHandler for PartialOrdHandler {
 }
 
 /// Returns the traits whose recorded bounds `PartialOrd` inherits when its own bound is automatic.
-pub(crate) fn prerequisites() -> Vec<Trait> {
-    vec![
+pub(crate) fn prerequisites() -> &'static [Trait] {
+    &[
         #[cfg(feature = "PartialEq")]
         Trait::PartialEq,
     ]
