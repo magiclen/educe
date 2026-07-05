@@ -1,22 +1,22 @@
 use quote::ToTokens;
-use syn::{spanned::Spanned, Ident, Meta, Variant};
+use syn::{Ident, Meta, Variant};
 
 #[inline]
 pub(crate) fn unit_struct_need_name(name: &Ident) -> syn::Error {
-    syn::Error::new(name.span(), "a unit struct needs to have a name")
+    syn::Error::new_spanned(name, "a unit struct needs to have a name")
 }
 
 #[inline]
 pub(crate) fn unit_variant_need_name(variant: &Variant) -> syn::Error {
-    syn::Error::new(
-        variant.span(),
+    syn::Error::new_spanned(
+        variant,
         "a unit variant which doesn't use an enum name needs to have a name",
     )
 }
 
 #[inline]
 pub(crate) fn unit_enum_need_name(name: &Ident) -> syn::Error {
-    syn::Error::new(name.span(), "a unit enum needs to have a name")
+    syn::Error::new_spanned(name, "a unit enum needs to have a name")
 }
 
 #[inline]
@@ -29,8 +29,8 @@ pub(crate) fn union_without_unsafe(meta: &Meta) -> syn::Error {
         _ => s.insert_str(6, "unsafe, "),
     }
 
-    syn::Error::new(
-        meta.span(),
+    syn::Error::new_spanned(
+        meta,
         format!(
             "a union's `Debug` implementation may expose uninitialized memory\n* It is \
              recommended that, for a union where `Debug` is implemented, types that allow \
