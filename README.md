@@ -18,7 +18,74 @@ features = ["Debug", "Clone", "Copy", "Hash", "Default"]
 default-features = false
 ```
 
+## Trait Bounds
+
+When a trait is derived with Educe and no explicit `bound` is set, the where predicates of the generated impl are determined automatically. Every field type that the generated code touches (ignored fields and fields handled by a custom `method` are excluded) is processed with the following rules, in order:
+
+1. A type that is known to implement the trait unconditionally produces no predicate at all. This covers `PhantomData`, raw pointers, and function pointers for every trait, shared references for `Clone` and `Copy`, plus the types in table A.
+2. A type that does not use any generic type parameter produces no predicate, because such a predicate would be constant.
+3. A std type that implements the trait whenever its type arguments do (table B) produces the predicates of its type arguments instead, with these rules applied recursively: a field of type `Option<T>` produces `T: Trait`, and one of type `Vec<Box<T>>` produces just `T: Clone` for `Clone`.
+4. A type that mentions the derived type itself (e.g. `Box<List<T>>` inside `List<T>`) produces `Param: Trait` bounds for the type parameters it uses, because a self-referencing predicate would overflow the trait solver (E0275).
+5. Any other type produces the precise predicate `FieldType: Trait`, so the compiler verifies the real requirement: a field of type `Wrapper<T>` where `Wrapper` has its own conditional `Clone` impl produces `Wrapper<T>: Clone`, which works for exactly the type arguments that `Wrapper` supports.
+
+Table A — types whose type arguments never need a bound:
+
+| Trait | Types |
+|-------|-------|
+| `Clone`, `Copy` | `Arc`, `Rc`, `Weak`, `NonNull`, `Cow`, `Discriminant` |
+| `Debug` | `Weak`, `NonNull`, `AtomicPtr`, `Discriminant` |
+| `PartialEq`, `Eq`, `Hash` | `NonNull`, `Discriminant` |
+| `PartialOrd`, `Ord` | `NonNull` |
+| `Default` | `Option`, `Vec`, `VecDeque`, `LinkedList`, `HashMap`, `HashSet`, `BTreeMap`, `BTreeSet`, `Weak` |
+
+Table B — types that forward the trait to their type arguments:
+
+| Trait | Types |
+|-------|-------|
+| `Clone` | `Option`, `Result`, `Box`, `Vec`, `VecDeque`, `LinkedList`, `BTreeMap`, `BTreeSet`, `BinaryHeap`, `HashMap`, `HashSet`, `RefCell`, `Wrapping`, `Reverse`, `Saturating` |
+| `Copy` | `Option`, `Result`, `Wrapping`, `Reverse`, `Saturating` |
+| `Debug` | `Option`, `Result`, `Box`, `Vec`, `VecDeque`, `LinkedList`, `BTreeMap`, `BTreeSet`, `BinaryHeap`, `HashMap`, `HashSet`, `Arc`, `Rc`, `RefCell`, `Mutex`, `RwLock`, `Wrapping`, `Reverse`, `Saturating` |
+| `PartialEq`, `Eq`, `PartialOrd`, `Ord` | `Option`, `Result`, `Box`, `Vec`, `VecDeque`, `LinkedList`, `BTreeMap`, `BTreeSet`, `Arc`, `Rc`, `RefCell`, `Wrapping`, `Reverse`, `Saturating` |
+| `Hash` | `Option`, `Result`, `Box`, `Vec`, `VecDeque`, `LinkedList`, `BTreeMap`, `BTreeSet`, `Arc`, `Rc`, `Wrapping`, `Reverse`, `Saturating` |
+| `Default` | `Box`, `Arc`, `Rc`, `Cell`, `RefCell`, `Mutex`, `RwLock`, `Wrapping`, `Reverse`, `Saturating` |
+
+`HashMap` and `HashSet` are not in the comparison rows of table B because their comparison impls additionally require `K: Eq + Hash`; such fields get the precise whole-type predicate from rule 5 instead.
+
+Both tables match type names syntactically (by the last path segment), so a user-defined type that happens to share a name with one of these std types is treated the same way; if the resulting bounds do not fit such a type, set them explicitly with `bound(...)`.
+
+###### Bound Inheritance
+
+When related traits are derived together with automatic bounds, a trait inherits the final predicates of its prerequisite traits: `Eq` and `PartialOrd` inherit from `PartialEq`, `Ord` inherits from `Eq` and `PartialOrd`, and `Copy` inherits from `Clone`. This way, a custom bound like `#[educe(PartialEq(bound(T: MyTrait)), Eq)]` automatically carries `T: MyTrait` into the `Eq` impl.
+
+Educe cannot see the traits derived by other derive macros, including the built-in ones, so inheritance only applies between traits listed in the same `#[educe(...)]` attribute; a prerequisite trait implemented elsewhere contributes nothing.
+
+###### Controlling the Bounds
+
+* `bound(where_predicates)` or `bound = "where_predicates"` uses exactly the given predicates, without inheritance.
+* `bound(*)` adds `Param: Trait` for every generic type parameter, like the built-in derives.
+* `bound(false)` adds no predicates at all.
+
+An explicit bound is used verbatim; if a prerequisite impl carries predicates that the explicit bound does not imply, the compiler reports an unsatisfied supertrait and the missing predicates have to be added by hand.
+
+###### Limitations
+
+* Mutually recursive generic types (an `A<T>` containing `Vec<B<T>>` while `B<T>` contains `A<T>`) cannot be detected from a single type definition, so automatic bounds make the trait solver overflow (E0275) on them; use `bound(*)` or a custom bound for such types.
+* The precise predicates appear in the public where clause of the impl, so private field types become visible in documentation and error messages, and changing a private field type can change the public bounds of the impl.
+
 ## Traits
+
+* [Debug](#debug)
+* [Clone](#clone)
+* [Copy](#copy)
+* [PartialEq](#partialeq)
+* [Eq](#eq)
+* [PartialOrd](#partialord)
+* [Ord](#ord)
+* [Hash](#hash)
+* [Default](#default)
+* [Deref](#deref)
+* [DerefMut](#derefmut)
+* [Into](#into)
 
 #### Debug
 
@@ -166,7 +233,7 @@ enum Enum<T> {
 
 ###### Generic Parameters Bound to the `Debug` Trait or Others
 
-Generic parameters will be automatically bound to the `Debug` trait if necessary.
+The where predicates of the generated impl are determined from the field types automatically; see the "Trait Bounds" section above for the exact rules.
 
 ```rust
 use educe::Educe;
@@ -211,26 +278,9 @@ enum Enum<T, K> {
 
 In the above case, `T` is bound to the `Debug` trait, but `K` is not.
 
-Or, you can have `educe` replicate the behaviour of `std`'s `derive`'s, where a bound is produced for *every* generic parameter, without regard to how it's used in the structure:
-
-```rust
-use educe::Educe;
-
-#[derive(Educe)]
-#[educe(Debug(bound(*)))]
-struct Struct<T> {
-    #[educe(Debug(ignore))]
-    f: T,
-}
-```
-
-This can be useful if you don't want to make the trait implementation part of your permanent public API. In this example, `Struct<T>` doesn't implement `Debug` unless `T` does. I.e., it has a `T: Debug` bound even though that's not needed right now. Later we might want to display `f`; we wouldn't then need to make a breaking API change by adding the bound.
-
-This was the behaviour of `Trait(bound)` in educe 0.4.x and earlier.
-
 ###### Union
 
-A union will be formatted as a `u8` slice because we don't know its fields at runtime. The fields of a union cannot be ignored, renamed, or formatted with other methods. The implementation is **unsafe** because it may expose uninitialized memory.
+A union is formatted as a `u8` slice, because its active field cannot be known at runtime. The fields of a union cannot be ignored, renamed, or formatted with other methods. The implementation is **unsafe** because it deliberately reads the whole memory of the union, including any padding bytes, which are not required to be initialized; the output may therefore expose uninitialized memory.
 
 ```rust
 use educe::Educe;
@@ -305,7 +355,7 @@ enum Enum<T: A> {
 
 ###### Generic Parameters Bound to the `Clone` Trait or Others
 
-Generic parameters will be automatically bound to the `Clone` trait if necessary. If the `#[educe(Copy)]` attribute exists, they will be bound to the `Copy` trait.
+The where predicates of the generated impl are determined from the field types automatically; see the "Trait Bounds" section above for the exact rules.
 
 ```rust
 use educe::Educe;
@@ -352,27 +402,6 @@ enum Enum<T, K: A> {
 
 In the above case, `T` is bound to the `Clone` trait, but `K` is not.
 
-Or, you can have `educe` replicate the behaviour of `std`'s `derive`'s by using `bound(*)`. See the [`Debug`](#debug) section for more information.
-
-```rust
-use educe::Educe;
-
-trait A {
-    fn add(&self, rhs: u8) -> Self;
-}
-
-fn clone<T: A>(v: &T) -> T {
-    v.add(100)
-}
-
-#[derive(Educe)]
-#[educe(Clone(bound(*)))]
-struct Struct<T: A> {
-    #[educe(Clone(method(clone)))]
-    f: T,
-}
-```
-
 ###### Union
 
 Refer to the introduction of the `#[educe(Copy)]` attribute.
@@ -405,7 +434,7 @@ enum Enum {
 
 ###### Generic Parameters Bound to the `Copy` Trait or Others
 
-All generic parameters will be automatically bound to the `Copy` trait.
+The where predicates of the generated impl are determined from the field types automatically; see the "Trait Bounds" section above for the exact rules. With automatic bounds, the `Copy` impl additionally inherits the predicates of the `Clone` impl generated by Educe, because `Copy` requires `Clone`.
 
 ```rust
 use educe::Educe;
@@ -557,7 +586,7 @@ enum Enum<T: A> {
 
 ###### Generic Parameters Bound to the `PartialEq` Trait or Others
 
-Generic parameters will be automatically bound to the `PartialEq` trait if necessary.
+The where predicates of the generated impl are determined from the field types automatically; see the "Trait Bounds" section above for the exact rules.
 
 ```rust
 use educe::Educe;
@@ -602,21 +631,6 @@ enum Enum<T, K> {
 }
 ```
 
-In the above case, `T` is bound to the `PartialEq` trait, but `K` is not.
-
-You can have `educe` replicate the behaviour of `std`'s `derive`'s by using `bound(*)`. See the [`Debug`](#debug) section for more information.
-
-```rust
-use educe::Educe;
-
-#[derive(Educe)]
-#[educe(PartialEq(bound(*)))]
-struct Struct<T> {
-    #[educe(PartialEq(ignore))]
-    f: T,
-}
-```
-
 ###### Union
 
 The `#[educe(PartialEq(unsafe))]` attribute can be used for a union. The fields of a union cannot be compared with other methods. The implementation is **unsafe** because it disregards the specific fields it utilizes.
@@ -634,7 +648,7 @@ union Union {
 
 #### Eq
 
-Use `#[derive(Educe)]` and `#[educe(Eq)]` to implement the `Eq` trait for a struct, enum, or union. You can also choose to ignore specific fields or set a method to replace the `PartialEq` trait.
+Use `#[derive(Educe)]` and `#[educe(Eq)]` to implement the `Eq` trait for a struct, enum, or union. `Eq` is a marker trait, so it has no field attributes of its own; field-level equality settings such as `ignore` and `method` belong to the `PartialEq` attribute.
 
 ###### Basic Usage
 
@@ -658,72 +672,9 @@ enum Enum {
 }
 ```
 
-###### Ignore Fields
+###### Generic Parameters Bound to the `Eq` Trait or Others
 
-The `ignore` parameter can ignore a specific field.
-
-```rust
-use educe::Educe;
-
-#[derive(Educe)]
-#[educe(PartialEq, Eq)]
-struct Struct {
-    #[educe(Eq(ignore))]
-    f1: u8
-}
-
-#[derive(Educe)]
-#[educe(PartialEq, Eq)]
-enum Enum {
-    V1,
-    V2 {
-        #[educe(Eq(ignore))]
-        f1: u8,
-    },
-    V3(
-        #[educe(Eq(ignore))]
-        u8
-    ),
-}
-```
-
-###### Use Another Method to Perform Comparison
-
-The `method` parameter can be utilized to replace the implementation of the `Eq` trait for a field, eliminating the need to implement the `PartialEq` trait for the type of that field.
-
-```rust
-use educe::Educe;
-
-fn eq(a: &u8, b: &u8) -> bool {
-    a + 1 == *b
-}
-
-trait A {
-    fn is_same(&self, other: &Self) -> bool;
-}
-
-fn eq2<T: A>(a: &T, b: &T) -> bool {
-    a.is_same(b)
-}
-
-#[derive(Educe)]
-#[educe(PartialEq, Eq)]
-enum Enum<T: A> {
-    V1,
-    V2 {
-        #[educe(Eq(method(eq)))]
-        f1: u8,
-    },
-    V3(
-        #[educe(Eq(method(eq2)))]
-        T
-    ),
-}
-```
-
-###### Generic Parameters Bound to the `PartialEq` Trait or Others
-
-Generic parameters will be automatically bound to the `PartialEq` trait if necessary.
+The where predicates of the generated impl are determined from the field types automatically; see the "Trait Bounds" section above for the exact rules. With automatic bounds, the `Eq` impl also inherits the predicates of the `PartialEq` impl generated by Educe.
 
 ```rust
 use educe::Educe;
@@ -755,11 +706,14 @@ fn eq<T: A>(a: &T, b: &T) -> bool {
 }
 
 #[derive(Educe)]
-#[educe(PartialEq(bound(T: std::cmp::PartialEq, K: A)), Eq)]
+#[educe(
+    PartialEq(bound(T: std::cmp::PartialEq, K: A)),
+    Eq(bound(T: std::cmp::Eq, K: A))
+)]
 enum Enum<T, K> {
     V1,
     V2 {
-        #[educe(Eq(method(eq)))]
+        #[educe(PartialEq(method(eq)))]
         f1: K,
     },
     V3(
@@ -770,7 +724,7 @@ enum Enum<T, K> {
 
 ###### Union
 
-The `#[educe(PartialEq(unsafe), Eq)]` attribute can be used for a union. The fields of a union cannot be compared with other methods. The implementation is **unsafe** because it disregards the specific fields it utilizes.
+The `#[educe(PartialEq(unsafe), Eq)]` attribute can be used for a union. The fields of a union cannot be compared with other methods. The implementation is **unsafe** because it deliberately compares the whole memory of the two unions byte by byte, including any padding bytes, while disregarding the specific fields it utilizes.
 
 ```rust
 use educe::Educe;
@@ -841,6 +795,8 @@ enum Enum {
 ###### Use Another Method to Perform Comparison
 
 The `method` parameter can be utilized to replace the implementation of the `PartialOrd` trait for a field, eliminating the need to implement the `PartialOrd` trait for the type of that field.
+
+When `Ord` is derived together, a field without its own `PartialOrd` attribute follows the `ignore`, `rank`, and `method` settings of its `Ord` attribute, so `partial_cmp` stays consistent with `cmp`; the result of an `Ord` comparison method is wrapped in `Some` automatically.
 
 ```rust
 use educe::Educe;
@@ -914,7 +870,7 @@ enum Enum {
 
 ###### Generic Parameters Bound to the `PartialOrd` Trait or Others
 
-Generic parameters will be automatically bound to the `PartialOrd` trait if necessary.
+The where predicates of the generated impl are determined from the field types automatically; see the "Trait Bounds" section above for the exact rules. With automatic bounds, the `PartialOrd` impl also inherits the predicates of the `PartialEq` impl generated by Educe.
 
 ```rust
 use educe::Educe;
@@ -948,7 +904,7 @@ fn partial_cmp<T: A>(a: &T, b: &T) -> Option<Ordering> {
 }
 
 #[derive(PartialEq, Educe)]
-#[educe(PartialOrd(bound(T: std::cmp::PartialOrd, K: PartialEq + A)))]
+#[educe(PartialOrd(bound(T: std::cmp::PartialOrd, K: std::cmp::PartialOrd + A)))]
 enum Enum<T, K> {
     V1,
     V2 {
@@ -958,21 +914,6 @@ enum Enum<T, K> {
     V3(
         T
     ),
-}
-```
-
-In the above case, `T` is bound to the `PartialOrd` trait, but `K` is not.
-
-You can have `educe` replicate the behaviour of `std`'s `derive`'s by using `bound(*)`. See the [`Debug`](#debug) section for more information.
-
-```rust
-use educe::Educe;
-
-#[derive(PartialEq, Educe)]
-#[educe(PartialOrd(bound(*)))]
-struct Struct<T> {
-    #[educe(PartialOrd(ignore))]
-    f: T,
 }
 ```
 
@@ -1034,6 +975,8 @@ enum Enum {
 ###### Use Another Method to Perform Comparison
 
 The `method` parameter can be utilized to replace the implementation of the `Ord` trait for a field, eliminating the need to implement the `Ord` trait for the type of that field.
+
+When `PartialOrd` is derived together, a field without its own `Ord` attribute follows the `ignore` and `rank` settings of its `PartialOrd` attribute; a `PartialOrd` comparison method returns an `Option<Ordering>` and cannot be used by `cmp`, so such a field is compared with the built-in comparison.
 
 ```rust
 use educe::Educe;
@@ -1107,7 +1050,7 @@ enum Enum {
 
 ###### Generic Parameters Bound to the `Ord` Trait or Others
 
-Generic parameters will be automatically bound to the `Ord` trait if necessary.
+The where predicates of the generated impl are determined from the field types automatically; see the "Trait Bounds" section above for the exact rules. With automatic bounds, the `Ord` impl also inherits the predicates of the `Eq` and `PartialOrd` impls generated by Educe.
 
 ```rust
 use educe::Educe;
@@ -1141,11 +1084,14 @@ fn cmp<T: A>(a: &T, b: &T) -> Ordering {
 }
 
 #[derive(PartialEq, Eq, Educe)]
-#[educe(PartialOrd, Ord(bound(T: std::cmp::Ord, K: std::cmp::Ord + A)))]
+#[educe(
+    PartialOrd(bound(T: std::cmp::PartialOrd, K: std::cmp::PartialEq + A)),
+    Ord(bound(T: std::cmp::Ord, K: std::cmp::Ord + A))
+)]
 enum Enum<T, K> {
     V1,
     V2 {
-        #[educe(PartialOrd(method(cmp)))]
+        #[educe(Ord(method(cmp)))]
         f1: K,
     },
     V3(
@@ -1243,7 +1189,7 @@ enum Enum<T> {
 
 ###### Generic Parameters Bound to the `Hash` Trait or Others
 
-Generic parameters will be automatically bound to the `Hash` trait if necessary.
+The where predicates of the generated impl are determined from the field types automatically; see the "Trait Bounds" section above for the exact rules.
 
 ```rust
 use educe::Educe;
@@ -1290,24 +1236,9 @@ enum Enum<T, K> {
 }
 ```
 
-In the above case, `T` is bound to the `Hash` trait, but `K` is not.
-
-You can have `educe` replicate the behaviour of `std`'s `derive`'s by using `bound(*)`. See the [`Debug`](#debug) section for more information.
-
-```rust
-use educe::Educe;
-
-#[derive(Educe)]
-#[educe(Hash(bound(*)))]
-struct Struct<T> {
-    #[educe(Hash(ignore))]
-    f: T,
-}
-```
-
 ###### Union
 
-The `#[educe(PartialEq(unsafe), Eq, Hash(unsafe))]` attribute can be used for a union. The fields of a union cannot be hashed with other methods. The implementation is **unsafe** because it disregards the specific fields it utilizes.
+The `#[educe(PartialEq(unsafe), Eq, Hash(unsafe))]` attribute can be used for a union. The fields of a union cannot be hashed with other methods. The implementation is **unsafe** because it deliberately hashes the whole memory of the union byte by byte, including any padding bytes, while disregarding the specific fields it utilizes.
 
 ```rust
 use educe::Educe;
@@ -1388,6 +1319,8 @@ union Union {
 
 You may need to activate the `full` feature to enable support for advanced expressions.
 
+Note that the expression is pasted into the generated `default` method verbatim, so for a generic type it has to be valid for every possible instantiation; an expression producing a concrete type does not work for a generic field.
+
 ###### The Default Values for Specific Fields
 
 ```rust
@@ -1450,7 +1383,7 @@ union Union {
 
 ###### Generic Parameters Bound to the `Default` Trait or Others
 
-Generic parameters will be automatically bound to the `Default` trait if necessary.
+The where predicates of the generated impl are determined from the field types automatically; see the "Trait Bounds" section above for the exact rules.
 
 ```rust
 use educe::Educe;
@@ -1581,7 +1514,13 @@ The mutable dereferencing fields do not need to be the same as the immutable der
 
 #### Into
 
-Use `#[derive(Educe)]` and `#[educe(Into(type))]` to implement the `Into<type>` trait for a struct or enum.
+Use `#[derive(Educe)]` and `#[educe(Into(type))]` to make a struct or enum convertible into another type.
+
+Educe generates an `impl From<YourType> for type`, which automatically provides the corresponding `Into` through the standard library's blanket implementation. Use the bare `into` flag — `#[educe(Into(type, into))]` — to generate a direct `impl Into<type>` instead.
+
+###### The `into` Flag
+
+A `From` impl also lets callers write `Target::from(value)`, whereas a direct `Into` impl only supports `value.into()`. Use the `into` flag when you deliberately want the conversion to be one-directional, exposed only as `value.into()`.
 
 ###### Basic Usage
 
@@ -1637,7 +1576,7 @@ enum Enum {
 
 ###### Generic Parameters Bound to the `Into` Trait or Others
 
-Generic parameters will be automatically bound to the `Into<type>` trait if necessary.
+A generic type parameter is automatically bound to `Into<type>` only when it is itself the type of a field, because a nested parameter cannot meaningfully receive an `Into` bound.
 
 ```rust
 use educe::Educe;
