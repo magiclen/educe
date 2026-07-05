@@ -1,10 +1,11 @@
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{ToTokens, TokenStreamExt};
-use syn::{
-    punctuated::Punctuated, spanned::Spanned, Data, DeriveInput, Expr, Lit, Meta, Token, UnOp,
-};
+use syn::{Data, DeriveInput, Expr, Lit, Meta, Token, UnOp, punctuated::Punctuated};
 
 #[derive(Debug)]
+/// The integer type that holds the discriminant values of an enum.
+///
+/// The enum comparison handlers read the discriminant by reinterpreting the leading bytes of an enum value as this type, so it has to match the actual layout.
 pub(crate) enum DiscriminantType {
     ISize,
     I8,
@@ -67,6 +68,9 @@ impl ToTokens for DiscriminantType {
 }
 
 impl DiscriminantType {
+    /// Determines the discriminant type of an enum.
+    ///
+    /// An explicit `#[repr(intN)]` attribute wins; otherwise the explicit discriminant expressions are evaluated (implicit ones count up from the previous value) and the smallest integer type that covers their range is chosen, mirroring what the compiler does for the default representation.
     pub(crate) fn from_ast(ast: &DeriveInput) -> syn::Result<Self> {
         if let Data::Enum(data) = &ast.data {
             for attr in ast.attrs.iter() {
@@ -76,15 +80,16 @@ impl DiscriminantType {
                         let result =
                             list.parse_args_with(Punctuated::<Ident, Token![,]>::parse_terminated)?;
 
-                        if let Some(value) = result.into_iter().next() {
-                            if let Some(t) = Self::parse_str(value.to_string()) {
-                                return Ok(t);
-                            }
+                        if let Some(value) = result.into_iter().next()
+                            && let Some(t) = Self::parse_str(value.to_string())
+                        {
+                            return Ok(t);
                         }
                     }
                 }
             }
 
+            // Track the smallest and largest discriminant values while walking the variants; `counter` is the value the next variant gets when it has no explicit discriminant.
             let mut min = i128::MAX;
             let mut max = i128::MIN;
             let mut counter = 0i128;
@@ -96,9 +101,9 @@ impl DiscriminantType {
                             if let Lit::Int(lit) = &lit.lit {
                                 counter = lit
                                     .base10_parse()
-                                    .map_err(|error| syn::Error::new(lit.span(), error))?;
+                                    .map_err(|error| syn::Error::new_spanned(lit, error))?;
                             } else {
-                                return Err(syn::Error::new(lit.span(), "not an integer"));
+                                return Err(syn::Error::new_spanned(lit, "not an integer"));
                             }
                         },
                         Expr::Unary(unary) => {
@@ -116,27 +121,29 @@ impl DiscriminantType {
                                                 {
                                                     counter = i128::MIN;
                                                 } else {
-                                                    return Err(syn::Error::new(lit.span(), error));
+                                                    return Err(syn::Error::new_spanned(
+                                                        lit, error,
+                                                    ));
                                                 }
                                             },
                                         }
                                     } else {
-                                        return Err(syn::Error::new(lit.span(), "not an integer"));
+                                        return Err(syn::Error::new_spanned(lit, "not an integer"));
                                     }
                                 } else {
-                                    return Err(syn::Error::new(
-                                        unary.expr.span(),
+                                    return Err(syn::Error::new_spanned(
+                                        &unary.expr,
                                         "not a literal",
                                     ));
                                 }
                             } else {
-                                return Err(syn::Error::new(
-                                    unary.op.span(),
+                                return Err(syn::Error::new_spanned(
+                                    unary.op,
                                     "this operation is not allow here",
                                 ));
                             }
                         },
-                        _ => return Err(syn::Error::new(exp.span(), "not a literal")),
+                        _ => return Err(syn::Error::new_spanned(exp, "not a literal")),
                     }
                 }
 
@@ -163,7 +170,7 @@ impl DiscriminantType {
                 Self::I128
             })
         } else {
-            Err(syn::Error::new(ast.span(), "not an enum"))
+            Err(syn::Error::new_spanned(ast, "not an enum"))
         }
     }
 }

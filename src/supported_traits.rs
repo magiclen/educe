@@ -20,6 +20,9 @@ use syn::Path;
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Ordinalize)]
 #[ordinalize(impl_trait = false)]
 #[ordinalize(variants(pub(crate) const VARIANTS))]
+/// Every trait that Educe can derive, each gated behind a cargo feature of the same name.
+///
+/// `_Nothing` is a sentinel that only exists so the enum is never empty, no matter which features are enabled.
 pub(crate) enum Trait {
     #[cfg(feature = "Debug")]
     Debug,

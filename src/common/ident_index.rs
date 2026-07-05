@@ -1,6 +1,7 @@
 use quote::ToTokens;
 use syn::{Ident, Index};
 
+/// A field accessor that is either a name (for named fields) or a position index (for tuple fields).
 pub(crate) enum IdentOrIndex {
     Ident(Ident),
     Index(Index),
@@ -47,10 +48,6 @@ impl ToTokens for IdentOrIndex {
 impl IdentOrIndex {
     #[inline]
     pub(crate) fn from_ident_with_index(ident: Option<&Ident>, index: usize) -> IdentOrIndex {
-        if let Some(ident) = ident {
-            Self::from(ident)
-        } else {
-            Self::from(index)
-        }
+        if let Some(ident) = ident { Self::from(ident) } else { Self::from(index) }
     }
 }
