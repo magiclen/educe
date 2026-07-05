@@ -224,6 +224,7 @@ impl TraitHandler for OrdEnumHandler {
             // This relies on the enum layout starting with its discriminant, which holds for the default representation and for explicit primitive representations.
             // The cast goes through `<*const Self>` explicitly so that an exotic `From<&Type>` impl in scope cannot poison type inference.
             let discriminant_cmp = quote! {
+                // TODO SAFETY
                 unsafe {
                     ::core::cmp::Ord::cmp(&*<*const Self>::from(self).cast::<#discriminant_type>(), &*<*const Self>::from(other).cast::<#discriminant_type>())
                 }

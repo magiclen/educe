@@ -50,9 +50,10 @@ impl TraitHandler for HashUnionHandler {
             impl #impl_generics ::core::hash::Hash for #ident #ty_generics #where_clause {
                 #[inline]
                 fn hash<H: ::core::hash::Hasher>(&self, state: &mut H) {
-                    // The whole memory of the union is hashed byte by byte on purpose, including any padding bytes, because the active field cannot be known at runtime.
-                    // The user opted in to this behavior with the `unsafe` keyword in the attribute.
                     let size = ::core::mem::size_of::<Self>();
+
+                    // SAFETY: A union does not track its active field at runtime, so the whole value is intentionally read as a `u8` slice; because `self` is a live reference, the pointer is non-null, aligned, and valid for reads of `size` bytes within a single allocation.
+                    // Those bytes may include padding that is not guaranteed to be initialized, so the hash can read uninitialized memory, a trade-off the user explicitly accepted through the `unsafe` keyword in the attribute.
                     let data = unsafe { ::core::slice::from_raw_parts(self as *const Self as *const u8, size) };
 
                     ::core::hash::Hash::hash(data, state)
