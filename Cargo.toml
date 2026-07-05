@@ -1,9 +1,9 @@
 [package]
 name = "educe"
-version = "0.6.0"
+version = "0.7.0"
 authors = ["Magic Len <len@magiclen.org>"]
-edition = "2021"
-rust-version = "1.60"
+edition = "2024"
+rust-version = "1.89"
 repository = "https://github.com/magiclen/educe"
 homepage = "https://magiclen.org/educe"
 keywords = ["derive", "macro", "trait", "field", "procedural"]
@@ -20,7 +20,7 @@ syn = "2"
 quote = "1"
 proc-macro2 = "1"
 
-enum-ordinalize = { version = "4.2", default-features = false, features = ["derive"] }
+enum-ordinalize = { version = "4.4", default-features = false, features = ["derive"] }
 
 [dev-dependencies]
 syn = { version = "2", features = ["full"] }
