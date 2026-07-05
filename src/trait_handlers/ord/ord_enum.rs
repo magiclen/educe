@@ -1,24 +1,36 @@
 use std::collections::BTreeMap;
 
 use quote::{format_ident, quote};
-use syn::{spanned::Spanned, Data, DeriveInput, Field, Fields, Ident, Meta, Path, Type};
+use syn::{Data, DeriveInput, Field, Fields, Ident, Meta, Path, Type, spanned::Spanned};
 
 use super::{
-    models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder},
     TraitHandler,
+    models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder},
 };
-use crate::{common::tools::DiscriminantType, Trait};
+use crate::{
+    Trait,
+    common::{
+        bound::{BOUND_EXCEPTIONS_ORDER, Bound},
+        tools::DiscriminantType,
+    },
+    trait_handlers::TraitHandlerContext,
+};
 
+/// Generates the `Ord` implementation for an enum.
 pub(crate) struct OrdEnumHandler;
 
 impl TraitHandler for OrdEnumHandler {
     #[inline]
     fn trait_meta_handler(
         ast: &DeriveInput,
+        ctx: &mut TraitHandlerContext,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
     ) -> syn::Result<()> {
+        let generated_impl_attributes =
+            crate::common::attributes::generated_impl_attributes(&ast.attrs);
+
         let type_attribute = TypeAttributeBuilder {
             enable_flag: true, enable_bound: true
         }
@@ -208,9 +220,12 @@ impl TraitHandler for OrdEnumHandler {
         if arms_token_stream.is_empty() {
             cmp_token_stream.extend(quote!(::core::cmp::Ordering::Equal));
         } else {
+            // Compare the discriminants by reinterpreting the leading bytes of the enum values as the discriminant integer type.
+            // This relies on the enum layout starting with its discriminant, which holds for the default representation and for explicit primitive representations.
+            // The cast goes through `<*const Self>` explicitly so that an exotic `From<&Type>` impl in scope cannot poison type inference.
             let discriminant_cmp = quote! {
                 unsafe {
-                    ::core::cmp::Ord::cmp(&*<*const _>::from(self).cast::<#discriminant_type>(), &*<*const _>::from(other).cast::<#discriminant_type>())
+                    ::core::cmp::Ord::cmp(&*<*const Self>::from(self).cast::<#discriminant_type>(), &*<*const Self>::from(other).cast::<#discriminant_type>())
                 }
             };
 
@@ -241,14 +256,25 @@ impl TraitHandler for OrdEnumHandler {
 
         let ident = &ast.ident;
 
-        let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
-            &ast.generics.params,
-            &syn::parse2(quote!(::core::cmp::Ord)).unwrap(),
-            &ord_types,
-            &crate::trait_handlers::ord::supertraits(traits),
-        );
+        let bound_is_auto = matches!(type_attribute.bound, Bound::Auto);
+
+        let mut bound =
+            type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
+                &ast.generics.params,
+                &syn::parse2(quote!(::core::cmp::Ord)).unwrap(),
+                &ord_types,
+                &ast.ident,
+                &BOUND_EXCEPTIONS_ORDER,
+            );
+
+        if bound_is_auto {
+            ctx.inherit_from(&super::prerequisites(), &mut bound);
+        }
+
+        ctx.record(Trait::Ord, &bound);
 
         let mut generics = ast.generics.clone();
+
         let where_clause = generics.make_where_clause();
 
         for where_predicate in bound {
@@ -258,6 +284,7 @@ impl TraitHandler for OrdEnumHandler {
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         token_stream.extend(quote! {
+            #generated_impl_attributes
             impl #impl_generics ::core::cmp::Ord for #ident #ty_generics #where_clause {
                 #[inline]
                 fn cmp(&self, other: &Self) -> ::core::cmp::Ordering {
@@ -265,18 +292,6 @@ impl TraitHandler for OrdEnumHandler {
                 }
             }
         });
-
-        #[cfg(feature = "PartialOrd")]
-        if traits.contains(&Trait::PartialOrd) {
-            token_stream.extend(quote! {
-                impl #impl_generics ::core::cmp::PartialOrd for #ident #ty_generics #where_clause {
-                    #[inline]
-                    fn partial_cmp(&self, other: &Self) -> Option<::core::cmp::Ordering> {
-                        Some(::core::cmp::Ord::cmp(self, other))
-                    }
-                }
-            });
-        }
 
         Ok(())
     }

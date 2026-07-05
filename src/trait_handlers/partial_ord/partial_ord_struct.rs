@@ -1,24 +1,36 @@
 use std::collections::BTreeMap;
 
 use quote::quote;
-use syn::{spanned::Spanned, Data, DeriveInput, Field, Meta, Path, Type};
+use syn::{Data, DeriveInput, Field, Meta, Path, Type, spanned::Spanned};
 
 use super::{
-    models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder},
     TraitHandler,
+    models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder},
 };
-use crate::{common::ident_index::IdentOrIndex, Trait};
+use crate::{
+    Trait,
+    common::{
+        bound::{BOUND_EXCEPTIONS_ORDER, Bound},
+        ident_index::IdentOrIndex,
+    },
+    trait_handlers::TraitHandlerContext,
+};
 
+/// Generates the `PartialOrd` implementation for a struct.
 pub(crate) struct PartialOrdStructHandler;
 
 impl TraitHandler for PartialOrdStructHandler {
     #[inline]
     fn trait_meta_handler(
         ast: &DeriveInput,
+        ctx: &mut TraitHandlerContext,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
     ) -> syn::Result<()> {
+        let generated_impl_attributes =
+            crate::common::attributes::generated_impl_attributes(&ast.attrs);
+
         let type_attribute = TypeAttributeBuilder {
             enable_flag: true, enable_bound: true
         }
@@ -29,6 +41,8 @@ impl TraitHandler for PartialOrdStructHandler {
         let mut partial_cmp_token_stream = proc_macro2::TokenStream::new();
 
         if let Data::Struct(data) = &ast.data {
+            // Fields are compared in ascending rank order, so they are collected into a map keyed by rank.
+            // The default rank of a field is `isize::MIN` plus its ordinal position, which keeps the declaration order when no rank is given.
             let mut fields: BTreeMap<isize, (usize, &Field, FieldAttribute)> = BTreeMap::new();
 
             for (index, field) in data.fields.iter().enumerate() {
@@ -68,8 +82,15 @@ impl TraitHandler for PartialOrdStructHandler {
                     &built_in_partial_cmp
                 });
 
+                // A method taken from a fallback `Ord` field attribute returns `Ordering`, so its result has to be wrapped in `Some` here.
+                let comparison = if field_attribute.method_returns_ordering {
+                    quote!(::core::option::Option::Some(#partial_cmp(&self.#field_name, &other.#field_name)))
+                } else {
+                    quote!(#partial_cmp(&self.#field_name, &other.#field_name))
+                };
+
                 partial_cmp_token_stream.extend(quote! {
-                    match #partial_cmp(&self.#field_name, &other.#field_name) {
+                    match #comparison {
                         Some(::core::cmp::Ordering::Equal) => (),
                         Some(::core::cmp::Ordering::Greater) => return Some(::core::cmp::Ordering::Greater),
                         Some(::core::cmp::Ordering::Less) => return Some(::core::cmp::Ordering::Less),
@@ -81,14 +102,25 @@ impl TraitHandler for PartialOrdStructHandler {
 
         let ident = &ast.ident;
 
-        let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
-            &ast.generics.params,
-            &syn::parse2(quote!(::core::cmp::PartialOrd)).unwrap(),
-            &partial_ord_types,
-            &[quote! {::core::cmp::PartialEq}],
-        );
+        let bound_is_auto = matches!(type_attribute.bound, Bound::Auto);
+
+        let mut bound =
+            type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
+                &ast.generics.params,
+                &syn::parse2(quote!(::core::cmp::PartialOrd)).unwrap(),
+                &partial_ord_types,
+                &ast.ident,
+                &BOUND_EXCEPTIONS_ORDER,
+            );
+
+        if bound_is_auto {
+            ctx.inherit_from(&super::prerequisites(), &mut bound);
+        }
+
+        ctx.record(Trait::PartialOrd, &bound);
 
         let mut generics = ast.generics.clone();
+
         let where_clause = generics.make_where_clause();
 
         for where_predicate in bound {
@@ -98,6 +130,7 @@ impl TraitHandler for PartialOrdStructHandler {
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         token_stream.extend(quote! {
+            #generated_impl_attributes
             impl #impl_generics ::core::cmp::PartialOrd for #ident #ty_generics #where_clause {
                 #[inline]
                 fn partial_cmp(&self, other: &Self) -> Option<::core::cmp::Ordering> {

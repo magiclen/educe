@@ -1,24 +1,36 @@
 use std::collections::BTreeMap;
 
 use quote::{format_ident, quote};
-use syn::{spanned::Spanned, Data, DeriveInput, Field, Fields, Ident, Meta, Path, Type};
+use syn::{Data, DeriveInput, Field, Fields, Ident, Meta, Path, Type, spanned::Spanned};
 
 use super::{
-    models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder},
     TraitHandler,
+    models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder},
 };
-use crate::{common::tools::DiscriminantType, Trait};
+use crate::{
+    Trait,
+    common::{
+        bound::{BOUND_EXCEPTIONS_ORDER, Bound},
+        tools::DiscriminantType,
+    },
+    trait_handlers::TraitHandlerContext,
+};
 
+/// Generates the `PartialOrd` implementation for an enum.
 pub(crate) struct PartialOrdEnumHandler;
 
 impl TraitHandler for PartialOrdEnumHandler {
     #[inline]
     fn trait_meta_handler(
         ast: &DeriveInput,
+        ctx: &mut TraitHandlerContext,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
     ) -> syn::Result<()> {
+        let generated_impl_attributes =
+            crate::common::attributes::generated_impl_attributes(&ast.attrs);
+
         let type_attribute = TypeAttributeBuilder {
             enable_flag: true, enable_bound: true
         }
@@ -114,8 +126,15 @@ impl TraitHandler for PartialOrdEnumHandler {
                                     &built_in_partial_cmp
                                 });
 
+                            // A method taken from a fallback `Ord` field attribute returns `Ordering`, so its result has to be wrapped in `Some` here.
+                            let comparison = if field_attribute.method_returns_ordering {
+                                quote!(::core::option::Option::Some(#partial_cmp(#field_name_var_self, #field_name_var_other)))
+                            } else {
+                                quote!(#partial_cmp(#field_name_var_self, #field_name_var_other))
+                            };
+
                             block_token_stream.extend(quote! {
-                                match #partial_cmp(#field_name_var_self, #field_name_var_other) {
+                                match #comparison {
                                     Some(::core::cmp::Ordering::Equal) => (),
                                     Some(::core::cmp::Ordering::Greater) => return Some(::core::cmp::Ordering::Greater),
                                     Some(::core::cmp::Ordering::Less) => return Some(::core::cmp::Ordering::Less),
@@ -188,8 +207,15 @@ impl TraitHandler for PartialOrdEnumHandler {
                                     &built_in_partial_cmp
                                 });
 
+                            // A method taken from a fallback `Ord` field attribute returns `Ordering`, so its result has to be wrapped in `Some` here.
+                            let comparison = if field_attribute.method_returns_ordering {
+                                quote!(::core::option::Option::Some(#partial_cmp(#field_name, #field_name2)))
+                            } else {
+                                quote!(#partial_cmp(#field_name, #field_name2))
+                            };
+
                             block_token_stream.extend(quote! {
-                                match #partial_cmp(#field_name, #field_name2) {
+                                match #comparison {
                                     Some(::core::cmp::Ordering::Equal) => (),
                                     Some(::core::cmp::Ordering::Greater) => return Some(::core::cmp::Ordering::Greater),
                                     Some(::core::cmp::Ordering::Less) => return Some(::core::cmp::Ordering::Less),
@@ -213,9 +239,12 @@ impl TraitHandler for PartialOrdEnumHandler {
         if arms_token_stream.is_empty() {
             partial_cmp_token_stream.extend(quote!(Some(::core::cmp::Ordering::Equal)));
         } else {
+            // Compare the discriminants by reinterpreting the leading bytes of the enum values as the discriminant integer type.
+            // This relies on the enum layout starting with its discriminant, which holds for the default representation and for explicit primitive representations.
+            // The cast goes through `<*const Self>` explicitly so that an exotic `From<&Type>` impl in scope cannot poison type inference.
             let discriminant_cmp = quote! {
                 unsafe {
-                    ::core::cmp::Ord::cmp(&*<*const _>::from(self).cast::<#discriminant_type>(), &*<*const _>::from(other).cast::<#discriminant_type>())
+                    ::core::cmp::Ord::cmp(&*<*const Self>::from(self).cast::<#discriminant_type>(), &*<*const Self>::from(other).cast::<#discriminant_type>())
                 }
             };
 
@@ -246,14 +275,25 @@ impl TraitHandler for PartialOrdEnumHandler {
 
         let ident = &ast.ident;
 
-        let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
-            &ast.generics.params,
-            &syn::parse2(quote!(::core::cmp::PartialOrd)).unwrap(),
-            &partial_ord_types,
-            &[quote! {::core::cmp::PartialEq}],
-        );
+        let bound_is_auto = matches!(type_attribute.bound, Bound::Auto);
+
+        let mut bound =
+            type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
+                &ast.generics.params,
+                &syn::parse2(quote!(::core::cmp::PartialOrd)).unwrap(),
+                &partial_ord_types,
+                &ast.ident,
+                &BOUND_EXCEPTIONS_ORDER,
+            );
+
+        if bound_is_auto {
+            ctx.inherit_from(&super::prerequisites(), &mut bound);
+        }
+
+        ctx.record(Trait::PartialOrd, &bound);
 
         let mut generics = ast.generics.clone();
+
         let where_clause = generics.make_where_clause();
 
         for where_predicate in bound {
@@ -263,6 +303,7 @@ impl TraitHandler for PartialOrdEnumHandler {
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
         token_stream.extend(quote! {
+            #generated_impl_attributes
             impl #impl_generics ::core::cmp::PartialOrd for #ident #ty_generics #where_clause {
                 #[inline]
                 fn partial_cmp(&self, other: &Self) -> Option<::core::cmp::Ordering> {
