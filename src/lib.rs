@@ -1789,7 +1789,7 @@ enum Enum<T, K> {
 
 */
 
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 mod common;
 #[allow(dead_code)]
