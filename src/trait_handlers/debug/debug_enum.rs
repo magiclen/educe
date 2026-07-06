@@ -41,6 +41,8 @@ impl TraitHandler for DebugEnumHandler {
 
         let mut arms_token_stream = proc_macro2::TokenStream::new();
 
+        let mut mark_token_stream = proc_macro2::TokenStream::new();
+
         if let Data::Enum(data) = &ast.data {
             for variant in data.variants.iter() {
                 let type_attribute = TypeAttributeBuilder {
@@ -121,12 +123,15 @@ impl TraitHandler for DebugEnumHandler {
                                 let ty = &field.ty;
 
                                 if let Some(method) = field_attribute.method {
-                                    block_token_stream.extend(super::common::create_format_arg(
+                                    let (arg, mark) = super::common::create_format_arg(
                                         ast,
                                         ty,
                                         &method,
                                         quote!(#field_name_var),
-                                    ));
+                                    );
+
+                                    block_token_stream.extend(arg);
+                                    mark_token_stream.extend(mark);
 
                                     block_token_stream.extend(if name_string.is_some() {
                                         quote! (builder.field(#key, &arg);)
@@ -173,12 +178,15 @@ impl TraitHandler for DebugEnumHandler {
                                 let ty = &field.ty;
 
                                 if let Some(method) = field_attribute.method {
-                                    block_token_stream.extend(super::common::create_format_arg(
+                                    let (arg, mark) = super::common::create_format_arg(
                                         ast,
                                         ty,
                                         &method,
                                         quote!(#field_name_var),
-                                    ));
+                                    );
+
+                                    block_token_stream.extend(arg);
+                                    mark_token_stream.extend(mark);
 
                                     block_token_stream.extend(quote! (builder.field(&arg);));
                                 } else {
@@ -244,12 +252,15 @@ impl TraitHandler for DebugEnumHandler {
                                 let ty = &field.ty;
 
                                 if let Some(method) = field_attribute.method {
-                                    block_token_stream.extend(super::common::create_format_arg(
+                                    let (arg, mark) = super::common::create_format_arg(
                                         ast,
                                         ty,
                                         &method,
                                         quote!(#field_name_var),
-                                    ));
+                                    );
+
+                                    block_token_stream.extend(arg);
+                                    mark_token_stream.extend(mark);
 
                                     block_token_stream.extend(if name_string.is_some() {
                                         quote! (builder.field(#key, &arg);)
@@ -294,12 +305,15 @@ impl TraitHandler for DebugEnumHandler {
                                 let ty = &field.ty;
 
                                 if let Some(method) = field_attribute.method {
-                                    block_token_stream.extend(super::common::create_format_arg(
+                                    let (arg, mark) = super::common::create_format_arg(
                                         ast,
                                         ty,
                                         &method,
                                         quote!(#field_name_var),
-                                    ));
+                                    );
+
+                                    block_token_stream.extend(arg);
+                                    mark_token_stream.extend(mark);
 
                                     block_token_stream.extend(quote! (builder.field(&arg);));
                                 } else {
@@ -374,6 +388,8 @@ impl TraitHandler for DebugEnumHandler {
                 }
             }
         });
+
+        token_stream.extend(mark_token_stream);
 
         Ok(())
     }

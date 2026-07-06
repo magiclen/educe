@@ -1,5 +1,5 @@
 use quote::quote;
-use syn::{Data, DeriveInput, Field, Fields, Index, Meta, Type, punctuated::Punctuated};
+use syn::{Data, DeriveInput, Field, Fields, Index, Meta, Path, Type, punctuated::Punctuated};
 
 use super::models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder};
 use crate::{
@@ -33,6 +33,9 @@ impl TraitHandler for CloneStructHandler {
         .build_from_clone_meta(meta)?;
 
         let mut bound: WherePredicates = Punctuated::new();
+
+        // Custom clone methods are referenced only inside the derived impl body, which dead-code analysis skips, so each one is collected here and later re-referenced by a marker item.
+        let mut mark_fields: Vec<(&Type, Path)> = Vec::new();
 
         let mut clone_token_stream = proc_macro2::TokenStream::new();
         let mut clone_from_token_stream = proc_macro2::TokenStream::new();
@@ -87,6 +90,8 @@ impl TraitHandler for CloneStructHandler {
                             let field_name = field.ident.as_ref().unwrap();
 
                             if let Some(clone) = field_attribute.method.as_ref() {
+                                mark_fields.push((&field.ty, clone.clone()));
+
                                 fields_token_stream.extend(quote! {
                                     #field_name: #clone(&self.#field_name),
                                 });
@@ -129,6 +134,8 @@ impl TraitHandler for CloneStructHandler {
                             let field_name = Index::from(index);
 
                             if let Some(clone) = field_attribute.method.as_ref() {
+                                mark_fields.push((&field.ty, clone.clone()));
+
                                 fields_token_stream.extend(quote!(#clone(&self.#field_name),));
 
                                 clone_from_body_token_stream.extend(
@@ -205,6 +212,10 @@ impl TraitHandler for CloneStructHandler {
                 #clone_from_fn_token_stream
             }
         });
+
+        for (field_ty, method) in &mark_fields {
+            token_stream.extend(super::create_mark_method_used(&generics, field_ty, method));
+        }
 
         Ok(())
     }

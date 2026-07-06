@@ -48,6 +48,7 @@ impl TraitHandler for DebugStructHandler {
         let mut debug_types: Vec<&Type> = Vec::new();
 
         let mut builder_token_stream = proc_macro2::TokenStream::new();
+        let mut mark_token_stream = proc_macro2::TokenStream::new();
         let mut has_fields = false;
 
         if type_attribute.named_field {
@@ -91,12 +92,15 @@ impl TraitHandler for DebugStructHandler {
                     let ty = &field.ty;
 
                     if let Some(method) = field_attribute.method {
-                        builder_token_stream.extend(super::common::create_format_arg(
+                        let (arg, mark) = super::common::create_format_arg(
                             ast,
                             ty,
                             &method,
                             quote!(&self.#field_name),
-                        ));
+                        );
+
+                        builder_token_stream.extend(arg);
+                        mark_token_stream.extend(mark);
 
                         builder_token_stream.extend(if name.is_some() {
                             quote! (builder.field(#key, &arg);)
@@ -140,12 +144,15 @@ impl TraitHandler for DebugStructHandler {
                     let ty = &field.ty;
 
                     if let Some(method) = field_attribute.method {
-                        builder_token_stream.extend(super::common::create_format_arg(
+                        let (arg, mark) = super::common::create_format_arg(
                             ast,
                             ty,
                             &method,
                             quote!(&self.#field_name),
-                        ));
+                        );
+
+                        builder_token_stream.extend(arg);
+                        mark_token_stream.extend(mark);
 
                         builder_token_stream.extend(quote! (builder.field(&arg);));
                     } else {
@@ -194,6 +201,8 @@ impl TraitHandler for DebugStructHandler {
                 }
             }
         });
+
+        token_stream.extend(mark_token_stream);
 
         Ok(())
     }

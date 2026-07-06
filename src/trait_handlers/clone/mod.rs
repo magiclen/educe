@@ -4,10 +4,33 @@ mod clone_struct;
 mod clone_union;
 mod models;
 
-use syn::{Data, DeriveInput, Meta};
+use quote::quote;
+use syn::{Data, DeriveInput, Generics, Meta, Path, Type};
 
 use super::TraitHandler;
 use crate::Trait;
+
+/// Builds a module-level marker that references a field's custom clone method so it stays counted as used.
+///
+/// The generated `Clone` impl is marked `#[automatically_derived]`, and `Clone` carries `#[rustc_trivial_field_reads]`, so the compiler skips its body during dead-code analysis. A custom clone method used only inside that body would therefore be wrongly reported as unused. This marker calls the method from an ordinary item that is still analyzed, and it takes the same generics and where clause as the impl so it compiles under exactly the same conditions.
+pub(crate) fn create_mark_method_used(
+    generics: &Generics,
+    field_ty: &Type,
+    method: &Path,
+) -> proc_macro2::TokenStream {
+    let (impl_generics, _ty_generics, where_clause) = generics.split_for_impl();
+
+    quote!(
+        const _: () = {
+            #[allow(dead_code)]
+            fn __educe_clone_method_used #impl_generics (
+                educe__value: &#field_ty,
+            ) -> #field_ty #where_clause {
+                #method(educe__value)
+            }
+        };
+    )
+}
 
 /// Dispatches the `Clone` derive to the specialized handler for the shape of the input (struct, enum, or union).
 pub(crate) struct CloneHandler;

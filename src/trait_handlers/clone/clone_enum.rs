@@ -1,5 +1,5 @@
 use quote::{format_ident, quote};
-use syn::{Data, DeriveInput, Field, Fields, Meta, Type, Variant, punctuated::Punctuated};
+use syn::{Data, DeriveInput, Field, Fields, Meta, Path, Type, Variant, punctuated::Punctuated};
 
 use super::models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder};
 // Only the bitwise-copy fast path, gated on the `Copy` trait, needs to inspect whether a field uses a type parameter.
@@ -33,6 +33,9 @@ impl TraitHandler for CloneEnumHandler {
         .build_from_clone_meta(meta)?;
 
         let mut bound: WherePredicates = Punctuated::new();
+
+        // Custom clone methods are referenced only inside the derived impl body, which dead-code analysis skips, so each one is collected here and later re-referenced by a marker item.
+        let mut mark_fields: Vec<(&Type, Path)> = Vec::new();
 
         let mut clone_token_stream = proc_macro2::TokenStream::new();
         let mut clone_from_token_stream = proc_macro2::TokenStream::new();
@@ -135,6 +138,8 @@ impl TraitHandler for CloneEnumHandler {
                                     .extend(quote!(#field_name_real: #field_name_dst,));
 
                                 if let Some(clone) = field_attribute.method.as_ref() {
+                                    mark_fields.push((&field.ty, clone.clone()));
+
                                     cl_fields_token_stream.extend(quote! {
                                         #field_name_real: #clone(#field_name_src),
                                     });
@@ -185,6 +190,8 @@ impl TraitHandler for CloneEnumHandler {
                                 pattern2_token_stream.extend(quote!(#field_name_dst,));
 
                                 if let Some(clone) = field_attribute.method.as_ref() {
+                                    mark_fields.push((&field.ty, clone.clone()));
+
                                     fields_token_stream.extend(quote! (#clone(#field_name_src),));
                                     body_token_stream.extend(
                                         quote!(*#field_name_src = #clone(#field_name_dst);),
@@ -279,6 +286,10 @@ impl TraitHandler for CloneEnumHandler {
                 #clone_from_fn_token_stream
             }
         });
+
+        for (field_ty, method) in &mark_fields {
+            token_stream.extend(super::create_mark_method_used(&generics, field_ty, method));
+        }
 
         Ok(())
     }
