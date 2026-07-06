@@ -1807,10 +1807,23 @@ use syn::{
     parse_macro_input,
     punctuated::Punctuated,
 };
+#[cfg(any(
+    feature = "Clone",
+    feature = "Copy",
+    feature = "Debug",
+    feature = "Default",
+    feature = "Deref",
+    feature = "DerefMut",
+    feature = "Eq",
+    feature = "Hash",
+    feature = "Ord",
+    feature = "PartialEq",
+    feature = "PartialOrd"
+))]
+use trait_handlers::TraitHandler;
+use trait_handlers::TraitHandlerContext;
 #[cfg(feature = "Into")]
 use trait_handlers::TraitHandlerMultiple;
-#[allow(unused)]
-use trait_handlers::{TraitHandler, TraitHandlerContext};
 
 /// The entry point of the expansion: collects the traits requested by the `#[educe(...)]` attributes and dispatches each of them to its handler.
 ///

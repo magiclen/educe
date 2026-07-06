@@ -80,13 +80,7 @@ impl From<&Path> for HashType {
     }
 }
 
-#[allow(dead_code)]
 impl HashType {
-    #[inline]
-    pub(crate) fn to_type(&self) -> Type {
-        syn::parse_str(self.0.as_str()).unwrap()
-    }
-
     #[inline]
     pub(crate) fn span(&self) -> Span {
         self.1

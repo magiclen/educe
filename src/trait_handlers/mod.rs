@@ -1,9 +1,29 @@
-use std::collections::{HashMap, HashSet};
+#[cfg(any(
+    feature = "Clone",
+    feature = "Copy",
+    feature = "Eq",
+    feature = "Ord",
+    feature = "PartialEq",
+    feature = "PartialOrd"
+))]
+use std::collections::HashMap;
+#[cfg(any(feature = "Copy", feature = "Eq", feature = "Ord", feature = "PartialOrd"))]
+use std::collections::HashSet;
 
+#[cfg(any(feature = "Copy", feature = "Eq", feature = "Ord", feature = "PartialOrd"))]
 use quote::ToTokens;
 use syn::{DeriveInput, Meta};
 
-use crate::{Trait, common::where_predicates_bool::WherePredicates};
+use crate::Trait;
+#[cfg(any(
+    feature = "Clone",
+    feature = "Copy",
+    feature = "Eq",
+    feature = "Ord",
+    feature = "PartialEq",
+    feature = "PartialOrd"
+))]
+use crate::common::where_predicates_bool::WherePredicates;
 
 #[cfg(feature = "Clone")]
 pub(crate) mod clone;
@@ -36,12 +56,27 @@ pub(crate) mod partial_ord;
 #[derive(Default)]
 pub(crate) struct TraitHandlerContext {
     /// The final where predicates that each handled trait has actually emitted, keyed by trait.
+    #[cfg(any(
+        feature = "Clone",
+        feature = "Copy",
+        feature = "Eq",
+        feature = "Ord",
+        feature = "PartialEq",
+        feature = "PartialOrd"
+    ))]
     final_predicates: HashMap<Trait, WherePredicates>,
 }
 
 impl TraitHandlerContext {
     /// Records the where predicates that a trait impl has emitted, so that traits handled later can inherit them.
-    #[allow(dead_code)]
+    #[cfg(any(
+        feature = "Clone",
+        feature = "Copy",
+        feature = "Eq",
+        feature = "Ord",
+        feature = "PartialEq",
+        feature = "PartialOrd"
+    ))]
     pub(crate) fn record(&mut self, t: Trait, predicates: &WherePredicates) {
         self.final_predicates.insert(t, predicates.clone());
     }
@@ -49,7 +84,7 @@ impl TraitHandlerContext {
     /// Appends the recorded predicates of every prerequisite trait to `own`, skipping predicates that are already present.
     ///
     /// Prerequisites that were not handled by Educe (e.g. implemented manually by the user) simply have no record and contribute nothing.
-    #[allow(dead_code)]
+    #[cfg(any(feature = "Copy", feature = "Eq", feature = "Ord", feature = "PartialOrd"))]
     pub(crate) fn inherit_from(&self, prerequisites: &[Trait], own: &mut WherePredicates) {
         // Compare predicates by their token strings because `WherePredicate` implements neither `Eq` nor `Hash`.
         let mut seen: HashSet<String> =
@@ -68,7 +103,19 @@ impl TraitHandlerContext {
 }
 
 // Every single-meta handler implements this trait; when `Into` is the only enabled feature none of them are compiled, so the trait would look unused.
-#[allow(dead_code)]
+#[cfg(any(
+    feature = "Clone",
+    feature = "Copy",
+    feature = "Debug",
+    feature = "Default",
+    feature = "Deref",
+    feature = "DerefMut",
+    feature = "Eq",
+    feature = "Hash",
+    feature = "Ord",
+    feature = "PartialEq",
+    feature = "PartialOrd"
+))]
 pub(crate) trait TraitHandler {
     fn trait_meta_handler(
         ast: &DeriveInput,
