@@ -20,9 +20,10 @@ pub(crate) fn create_mark_method_used(
 ) -> proc_macro2::TokenStream {
     let (impl_generics, _ty_generics, where_clause) = generics.split_for_impl();
 
+    // This function is generated glue whose only purpose is to reference the custom method, so its signature can look problematic in isolation (e.g. `&Vec<T>` would normally suggest `clippy::ptr_arg`, or an unused generic would trigger `clippy::extra_unused_type_parameters`). Lints like these already do not fire on code coming from an external proc-macro, but the `clippy::all` allow is kept here as a low-cost safeguard in case that exemption ever narrows.
     quote!(
         const _: () = {
-            #[allow(dead_code)]
+            #[allow(dead_code, clippy::all)]
             fn __educe_clone_method_used #impl_generics (
                 educe__value: &#field_ty,
             ) -> #field_ty #where_clause {
