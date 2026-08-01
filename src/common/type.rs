@@ -78,7 +78,7 @@ impl BoundExceptions {
     pub(crate) fn type_is_unconditional(&self, ty: &Type) -> bool {
         match ty {
             Type::Path(ty) => ty.qself.is_none() && self.path_is_unconditional(&ty.path),
-            Type::Ptr(_) | Type::BareFn(_) => true,
+            Type::Ptr(_) | Type::FnPtr(_) => true,
             Type::Reference(ty) => {
                 ty.mutability.is_none() && self.shared_reference_is_unconditional
             },
@@ -142,7 +142,7 @@ fn walk_type<'a>(set: &mut HashSet<&'a Ident>, ty: &'a Type, exceptions: Option<
 
             walk_type(set, ty.elem.as_ref(), exceptions);
         },
-        Type::BareFn(ty) => {
+        Type::FnPtr(ty) => {
             // Function pointer impls also only look at the address.
             if exceptions.is_some() {
                 return;
@@ -213,8 +213,8 @@ fn walk_path<'a>(
                 }
             },
             PathArguments::Parenthesized(args) => {
-                for ty in &args.inputs {
-                    walk_type(set, ty, exceptions);
+                for arg in &args.inputs {
+                    walk_type(set, &arg.ty, exceptions);
                 }
 
                 if let ReturnType::Type(_, ty) = &args.output {
@@ -296,8 +296,8 @@ pub(crate) fn type_mentions_ident(ty: &Type, ident: &Ident) -> bool {
                     }
                 },
                 PathArguments::Parenthesized(args) => {
-                    for ty in &args.inputs {
-                        if type_mentions_ident(ty, ident) {
+                    for arg in &args.inputs {
+                        if type_mentions_ident(&arg.ty, ident) {
                             return true;
                         }
                     }
@@ -323,7 +323,7 @@ pub(crate) fn type_mentions_ident(ty: &Type, ident: &Ident) -> bool {
         Type::Ptr(ty) => type_mentions_ident(ty.elem.as_ref(), ident),
         Type::Reference(ty) => type_mentions_ident(ty.elem.as_ref(), ident),
         Type::Tuple(ty) => ty.elems.iter().any(|ty| type_mentions_ident(ty, ident)),
-        Type::BareFn(ty) => {
+        Type::FnPtr(ty) => {
             ty.inputs.iter().any(|arg| type_mentions_ident(&arg.ty, ident))
                 || matches!(&ty.output, ReturnType::Type(_, ty) if type_mentions_ident(ty, ident))
         },
