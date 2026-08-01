@@ -37,6 +37,37 @@ pub struct NameClashesStructNoOrd {
     state:   i128,
 }
 
+// A module can shadow the prelude, so the generated code must not depend on `Option`, `Some`, and `None` resolving to the standard library items.
+mod shadowed_prelude {
+    use educe::Educe;
+
+    pub enum MyOption {
+        Some,
+        None,
+    }
+
+    // The import is only here to shadow the prelude, so nothing in this module refers to it by name.
+    #[allow(unused_imports)]
+    pub use MyOption::{None, Some};
+
+    pub type Option = u8;
+
+    #[derive(Educe)]
+    #[educe(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub struct Struct {
+        f1: i8,
+        f2: i16,
+    }
+
+    #[derive(Educe)]
+    #[educe(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub enum Enum {
+        Unit,
+        Struct { f1: i8 },
+        Tuple(i16),
+    }
+}
+
 #[derive(Educe)]
 #[educe(Debug(unsafe), PartialEq(unsafe), Eq)]
 pub union NameClashesUnion {

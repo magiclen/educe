@@ -91,10 +91,10 @@ impl TraitHandler for PartialOrdStructHandler {
 
                 partial_cmp_token_stream.extend(quote! {
                     match #comparison {
-                        Some(::core::cmp::Ordering::Equal) => (),
-                        Some(::core::cmp::Ordering::Greater) => return Some(::core::cmp::Ordering::Greater),
-                        Some(::core::cmp::Ordering::Less) => return Some(::core::cmp::Ordering::Less),
-                        None => return None,
+                        ::core::option::Option::Some(::core::cmp::Ordering::Equal) => (),
+                        ::core::option::Option::Some(::core::cmp::Ordering::Greater) => return ::core::option::Option::Some(::core::cmp::Ordering::Greater),
+                        ::core::option::Option::Some(::core::cmp::Ordering::Less) => return ::core::option::Option::Some(::core::cmp::Ordering::Less),
+                        ::core::option::Option::None => return ::core::option::Option::None,
                     }
                 });
             }
@@ -133,10 +133,13 @@ impl TraitHandler for PartialOrdStructHandler {
             #generated_impl_attributes
             impl #impl_generics ::core::cmp::PartialOrd for #ident #ty_generics #where_clause {
                 #[inline]
-                fn partial_cmp(&self, other: &Self) -> Option<::core::cmp::Ordering> {
+                fn partial_cmp(
+                    &self,
+                    other: &Self,
+                ) -> ::core::option::Option<::core::cmp::Ordering> {
                     #partial_cmp_token_stream
 
-                    Some(::core::cmp::Ordering::Equal)
+                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
                 }
             }
         });

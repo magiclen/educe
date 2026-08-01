@@ -55,7 +55,14 @@ impl TraitHandler for DebugStructHandler {
             builder_token_stream.extend(if let Some(name) = name {
                 quote!(let mut builder = f.debug_struct(stringify!(#name));)
             } else {
-                super::common::create_debug_map_builder()
+                let raw_string_type = super::common::create_raw_string_type();
+                let map_builder = super::common::create_debug_map_builder();
+
+                quote! {
+                    #raw_string_type
+
+                    #map_builder
+                }
             });
 
             if let Data::Struct(data) = &ast.data {
@@ -194,7 +201,7 @@ impl TraitHandler for DebugStructHandler {
             #generated_impl_attributes
             impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
                 #[inline]
-                fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+                fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
                     #builder_token_stream
 
                     builder.finish()

@@ -9,7 +9,7 @@ use crate::{Trait, common::path::path_to_string};
 
 struct DisplayStringSlice<'a>(&'a [&'static str]);
 
-impl<'a> Display for DisplayStringSlice<'a> {
+impl Display for DisplayStringSlice<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         if !self.0.is_empty() {
             f.write_str(", which should be reformatted as follows:")?;

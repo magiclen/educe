@@ -24,7 +24,7 @@ pub(crate) struct FieldAttributeBuilder {
 impl FieldAttributeBuilder {
     /// Parses one field-level `PartialEq` meta into a `FieldAttribute`, rejecting parameters that are not enabled here.
     pub(crate) fn build_from_partial_eq_meta(&self, meta: &Meta) -> syn::Result<FieldAttribute> {
-        debug_assert!(meta.path().is_ident("PartialEq") || meta.path().is_ident("Eq"));
+        debug_assert!(meta.path().is_ident("PartialEq"));
 
         let mut ignore = false;
         let mut method = None;

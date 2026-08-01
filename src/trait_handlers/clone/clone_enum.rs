@@ -88,17 +88,14 @@ impl TraitHandler for CloneEnumHandler {
             #[cfg(not(feature = "Copy"))]
             let use_bitwise_copy = false;
 
-            if use_bitwise_copy {
-                clone_token_stream.extend(quote!(*self));
-            }
-
             let mut clone_types: Vec<&Type> = Vec::new();
 
-            if variants.is_empty() {
-                if !use_bitwise_copy {
-                    clone_token_stream.extend(quote!(unreachable!()));
-                    clone_from_token_stream.extend(quote!(let _ = source;));
-                }
+            if use_bitwise_copy {
+                // A bitwise copy reads no field on its own, and this path is only taken when no field type uses a generic type parameter, so the field-wise body and the bound types would both be thrown away.
+                clone_token_stream.extend(quote!(*self));
+            } else if variants.is_empty() {
+                clone_token_stream.extend(quote!(::core::unreachable!()));
+                clone_from_token_stream.extend(quote!(let _ = source;));
             } else {
                 let mut clone_variants_token_stream = proc_macro2::TokenStream::new();
                 let mut clone_from_variants_token_stream = proc_macro2::TokenStream::new();
@@ -225,19 +222,17 @@ impl TraitHandler for CloneEnumHandler {
                     }
                 }
 
-                if !use_bitwise_copy {
-                    clone_token_stream.extend(quote! {
-                        match self {
-                            #clone_variants_token_stream
-                        }
-                    });
+                clone_token_stream.extend(quote! {
+                    match self {
+                        #clone_variants_token_stream
+                    }
+                });
 
-                    clone_from_token_stream.extend(quote! {
-                        match self {
-                            #clone_from_variants_token_stream
-                        }
-                    });
-                }
+                clone_from_token_stream.extend(quote! {
+                    match self {
+                        #clone_from_variants_token_stream
+                    }
+                });
             }
 
             // The bound trait is always `Clone`; the `Copy` impl is emitted by the `Copy` handler with its own bounds.

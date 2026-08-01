@@ -43,6 +43,9 @@ impl TraitHandler for DebugEnumHandler {
 
         let mut mark_token_stream = proc_macro2::TokenStream::new();
 
+        // Every nameless variant formatted as a map needs the raw-string helper type, which is declared once for the whole `fmt` body.
+        let mut uses_raw_string = false;
+
         if let Data::Enum(data) = &ast.data {
             for variant in data.variants.iter() {
                 let type_attribute = TypeAttributeBuilder {
@@ -88,6 +91,8 @@ impl TraitHandler for DebugEnumHandler {
                         let mut block_token_stream = proc_macro2::TokenStream::new();
 
                         if named_field {
+                            uses_raw_string |= name_string.is_none();
+
                             block_token_stream
                                 .extend(create_named_field_builder(name_string.as_deref()));
 
@@ -151,6 +156,9 @@ impl TraitHandler for DebugEnumHandler {
                                 has_fields = true;
                             }
                         } else {
+                            // A variant without a name is formatted like a nameless tuple struct, which the standard builder spells with an empty name.
+                            let name_string = name_string.as_deref().unwrap_or("");
+
                             block_token_stream
                                 .extend(quote!(let mut builder = f.debug_tuple(#name_string);));
 
@@ -219,6 +227,8 @@ impl TraitHandler for DebugEnumHandler {
                         let mut block_token_stream = proc_macro2::TokenStream::new();
 
                         if named_field {
+                            uses_raw_string |= name_string.is_none();
+
                             block_token_stream
                                 .extend(create_named_field_builder(name_string.as_deref()));
 
@@ -280,6 +290,9 @@ impl TraitHandler for DebugEnumHandler {
                                 has_fields = true;
                             }
                         } else {
+                            // A variant without a name is formatted like a nameless tuple struct, which the standard builder spells with an empty name.
+                            let name_string = name_string.as_deref().unwrap_or("");
+
                             block_token_stream
                                 .extend(quote!(let mut builder = f.debug_tuple(#name_string);));
 
@@ -354,7 +367,12 @@ impl TraitHandler for DebugEnumHandler {
                 return Err(super::panic::unit_enum_need_name(ident));
             }
         } else {
+            let raw_string_type =
+                if uses_raw_string { Some(super::common::create_raw_string_type()) } else { None };
+
             builder_token_stream.extend(quote! {
+                #raw_string_type
+
                 match self {
                     #arms_token_stream
                 }
@@ -383,7 +401,7 @@ impl TraitHandler for DebugEnumHandler {
             #generated_impl_attributes
             impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
                 #[inline]
-                fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+                fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
                     #builder_token_stream
                 }
             }

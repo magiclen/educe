@@ -18,6 +18,8 @@ features = ["Debug", "Clone", "Copy", "Hash", "Default"]
 default-features = false
 ```
 
+Besides the traits, there is one more feature, `full`, which is off by default. It widens the set of expressions that can be parsed in an attribute, and is only needed for the advanced expressions of `Default`; see the `Default` section below.
+
 ## Trait Bounds
 
 When a trait is derived with Educe and no explicit `bound` is set, the where predicates of the generated impl are determined automatically. Every field type that the generated code touches (ignored fields and fields handled by a custom `method` are excluded) is processed with the following rules, in order:

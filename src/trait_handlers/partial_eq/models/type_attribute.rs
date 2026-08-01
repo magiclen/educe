@@ -23,7 +23,7 @@ pub(crate) struct TypeAttributeBuilder {
 impl TypeAttributeBuilder {
     /// Parses one `PartialEq` meta into a `TypeAttribute`, rejecting parameters that are not enabled here.
     pub(crate) fn build_from_partial_eq_meta(&self, meta: &Meta) -> syn::Result<TypeAttribute> {
-        debug_assert!(meta.path().is_ident("PartialEq") || meta.path().is_ident("Eq"));
+        debug_assert!(meta.path().is_ident("PartialEq"));
 
         let mut has_unsafe = false;
         let mut bound = Bound::Auto;

@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use quote::{format_ident, quote};
 use syn::{Data, DeriveInput, Field, Fields, Ident, Meta, Path, Type};
 
@@ -30,18 +28,18 @@ impl TraitHandlerMultiple for IntoEnumHandler {
         .build_from_into_meta(meta)?;
 
         if let Data::Enum(data) = &ast.data {
-            let field_attributes: Vec<BTreeMap<usize, FieldAttribute>> = {
-                let mut map = Vec::new();
+            let field_attributes: Vec<Vec<FieldAttribute>> = {
+                let mut variant_attributes = Vec::with_capacity(data.variants.len());
 
                 for variant in data.variants.iter() {
-                    let mut field_map = BTreeMap::new();
+                    let mut field_attributes = Vec::with_capacity(variant.fields.len());
 
                     let _ = TypeAttributeBuilder {
                         enable_types: false
                     }
                     .build_from_attributes(&variant.attrs, traits)?;
 
-                    for (index, field) in variant.fields.iter().enumerate() {
+                    for field in variant.fields.iter() {
                         let field_attribute = FieldAttributeBuilder {
                             enable_types: true
                         }
@@ -53,13 +51,13 @@ impl TraitHandlerMultiple for IntoEnumHandler {
                             }
                         }
 
-                        field_map.insert(index, field_attribute);
+                        field_attributes.push(field_attribute);
                     }
 
-                    map.push(field_map);
+                    variant_attributes.push(field_attributes);
                 }
 
-                map
+                variant_attributes
             };
 
             for (target_ty, target) in type_attribute.types {
@@ -94,7 +92,7 @@ impl TraitHandlerMultiple for IntoEnumHandler {
                         if fields.len() == 1 {
                             let field = fields.into_iter().next().unwrap();
 
-                            let method = if let Some(field_attribute) = field_attributes.get(&0) {
+                            let method = if let Some(field_attribute) = field_attributes.first() {
                                 if let Some(method) = field_attribute.types.get(&target_ty) {
                                     method.as_ref()
                                 } else {
@@ -109,7 +107,7 @@ impl TraitHandlerMultiple for IntoEnumHandler {
                             let mut into_field: Option<(usize, &Field, Option<&Path>)> = None;
 
                             for (index, field) in fields.iter().enumerate() {
-                                if let Some(field_attribute) = field_attributes.get(&index)
+                                if let Some(field_attribute) = field_attributes.get(index)
                                     && let Some((key, method)) =
                                         field_attribute.types.get_key_value(&target_ty)
                                 {
@@ -214,7 +212,7 @@ impl TraitHandlerMultiple for IntoEnumHandler {
                     where_clause.predicates.push(where_predicate);
                 }
 
-                let (impl_generics, ty_generics, _) = ast.generics.split_for_impl();
+                let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
                 token_stream.extend(if generate_from {
                     quote! {

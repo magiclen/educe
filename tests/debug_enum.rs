@@ -239,6 +239,35 @@ fn unnamed_variant_4() {
 }
 
 #[test]
+fn unnamed_variant_5() {
+    // Neither the enum nor the variants provide a name, so each variant is formatted like a nameless struct or tuple.
+    #[derive(Educe)]
+    #[educe(Debug)]
+    enum Enum {
+        #[educe(Debug(name = false))]
+        Struct { f1: u8 },
+        #[educe(Debug(name = false, named_field = false))]
+        Struct2 { f1: u8 },
+        #[educe(Debug(name = false))]
+        Tuple(u8),
+    }
+
+    assert_eq!(
+        "{f1: 1}",
+        format!("{:?}", Enum::Struct {
+            f1: 1
+        })
+    );
+    assert_eq!(
+        "(1,)",
+        format!("{:?}", Enum::Struct2 {
+            f1: 1
+        })
+    );
+    assert_eq!("(1,)", format!("{:?}", Enum::Tuple(1)));
+}
+
+#[test]
 fn named_field_1() {
     #[derive(Educe)]
     #[educe(Debug)]

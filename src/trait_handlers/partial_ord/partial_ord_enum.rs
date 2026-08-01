@@ -78,7 +78,7 @@ impl TraitHandler for PartialOrdEnumHandler {
                     Fields::Unit => {
                         arms_token_stream.extend(quote! {
                             Self::#variant_ident => {
-                                return Some(::core::cmp::Ordering::Equal);
+                                return ::core::option::Option::Some(::core::cmp::Ordering::Equal);
                             }
                         });
                     },
@@ -151,10 +151,10 @@ impl TraitHandler for PartialOrdEnumHandler {
 
                             block_token_stream.extend(quote! {
                                 match #comparison {
-                                    Some(::core::cmp::Ordering::Equal) => (),
-                                    Some(::core::cmp::Ordering::Greater) => return Some(::core::cmp::Ordering::Greater),
-                                    Some(::core::cmp::Ordering::Less) => return Some(::core::cmp::Ordering::Less),
-                                    None => return None,
+                                    ::core::option::Option::Some(::core::cmp::Ordering::Equal) => (),
+                                    ::core::option::Option::Some(::core::cmp::Ordering::Greater) => return ::core::option::Option::Some(::core::cmp::Ordering::Greater),
+                                    ::core::option::Option::Some(::core::cmp::Ordering::Less) => return ::core::option::Option::Some(::core::cmp::Ordering::Less),
+                                    ::core::option::Option::None => return ::core::option::Option::None,
                                 }
                             });
                         }
@@ -232,10 +232,10 @@ impl TraitHandler for PartialOrdEnumHandler {
 
                             block_token_stream.extend(quote! {
                                 match #comparison {
-                                    Some(::core::cmp::Ordering::Equal) => (),
-                                    Some(::core::cmp::Ordering::Greater) => return Some(::core::cmp::Ordering::Greater),
-                                    Some(::core::cmp::Ordering::Less) => return Some(::core::cmp::Ordering::Less),
-                                    None => return None,
+                                    ::core::option::Option::Some(::core::cmp::Ordering::Equal) => (),
+                                    ::core::option::Option::Some(::core::cmp::Ordering::Greater) => return ::core::option::Option::Some(::core::cmp::Ordering::Greater),
+                                    ::core::option::Option::Some(::core::cmp::Ordering::Less) => return ::core::option::Option::Some(::core::cmp::Ordering::Less),
+                                    ::core::option::Option::None => return ::core::option::Option::None,
                                 }
                             });
                         }
@@ -253,7 +253,8 @@ impl TraitHandler for PartialOrdEnumHandler {
         }
 
         if arms_token_stream.is_empty() {
-            partial_cmp_token_stream.extend(quote!(Some(::core::cmp::Ordering::Equal)));
+            partial_cmp_token_stream
+                .extend(quote!(::core::option::Option::Some(::core::cmp::Ordering::Equal)));
         } else {
             // Order variants by their discriminant, which is computed at expansion time so that no unsafe assumption about the in-memory layout of the enum is needed; this reproduces the ordering of the standard `PartialOrd` derive.
             let discriminant = quote! {
@@ -268,7 +269,7 @@ impl TraitHandler for PartialOrdEnumHandler {
                 quote! {
                     #discriminant
 
-                    Some(::core::cmp::Ord::cmp(&discriminant(self), &discriminant(other)))
+                    ::core::option::Option::Some(::core::cmp::Ord::cmp(&discriminant(self), &discriminant(other)))
                 }
             } else {
                 quote! {
@@ -280,10 +281,14 @@ impl TraitHandler for PartialOrdEnumHandler {
                                 #arms_token_stream
                             }
 
-                            Some(::core::cmp::Ordering::Equal)
+                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
                         },
-                        ::core::cmp::Ordering::Greater => Some(::core::cmp::Ordering::Greater),
-                        ::core::cmp::Ordering::Less => Some(::core::cmp::Ordering::Less),
+                        ::core::cmp::Ordering::Greater => {
+                            ::core::option::Option::Some(::core::cmp::Ordering::Greater)
+                        },
+                        ::core::cmp::Ordering::Less => {
+                            ::core::option::Option::Some(::core::cmp::Ordering::Less)
+                        },
                     }
                 }
             });
@@ -322,7 +327,10 @@ impl TraitHandler for PartialOrdEnumHandler {
             #generated_impl_attributes
             impl #impl_generics ::core::cmp::PartialOrd for #ident #ty_generics #where_clause {
                 #[inline]
-                fn partial_cmp(&self, other: &Self) -> Option<::core::cmp::Ordering> {
+                fn partial_cmp(
+                    &self,
+                    other: &Self,
+                ) -> ::core::option::Option<::core::cmp::Ordering> {
                     #partial_cmp_token_stream
                 }
             }

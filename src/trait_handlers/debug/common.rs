@@ -1,8 +1,11 @@
 use quote::quote;
 use syn::{DeriveInput, Path, Type};
 
+/// Builds the helper type that prints a map key without the quotes a `str` would be formatted with.
+///
+/// A nameless struct or variant is formatted as a map, and its keys are the field names; the type is declared once per generated `fmt` body, so an enum with several such variants does not repeat it.
 #[inline]
-pub(crate) fn create_debug_map_builder() -> proc_macro2::TokenStream {
+pub(crate) fn create_raw_string_type() -> proc_macro2::TokenStream {
     quote!(
         #[allow(non_camel_case_types)] // We're using __ to help avoid clashes.
         struct Educe__RawString(&'static str);
@@ -13,9 +16,13 @@ pub(crate) fn create_debug_map_builder() -> proc_macro2::TokenStream {
                 f.write_str(self.0)
             }
         }
-
-        let mut builder = f.debug_map();
     )
+}
+
+/// Builds the statement that starts a map builder; the caller has to emit [`create_raw_string_type`] once in the same block.
+#[inline]
+pub(crate) fn create_debug_map_builder() -> proc_macro2::TokenStream {
+    quote!(let mut builder = f.debug_map();)
 }
 
 /// Builds the `let arg = { ... };` statement that wraps a field so it is formatted with a custom method, together with a module-level marker that keeps the method counted as used.

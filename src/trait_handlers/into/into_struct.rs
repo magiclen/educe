@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use quote::quote;
 use syn::{Data, DeriveInput, Field, Meta, Path, Type};
 
@@ -32,10 +30,10 @@ impl TraitHandlerMultiple for IntoStructHandler {
         if let Data::Struct(data) = &ast.data {
             let fields = &data.fields;
 
-            let field_attributes: BTreeMap<usize, FieldAttribute> = {
-                let mut map = BTreeMap::new();
+            let field_attributes: Vec<FieldAttribute> = {
+                let mut field_attributes = Vec::with_capacity(fields.len());
 
-                for (index, field) in fields.iter().enumerate() {
+                for field in fields.iter() {
                     let field_attribute = FieldAttributeBuilder {
                         enable_types: true
                     }
@@ -47,10 +45,10 @@ impl TraitHandlerMultiple for IntoStructHandler {
                         }
                     }
 
-                    map.insert(index, field_attribute);
+                    field_attributes.push(field_attribute);
                 }
 
-                map
+                field_attributes
             };
 
             for (target_ty, target) in type_attribute.types {
@@ -72,7 +70,7 @@ impl TraitHandlerMultiple for IntoStructHandler {
                     if fields.len() == 1 {
                         let field = fields.into_iter().next().unwrap();
 
-                        let method = if let Some(field_attribute) = field_attributes.get(&0) {
+                        let method = if let Some(field_attribute) = field_attributes.first() {
                             if let Some(method) = field_attribute.types.get(&target_ty) {
                                 method.as_ref()
                             } else {
@@ -87,7 +85,7 @@ impl TraitHandlerMultiple for IntoStructHandler {
                         let mut into_field: Option<(usize, &Field, Option<&Path>)> = None;
 
                         for (index, field) in fields.iter().enumerate() {
-                            if let Some(field_attribute) = field_attributes.get(&index)
+                            if let Some(field_attribute) = field_attributes.get(index)
                                 && let Some((key, method)) =
                                     field_attribute.types.get_key_value(&target_ty)
                             {
@@ -161,7 +159,7 @@ impl TraitHandlerMultiple for IntoStructHandler {
                     where_clause.predicates.push(where_predicate);
                 }
 
-                let (impl_generics, ty_generics, _) = ast.generics.split_for_impl();
+                let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
                 token_stream.extend(if generate_from {
                     quote! {
