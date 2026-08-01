@@ -41,7 +41,7 @@ This document compares `v0.5.11` with the current `0.7.0` worktree. It focuses o
 ## Generated Code and Lints
 
 - Generated impls are marked with `#[automatically_derived]`.
-- Lint-level attributes from the input type, such as `allow`, `expect`, `warn`, and `deny`, are copied to generated impls. This makes generated code behave more like built-in derives under strict lint settings.
+- Lint-level attributes from the input type, such as `allow`, `expect`, `warn`, and `deny`, are copied to generated impls. This makes generated code behave more like built-in derives under strict lint settings. An `expect` is copied as an `allow`, so that a lint which only applies to the type itself does not turn the copy into an unfulfilled expectation.
 - Diagnostics for invalid attributes and helper parsing were improved.
 
 ## Documentation and Safety Notes
