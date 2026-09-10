@@ -1,16 +1,16 @@
 use quote::ToTokens;
-use syn::{Expr, Lit, LitStr, Meta, MetaNameValue, Path};
+use syn::{Expr, ExprPath, Lit, LitStr, Meta, MetaNameValue, Path};
 
 // These helpers parse path parameters such as `method(my_function)` or `method = "my_function"`.
 #[inline]
-pub(crate) fn meta_name_value_2_path(name_value: &MetaNameValue) -> syn::Result<Path> {
+pub(crate) fn meta_name_value_2_path(name_value: &MetaNameValue) -> syn::Result<ExprPath> {
     match &name_value.value {
         Expr::Lit(lit) => {
             if let Lit::Str(lit) = &lit.lit {
                 return lit.parse();
             }
         },
-        Expr::Path(path) => return Ok(path.path.clone()),
+        Expr::Path(path) => return Ok(path.clone()),
         _ => (),
     }
 
@@ -21,7 +21,7 @@ pub(crate) fn meta_name_value_2_path(name_value: &MetaNameValue) -> syn::Result<
 }
 
 #[inline]
-pub(crate) fn meta_2_path(meta: &Meta) -> syn::Result<Path> {
+pub(crate) fn meta_2_path(meta: &Meta) -> syn::Result<ExprPath> {
     match &meta {
         Meta::NameValue(name_value) => meta_name_value_2_path(name_value),
         Meta::List(list) => {

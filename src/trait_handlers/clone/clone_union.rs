@@ -1,4 +1,3 @@
-use quote::quote;
 use syn::{Data, DeriveInput, Meta};
 
 use super::{
@@ -6,7 +5,8 @@ use super::{
     models::{FieldAttributeBuilder, TypeAttributeBuilder},
 };
 use crate::{
-    common::bound::BOUND_EXCEPTIONS_COPY, supported_traits::Trait,
+    common::{bound::BOUND_EXCEPTIONS_COPY, quote_mixed},
+    supported_traits::Trait,
     trait_handlers::TraitHandlerContext,
 };
 
@@ -47,7 +47,7 @@ impl TraitHandler for CloneUnionHandler {
         // A union can only be cloned by a bitwise copy, so the fields must satisfy `Copy` no matter whether `Copy` is derived together or not.
         let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
             &ast.generics.params,
-            &syn::parse2(quote!(::core::marker::Copy)).unwrap(),
+            &syn::parse2(quote_mixed!(::core::marker::Copy)).unwrap(),
             &field_types,
             &ast.ident,
             &BOUND_EXCEPTIONS_COPY,
@@ -65,7 +65,7 @@ impl TraitHandler for CloneUnionHandler {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        token_stream.extend(quote! {
+        token_stream.extend(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::clone::Clone for #ident #ty_generics #where_clause {
                 #[inline]

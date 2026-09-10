@@ -89,6 +89,7 @@ fn basic_2() {
 }
 
 #[allow(dead_code)]
+#[test]
 fn method_1() {
     fn into(v: u16) -> u8 {
         v as u8
@@ -112,6 +113,7 @@ fn method_1() {
 }
 
 #[allow(dead_code)]
+#[test]
 fn method_2() {
     fn into(v: u16) -> u8 {
         v as u8
@@ -206,4 +208,93 @@ fn from_impl() {
         })
     );
     assert_eq!(2u8, u8::from(Enum::Tuple(2)));
+}
+
+#[test]
+fn source_self_method() {
+    #[derive(Educe)]
+    #[educe(Into(u16, bound(T: Into<u16>)), Into(u32, into, bound(T: Into<u16>)))]
+    enum Enum<T> {
+        Tuple(
+            #[educe(Into(u16, method = Self::convert), Into(u32, method = Self::convert_wide))] T,
+        ),
+    }
+
+    impl<T: Into<u16>> Enum<T> {
+        fn convert(value: T) -> u16 {
+            value.into()
+        }
+
+        fn convert_wide(value: T) -> u32 {
+            u32::from(value.into())
+        }
+    }
+
+    assert_eq!(7, u16::from(Enum::Tuple(7u8)));
+    assert_eq!(7u32, Into::<u32>::into(Enum::Tuple(7u8)));
+}
+
+#[allow(dead_code)]
+#[test]
+fn reference_targets() {
+    #[derive(Educe)]
+    #[educe(Into(&'a u8))]
+    enum Shared<'a> {
+        Named { value: &'a mut u8, unused: bool },
+        Tuple(&'a u8, bool),
+    }
+
+    #[derive(Educe)]
+    #[educe(Into(&'a mut u8, into))]
+    enum Mutable<'a> {
+        Tuple(&'a mut u8),
+    }
+
+    #[derive(Educe)]
+    #[educe(Into(&'a &'b u8))]
+    enum Nested<'a, 'b> {
+        Named { value: &'a &'b u8 },
+    }
+
+    let mut number = 7;
+    assert_eq!(
+        7,
+        *<&u8>::from(Shared::Named {
+            value: &mut number, unused: false
+        })
+    );
+    assert_eq!(7, *<&u8>::from(Shared::Tuple(&number, true)));
+    *Into::<&mut u8>::into(Mutable::Tuple(&mut number)) = 9;
+    let reference = &number;
+    assert_eq!(
+        9,
+        **<&&u8>::from(Nested::Named {
+            value: &reference
+        })
+    );
+}
+
+#[test]
+fn source_self_bounds_and_qualified_method() {
+    trait Convert<T> {
+        fn convert(value: T) -> u16;
+    }
+    trait Source<S> {}
+
+    #[derive(Educe)]
+    #[educe(Into(u16))]
+    enum Enum<T: Source<Self>>
+    where
+        Self: Convert<T>, {
+        Tuple(#[educe(Into(u16, method(<Self as Convert<T>>::convert)))] T),
+    }
+
+    impl<T: Into<u16> + Source<Self>> Convert<T> for Enum<T> {
+        fn convert(value: T) -> u16 {
+            value.into()
+        }
+    }
+    impl Source<Enum<u8>> for u8 {}
+
+    assert_eq!(7, u16::from(Enum::Tuple(7u8)));
 }

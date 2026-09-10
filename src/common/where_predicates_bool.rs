@@ -12,7 +12,7 @@ use super::{
     path::path_to_string,
     r#type::{
         BoundExceptions, find_bare_ident_in_type, find_idents_in_type, type_mentions_ident,
-        type_uses_type_params,
+        type_uses_generic_params,
     },
 };
 
@@ -117,7 +117,7 @@ pub(crate) fn create_where_predicates_from_all_generic_parameters(
 ///
 /// Each field type is processed with the following rules, in order:
 /// 1. A type that the exception table marks as unconditional (e.g. `Arc<T>` for `Clone`) produces nothing, because its predicate would always hold.
-/// 2. A type that uses no generic type parameter produces nothing, because its predicate would be constant and could send the trait solver into an infinite loop on indirectly recursive types.
+/// 2. A type that uses no generic type or const parameter produces nothing, because its predicate would be constant and could send the trait solver into an infinite loop on indirectly recursive types.
 /// 3. A type that forwards the trait to its type arguments (e.g. `Option<T>` for `Copy`) produces the predicates of its arguments instead, applying these rules recursively, so `Vec<Box<T>>` for `Clone` produces just `T: Clone`.
 /// 4. A type that mentions the type currently being derived (e.g. `Box<List<T>>` inside `List<T>`) is degraded to `Param: Trait` bounds for the parameters it uses, because a self-referencing predicate would overflow the trait solver (E0275).
 /// 5. Any other type produces the precise predicate `FieldType: Trait`, so the compiler verifies the real requirement even for types with unusual conditional impls.
@@ -149,8 +149,8 @@ pub(crate) fn create_where_predicates_from_field_types(
             return;
         }
 
-        // Rule 2: a type without generic type parameters would produce a constant predicate.
-        if !type_uses_type_params(ty, params) {
+        // Rule 2: a type without generic type or const parameters would produce a constant predicate.
+        if !type_uses_generic_params(ty, params) {
             return;
         }
 

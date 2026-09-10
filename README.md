@@ -25,7 +25,7 @@ Besides the traits, there is one more feature, `full`, which is off by default. 
 When a trait is derived with Educe and no explicit `bound` is set, the where predicates of the generated impl are determined automatically. Every field type that the generated code touches (ignored fields and fields handled by a custom `method` are excluded) is processed with the following rules, in order:
 
 1. A type that is known to implement the trait unconditionally produces no predicate at all. This covers `PhantomData`, raw pointers, and function pointers for every trait, shared references for `Clone` and `Copy`, plus the types in table A.
-2. A type that does not use any generic type parameter produces no predicate, because such a predicate would be constant.
+2. A type that does not use any generic type or const parameter produces no predicate, because such a predicate would be constant.
 3. A std type that implements the trait whenever its type arguments do (table B) produces the predicates of its type arguments instead, with these rules applied recursively: a field of type `Option<T>` produces `T: Trait`, and one of type `Vec<Box<T>>` produces just `T: Clone` for `Clone`.
 4. A type that mentions the derived type itself (e.g. `Box<List<T>>` inside `List<T>`) produces `Param: Trait` bounds for the type parameters it uses, because a self-referencing predicate would overflow the trait solver (E0275).
 5. Any other type produces the precise predicate `FieldType: Trait`, so the compiler verifies the real requirement: a field of type `Wrapper<T>` where `Wrapper` has its own conditional `Clone` impl produces `Wrapper<T>: Clone`, which works for exactly the type arguments that `Wrapper` supports.
@@ -51,6 +51,8 @@ Table B — types that forward the trait to their type arguments:
 | `Hash` | `Option`, `Result`, `Box`, `Vec`, `VecDeque`, `LinkedList`, `BTreeMap`, `BTreeSet`, `Arc`, `Rc`, `Wrapping`, `Reverse`, `Saturating` |
 | `Default` | `Box`, `Arc`, `Rc`, `Cell`, `RefCell`, `Mutex`, `RwLock`, `Wrapping`, `Reverse`, `Saturating` |
 
+`HashMap` and `HashSet` with an explicit hasher type use a whole-type predicate instead of either table. This preserves the hasher requirements of each trait: `Default` needs a default hasher, while `Debug` does not require the hasher to implement `Debug`.
+
 `HashMap` and `HashSet` are not in the comparison rows of table B because their comparison impls additionally require `K: Eq + Hash`; such fields get the precise whole-type predicate from rule 5 instead.
 
 Both tables match type names syntactically (by the last path segment), so a user-defined type that happens to share a name with one of these std types is treated the same way; if the resulting bounds do not fit such a type, set them explicitly with `bound(...)`.
@@ -60,6 +62,9 @@ Both tables match type names syntactically (by the last path segment), so a user
 When related traits are derived together with automatic bounds, a trait inherits the final predicates of its prerequisite traits: `Eq` and `PartialOrd` inherit from `PartialEq`, `Ord` inherits from `Eq` and `PartialOrd`, and `Copy` inherits from `Clone`. This way, a custom bound like `#[educe(PartialEq(bound(T: MyTrait)), Eq)]` automatically carries `T: MyTrait` into the `Eq` impl.
 
 Educe cannot see the traits derived by other derive macros, including the built-in ones, so inheritance only applies between traits listed in the same `#[educe(...)]` attribute; a prerequisite trait implemented elsewhere contributes nothing.
+
+When `PartialEq` and `Eq` are derived together, fields marked `PartialEq(ignore)` or `PartialEq(method = ...)` do not add automatic `Eq` bounds.
+Explicit bounds are still used as written.
 
 ###### Controlling the Bounds
 
@@ -73,6 +78,20 @@ An explicit bound is used verbatim; if a prerequisite impl carries predicates th
 
 * Mutually recursive generic types (an `A<T>` containing `Vec<B<T>>` while `B<T>` contains `A<T>`) cannot be detected from a single type definition, so automatic bounds make the trait solver overflow (E0275) on them; use `bound(*)` or a custom bound for such types.
 * The precise predicates appear in the public where clause of the impl, so private field types become visible in documentation and error messages, and changing a private field type can change the public bounds of the impl.
+
+Custom methods accept full paths, including qualified paths such as `<Type as Trait>::method::<T>`.
+The `method = path`, `method(path)`, `method = "path"`, and `method("path")` forms are supported.
+In custom method paths, `Self` refers to the type being derived, including its generic arguments.
+For `Into`, this also applies when the generated implementation is `From` for the target type; use an explicit target type path to call a target method.
+
+###### Compatibility Notes
+
+* Corrected method paths preserve qualified types and avoid capture by generated local variables; write an explicit path if you relied on the previous resolution.
+* `Into` reference targets now preserve explicit lifetimes, mutability, and reference depth; adjust the target declaration or caller if it relied on conversion to `&'static T`.
+* Original generic bounds keep `Self` tied to the source type when moved into `From`; put target constraints in an explicit `bound(...)`.
+* Automatic `Eq` now checks ordinary fields, including concrete and const generic fields; use explicit bounds when a manual `PartialEq` implementation provides equality for otherwise non-`Eq` fields.
+* Ignored fields and custom comparison methods no longer add automatic `Eq` bounds, and containers with an explicit hasher use whole-type predicates; add explicit bounds if another custom method relied on an inferred `T: Eq` or `T: Clone`.
+* When a field uses a const generic parameter, deriving `Copy` with `Clone` now uses field methods for `clone` and `clone_from`; custom method side effects can change, and the performance difference has not been measured.
 
 ## Traits
 
@@ -282,7 +301,7 @@ In the above case, `T` is bound to the `Debug` trait, but `K` is not.
 
 ###### Union
 
-A union is formatted as a `u8` slice, because its active field cannot be known at runtime. The fields of a union cannot be ignored, renamed, or formatted with other methods. The implementation is **unsafe** because it deliberately reads the whole memory of the union, including any padding bytes, which are not required to be initialized; the output may therefore expose uninitialized memory.
+A union is formatted as a `u8` slice because its active field is not tracked at runtime. Its fields cannot be ignored, renamed, or formatted with custom methods. `Debug(unsafe)` requires every byte of the union to be initialized and readable during each call, including padding and bytes outside the active field. The storage must not change during a call. This condition must hold after construction, writes, moves, and copies. Reading uninitialized bytes is undefined behavior, not just a risk of exposing memory. Initializing one field, or zeroing storage before moving the value, does not by itself guarantee this condition.
 
 ```rust
 use educe::Educe;
@@ -635,7 +654,7 @@ enum Enum<T, K> {
 
 ###### Union
 
-The `#[educe(PartialEq(unsafe))]` attribute can be used for a union. The fields of a union cannot be compared with other methods. The implementation is **unsafe** because it disregards the specific fields it utilizes.
+The `#[educe(PartialEq(unsafe))]` attribute compares the entire storage of two unions as bytes. Custom field methods are not supported. Every byte must be initialized and readable during each comparison, including padding and bytes outside the active field. The storage must not change during a call. This condition must hold after construction, writes, moves, and copies. Otherwise the comparison has undefined behavior. The `unsafe` attribute requires the user to uphold this contract; it does not make uninitialized reads valid.
 
 ```rust
 use educe::Educe;
@@ -651,6 +670,15 @@ union Union {
 #### Eq
 
 Use `#[derive(Educe)]` and `#[educe(Eq)]` to implement the `Eq` trait for a struct, enum, or union. `Eq` is a marker trait, so it has no field attributes of its own; field-level equality settings such as `ignore` and `method` belong to the `PartialEq` attribute.
+
+With automatic bounds, every ordinary struct or enum field must implement `Eq`, even when its type is concrete, such as `f64`.
+This check uses the final impl bounds, adds no runtime calls, and does not put concrete field requirements in the public where clause.
+When Educe also derives `PartialEq`, fields with `PartialEq(ignore)` or `PartialEq(method = ...)` are excluded from this check and from automatic `Eq` bounds.
+The author must ensure that custom comparison methods form an equivalence relation: reflexive, symmetric, and transitive.
+
+Educe cannot inspect an external `PartialEq` implementation, so all fields are treated as ordinary fields in that case.
+If a manual implementation provides an equivalence relation without requiring every field to implement `Eq`, use `Eq(bound(false))`, `Eq(bound(*))`, or custom predicates.
+These explicit modes and unions keep their existing behavior and do not perform the automatic field check; the author is responsible for the equality contract.
 
 ###### Basic Usage
 
@@ -726,7 +754,7 @@ enum Enum<T, K> {
 
 ###### Union
 
-The `#[educe(PartialEq(unsafe), Eq)]` attribute can be used for a union. The fields of a union cannot be compared with other methods. The implementation is **unsafe** because it deliberately compares the whole memory of the two unions byte by byte, including any padding bytes, while disregarding the specific fields it utilizes.
+The `#[educe(PartialEq(unsafe), Eq)]` attribute compares the entire storage of two unions as bytes, without tracking their active fields. Custom field methods are not supported. Every byte must be initialized and readable during each comparison, including padding and bytes outside the active field. The storage must not change during a call. This condition must hold after construction, writes, moves, and copies; otherwise the comparison has undefined behavior.
 
 ```rust
 use educe::Educe;
@@ -855,7 +883,7 @@ struct Struct {
 }
 ```
 
-For variants, the discriminant can be explicitly set for comparison.
+For variants, the discriminant can be explicitly set for comparison. Constant expressions are evaluated by Rust, and integer representations retain their full signed or unsigned range. Alignment settings do not affect the comparison order.
 
 ```rust
 use educe::Educe;
@@ -1035,7 +1063,7 @@ struct Struct {
 }
 ```
 
-For variants, the discriminant can be explicitly set for comparison.
+For variants, the discriminant can be explicitly set for comparison. Constant expressions are evaluated by Rust, and integer representations retain their full signed or unsigned range. Alignment settings do not affect the comparison order.
 
 ```rust
 use educe::Educe;
@@ -1240,7 +1268,7 @@ enum Enum<T, K> {
 
 ###### Union
 
-The `#[educe(PartialEq(unsafe), Eq, Hash(unsafe))]` attribute can be used for a union. The fields of a union cannot be hashed with other methods. The implementation is **unsafe** because it deliberately hashes the whole memory of the union byte by byte, including any padding bytes, while disregarding the specific fields it utilizes.
+The `#[educe(PartialEq(unsafe), Eq, Hash(unsafe))]` attribute compares and hashes the entire storage of a union as bytes, without tracking its active field. Custom field methods are not supported. Every byte must be initialized and readable during each call, including padding and bytes outside the active field. The storage must not change during a call. This condition must hold after construction, writes, moves, and copies; otherwise these operations have undefined behavior.
 
 ```rust
 use educe::Educe;
@@ -1255,7 +1283,10 @@ union Union {
 
 #### Default
 
-Use `#[derive(Educe)]` and `#[educe(Default)]` to implement the `Default` trait for a struct, enum, or union. You can also choose to ignore specific fields or set a method to replace the `Hash` trait.
+Use `#[derive(Educe)]` and `#[educe(Default)]` to implement the `Default` trait for a struct, enum, or union.
+You can set a default expression for the entire type or for individual fields.
+For an enum, mark the default variant with `#[educe(Default)]`; for a union, mark the field to initialize.
+Fields without a custom value use their type's `Default` implementation.
 
 ###### Basic Usage
 
@@ -1527,6 +1558,14 @@ A `From` impl also lets callers write `Target::from(value)`, whereas a direct `I
 ###### Basic Usage
 
 You need to designate a field as the default for `Into<type>` conversion unless the number of fields is exactly one. If you don't, educe will automatically try to find a proper one.
+
+Reference targets preserve explicit lifetimes, `mut`, and each reference layer, so `Into(&'a mut T)` and `Into(&'a &'b T)` keep those types in the generated interface.
+An omitted lifetime on a target reference defaults to `'static`.
+Automatic field matching ignores reference lifetimes, preserves reference depth, and permits an outer mutable reference to become a shared reference when Rust accepts the coercion.
+
+Original generic declarations and `where` clauses keep `Self` tied to the source type in a generated `From` impl.
+Custom `bound(...)` predicates are used verbatim: their `Self` means the target type in `From`, and the source type in a direct `Into` impl.
+Custom method paths always use the source type for `Self`.
 
 ```rust
 use educe::Educe;

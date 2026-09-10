@@ -1,5 +1,5 @@
 use crate::trait_handlers::TraitHandlerContext;
-mod models;
+pub(crate) mod models;
 mod panic;
 mod partial_eq_enum;
 mod partial_eq_struct;

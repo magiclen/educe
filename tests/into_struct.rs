@@ -239,3 +239,120 @@ fn force_into() {
 
     assert_eq!(1u8, Into::<u8>::into(s));
 }
+
+#[test]
+fn source_self_method() {
+    #[derive(Educe)]
+    #[educe(Into(u16, bound(T: Into<u16>)), Into(u32, into, bound(T: Into<u16>)))]
+    struct Struct<T> {
+        #[educe(Into(u16, method = Self::convert), Into(u32, method = Self::convert_wide))]
+        value: T,
+    }
+
+    impl<T: Into<u16>> Struct<T> {
+        fn convert(value: T) -> u16 {
+            value.into()
+        }
+
+        fn convert_wide(value: T) -> u32 {
+            u32::from(value.into())
+        }
+    }
+
+    assert_eq!(
+        7,
+        u16::from(Struct {
+            value: 7u8
+        })
+    );
+    assert_eq!(
+        7u32,
+        Into::<u32>::into(Struct {
+            value: 7u8
+        })
+    );
+}
+
+#[test]
+fn reference_targets() {
+    #[derive(Educe)]
+    #[educe(Into(&'a u8))]
+    struct Shared<'a>(&'a u8);
+
+    #[derive(Educe)]
+    #[educe(Into(&'a mut u8))]
+    struct Mutable<'a>(&'a mut u8);
+
+    #[derive(Educe)]
+    #[educe(Into(&'a &'b u8))]
+    struct Nested<'a, 'b>(&'a &'b u8);
+
+    #[derive(Educe)]
+    #[educe(Into(&u8))]
+    struct Static(&'static u8);
+
+    #[derive(Educe)]
+    #[educe(Into(&'a u8, into))]
+    struct Direct<'a>(&'a mut u8);
+
+    #[derive(Educe)]
+    #[educe(Into(&'a u8), Into(&'a &'a u8))]
+    struct DifferentDepths<'a> {
+        one: &'a u8,
+        two: &'a &'a u8,
+    }
+
+    let mut number = 7;
+    assert_eq!(7, *<&u8>::from(Shared(&number)));
+    *<&mut u8>::from(Mutable(&mut number)) = 9;
+    let reference = &number;
+    assert_eq!(9, **<&&u8>::from(Nested(&reference)));
+    assert_eq!(
+        9,
+        *<&u8>::from(DifferentDepths {
+            one: &number, two: &reference
+        })
+    );
+    assert_eq!(
+        9,
+        **<&&u8>::from(DifferentDepths {
+            one: &number, two: &reference
+        })
+    );
+    assert_eq!(3, *<&'static u8>::from(Static(&3)));
+    assert_eq!(9, *Into::<&u8>::into(Direct(&mut number)));
+}
+
+#[test]
+fn source_self_bounds_and_qualified_method() {
+    trait Convert<T> {
+        fn convert(value: T) -> u16;
+    }
+    trait Target {}
+    impl Target for u16 {}
+
+    #[derive(Educe)]
+    #[educe(Into(u16, bound(Self: Target)))]
+    struct Struct<T>(#[educe(Into(u16, method = <Self as Convert<T>>::convert))] T)
+    where
+        Self: Convert<T>;
+
+    impl<T: Into<u16>> Convert<T> for Struct<T> {
+        fn convert(value: T) -> u16 {
+            value.into()
+        }
+    }
+
+    #[derive(Educe)]
+    #[educe(Into(u16, into, bound(Self: Convert<T>)))]
+    struct Direct<T>(#[educe(Into(u16, method = <Self as Convert<T>>::convert))] T);
+
+    impl<T: Into<u16>> Convert<T> for Direct<T> {
+        fn convert(value: T) -> u16 {
+            value.into()
+        }
+    }
+
+    assert_eq!(7, u16::from(Struct(7u8)));
+    assert_eq!(8u16, Into::<u16>::into(Direct(8u8)));
+}

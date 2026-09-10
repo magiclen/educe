@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use syn::{Attribute, Meta, Token, punctuated::Punctuated};
+use syn::{Attribute, Meta, Token, Type, punctuated::Punctuated};
 
 use crate::{
     Trait,
@@ -10,6 +10,7 @@ use crate::{
 
 /// The settings of one conversion target declared by `#[educe(Into(type, ...))]`.
 pub(crate) struct IntoTarget {
+    pub(crate) ty:         Type,
     pub(crate) bound:      Bound,
     /// The bare `into` flag, which asks the handler to generate a direct `Into` impl instead of the default `From` impl.
     pub(crate) force_into: bool,
@@ -121,6 +122,7 @@ impl TypeAttributeBuilder {
                     }
 
                     types.insert(hash_ty, IntoTarget {
+                        ty: super::super::common::target_type(ty),
                         bound,
                         force_into,
                     });

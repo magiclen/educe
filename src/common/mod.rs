@@ -4,6 +4,8 @@ pub(crate) mod attributes;
 #[allow(dead_code)]
 pub(crate) mod bound;
 #[allow(dead_code)]
+pub(crate) mod generics;
+#[allow(dead_code)]
 pub(crate) mod path;
 #[allow(dead_code)]
 pub(crate) mod r#type;
@@ -44,3 +46,14 @@ pub(crate) mod unsafe_punctuated_meta;
 
 #[cfg(any(feature = "PartialOrd", feature = "Ord", feature = "Into"))]
 pub(crate) mod tools;
+
+/// Gives generated locals macro hygiene while preserving the spans of interpolated input.
+#[allow(unused_macros)]
+macro_rules! quote_mixed {
+    ($($tokens:tt)*) => {
+        quote::quote_spanned!(proc_macro2::Span::mixed_site() => $($tokens)*)
+    };
+}
+
+#[allow(unused_imports)]
+pub(crate) use quote_mixed;

@@ -76,3 +76,44 @@ fn method_is_marked_used() {
         panic!();
     }
 }
+
+#[derive(Educe)]
+#[educe(Clone(bound(T: Clone)))]
+pub struct Associated<T> {
+    #[educe(Clone(method = Self::copy_value))]
+    pub value: T,
+}
+
+impl<T: Clone> Associated<T> {
+    fn copy_value(value: &T) -> T {
+        value.clone()
+    }
+}
+
+#[derive(Educe)]
+#[educe(Clone(bound(T: Clone)))]
+pub enum AssociatedEnum<T> {
+    Tuple(#[educe(Clone(method = Self::copy_value))] T),
+}
+
+impl<T: Clone> AssociatedEnum<T> {
+    fn copy_value(value: &T) -> T {
+        value.clone()
+    }
+}
+
+#[test]
+fn associated_method_with_bound() {
+    let mut value = Associated {
+        value: 1
+    };
+    value.clone_from(&Associated {
+        value: 7
+    });
+    assert_eq!(7, value.clone().value);
+
+    let mut value = AssociatedEnum::Tuple(1);
+    value.clone_from(&AssociatedEnum::Tuple(7));
+    let AssociatedEnum::Tuple(value) = value.clone();
+    assert_eq!(7, value);
+}

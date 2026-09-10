@@ -1,5 +1,5 @@
 use proc_macro2::Span;
-use syn::{Attribute, Meta, Path, Token, punctuated::Punctuated, spanned::Spanned};
+use syn::{Attribute, ExprPath, Meta, Token, punctuated::Punctuated, spanned::Spanned};
 
 use crate::{
     common::{
@@ -14,7 +14,7 @@ use crate::{
 /// The parsed settings of a field-level `PartialOrd` attribute.
 pub(crate) struct FieldAttribute {
     pub(crate) ignore:                  bool,
-    pub(crate) method:                  Option<Path>,
+    pub(crate) method:                  Option<ExprPath>,
     /// Whether the method comes from a fallback `Ord` field attribute; such a method returns `Ordering` instead of `Option<Ordering>`, so the generated `partial_cmp` has to wrap its result in `Some`.
     pub(crate) method_returns_ordering: bool,
     pub(crate) rank:                    isize,

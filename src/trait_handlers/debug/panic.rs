@@ -1,4 +1,3 @@
-use quote::ToTokens;
 use syn::{Ident, Meta, Variant};
 
 #[inline]
@@ -21,23 +20,24 @@ pub(crate) fn unit_enum_need_name(name: &Ident) -> syn::Error {
 
 #[inline]
 pub(crate) fn union_without_unsafe(meta: &Meta) -> syn::Error {
-    let mut s = meta.into_token_stream().to_string().replace(" , ", ", ");
-
-    match s.len() {
-        5 => s.push_str("(unsafe)"),
-        7 => s.insert_str(6, "unsafe"),
-        _ => s.insert_str(6, "unsafe, "),
-    }
-
+    let path = meta.path();
+    let suggestion = if let Meta::List(list) = meta
+        && !list.tokens.is_empty()
+    {
+        let arguments = &list.tokens;
+        quote::quote!(#[educe(#path(unsafe, #arguments))])
+    } else {
+        quote::quote!(#[educe(#path(unsafe))])
+    };
     syn::Error::new_spanned(
         meta,
         format!(
-            "a union's `Debug` implementation may expose uninitialized memory\n* It is \
-             recommended that, for a union where `Debug` is implemented, types that allow \
-             uninitialized memory should not be used in it.\n* If you can ensure that the union \
-             uses no such types, use `#[educe({s})]` to implement the `Debug` trait for it.\n* \
-             The `unsafe` keyword should be placed as the first parameter of the `Debug` \
-             attribute."
+            "a union's `Debug` implementation reads its entire storage as bytes; reading \
+             uninitialized bytes is undefined behavior\n* Every byte must be initialized and \
+             readable during each call, including padding and bytes outside the active field.\n* \
+             The storage must not change during a call. Initialization must hold after \
+             construction, writes, moves, and copies.\n* Only if you can uphold this safety \
+             contract, use `{suggestion}`."
         ),
     )
 }

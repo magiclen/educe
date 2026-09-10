@@ -1,11 +1,11 @@
-use quote::{format_ident, quote};
-use syn::{Data, DeriveInput, Field, Fields, Ident, Meta, Path, Type};
+use quote::format_ident;
+use syn::{Data, DeriveInput, ExprPath, Field, Fields, Ident, Meta, Type, visit_mut::VisitMut};
 
 use super::{
     TraitHandlerMultiple,
     models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder},
 };
-use crate::{Trait, panic, trait_handlers::TraitHandlerContext};
+use crate::{Trait, common::quote_mixed, panic, trait_handlers::TraitHandlerContext};
 
 /// Generates the `Into` implementation for an enum.
 pub(crate) struct IntoEnumHandler;
@@ -60,7 +60,8 @@ impl TraitHandlerMultiple for IntoEnumHandler {
                 variant_attributes
             };
 
-            for (target_ty, target) in type_attribute.types {
+            for (target_key, target) in type_attribute.types {
+                let target_ty = &target.ty;
                 // By default a `From` impl is generated because it provides `Into` for free; the `into` flag asks for a direct `Into` impl instead.
                 let generate_from = !target.force_into;
 
@@ -73,7 +74,7 @@ impl TraitHandlerMultiple for IntoEnumHandler {
                 let enum_ident = &ast.ident;
 
                 type Variants<'a> =
-                    Vec<(&'a Ident, bool, usize, Ident, &'a Type, Option<&'a Path>)>;
+                    Vec<(&'a Ident, bool, usize, Ident, &'a Type, Option<&'a ExprPath>)>;
 
                 let mut variants: Variants = Vec::new();
 
@@ -93,7 +94,7 @@ impl TraitHandlerMultiple for IntoEnumHandler {
                             let field = fields.into_iter().next().unwrap();
 
                             let method = if let Some(field_attribute) = field_attributes.first() {
-                                if let Some(method) = field_attribute.types.get(&target_ty) {
+                                if let Some(method) = field_attribute.types.get(&target_key) {
                                     method.as_ref()
                                 } else {
                                     None
@@ -104,12 +105,12 @@ impl TraitHandlerMultiple for IntoEnumHandler {
 
                             (0usize, field, method)
                         } else {
-                            let mut into_field: Option<(usize, &Field, Option<&Path>)> = None;
+                            let mut into_field: Option<(usize, &Field, Option<&ExprPath>)> = None;
 
                             for (index, field) in fields.iter().enumerate() {
                                 if let Some(field_attribute) = field_attributes.get(index)
                                     && let Some((key, method)) =
-                                        field_attribute.types.get_key_value(&target_ty)
+                                        field_attribute.types.get_key_value(&target_key)
                                 {
                                     if into_field.is_some() {
                                         return Err(super::panic::multiple_into_fields(key));
@@ -122,9 +123,7 @@ impl TraitHandlerMultiple for IntoEnumHandler {
                             if into_field.is_none() {
                                 // search the same type
                                 for (index, field) in fields.iter().enumerate() {
-                                    let field_ty = super::common::to_hash_type(&field.ty);
-
-                                    if target_ty.eq(&field_ty) {
+                                    if super::common::field_matches_target(&field.ty, target_ty) {
                                         if into_field.is_some() {
                                             // multiple candidates
                                             into_field = None;
@@ -140,57 +139,62 @@ impl TraitHandlerMultiple for IntoEnumHandler {
                             if let Some(into_field) = into_field {
                                 into_field
                             } else {
-                                return Err(super::panic::no_into_field(&target_ty));
+                                return Err(super::panic::no_into_field(&target_key));
                             }
                         }
                     };
 
                     let (field_name, is_tuple): (Ident, bool) = match field.ident.as_ref() {
                         Some(ident) => (ident.clone(), false),
-                        None => (format_ident!("_{}", index), true),
+                        None => (
+                            format_ident!("_{}", index, span = proc_macro2::Span::mixed_site()),
+                            true,
+                        ),
                     };
 
                     variants.push((&variant.ident, is_tuple, index, field_name, &field.ty, method));
                 }
 
                 if variants.is_empty() {
-                    return Err(super::panic::no_into_field(&target_ty));
+                    return Err(super::panic::no_into_field(&target_key));
                 }
 
                 for (variant_ident, is_tuple, index, field_name, ty, method) in variants {
+                    let field_binding =
+                        format_ident!("_{}", index, span = proc_macro2::Span::mixed_site());
                     let mut pattern_token_stream = proc_macro2::TokenStream::new();
                     let mut body_token_stream = proc_macro2::TokenStream::new();
 
                     if let Some(method) = method {
-                        body_token_stream.extend(quote!( #method(#field_name) ));
+                        let mut method = method.clone();
+                        crate::common::generics::ReplaceSelf::new(ast)
+                            .visit_expr_path_mut(&mut method);
+                        body_token_stream.extend(quote_mixed!( #method(#field_binding) ));
+                    } else if super::common::field_matches_target(ty, target_ty) {
+                        body_token_stream.extend(quote_mixed!( #field_binding ));
                     } else {
-                        let field_ty = super::common::to_hash_type(ty);
+                        into_types.push(ty);
 
-                        if target_ty.eq(&field_ty) {
-                            body_token_stream.extend(quote!( #field_name ));
-                        } else {
-                            into_types.push(ty);
-
-                            body_token_stream
-                                .extend(quote!( ::core::convert::Into::into(#field_name) ));
-                        }
+                        body_token_stream
+                            .extend(quote_mixed!( ::core::convert::Into::into(#field_binding) ));
                     }
 
                     if is_tuple {
                         for _ in 0..index {
-                            pattern_token_stream.extend(quote!(_,));
+                            pattern_token_stream.extend(quote_mixed!(_,));
                         }
 
-                        pattern_token_stream.extend(quote!( #field_name, .. ));
+                        pattern_token_stream.extend(quote_mixed!( #field_binding, .. ));
 
                         arms_token_stream.extend(
-                            quote!( #enum_ident::#variant_ident ( #pattern_token_stream ) => #body_token_stream, ),
+                            quote_mixed!( #enum_ident::#variant_ident ( #pattern_token_stream ) => #body_token_stream, ),
                         );
                     } else {
-                        pattern_token_stream.extend(quote!( #field_name, .. ));
+                        pattern_token_stream
+                            .extend(quote_mixed!( #field_name: #field_binding, .. ));
 
                         arms_token_stream.extend(
-                            quote!( #enum_ident::#variant_ident { #pattern_token_stream } => #body_token_stream, ),
+                            quote_mixed!( #enum_ident::#variant_ident { #pattern_token_stream } => #body_token_stream, ),
                         );
                     }
                 }
@@ -199,12 +203,16 @@ impl TraitHandlerMultiple for IntoEnumHandler {
 
                 let bound = bound.into_where_predicates_by_generic_parameters_check_types_shallow(
                     &ast.generics.params,
-                    &syn::parse2(quote!(::core::convert::Into<#target_ty>)).unwrap(),
+                    &syn::parse2(quote_mixed!(::core::convert::Into<#target_ty>)).unwrap(),
                     &into_types,
                 );
 
                 // clone generics in order to not to affect other Into<T> implementations
                 let mut generics = ast.generics.clone();
+                if generate_from {
+                    crate::common::generics::ReplaceSelf::new(ast)
+                        .visit_generics_mut(&mut generics);
+                }
 
                 let where_clause = generics.make_where_clause();
 
@@ -215,7 +223,7 @@ impl TraitHandlerMultiple for IntoEnumHandler {
                 let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
                 token_stream.extend(if generate_from {
-                    quote! {
+                    quote_mixed! {
                         #generated_impl_attributes
                         impl #impl_generics ::core::convert::From<#ident #ty_generics> for #target_ty #where_clause {
                             #[inline]
@@ -227,7 +235,7 @@ impl TraitHandlerMultiple for IntoEnumHandler {
                         }
                     }
                 } else {
-                    quote! {
+                    quote_mixed! {
                         #generated_impl_attributes
                         impl #impl_generics ::core::convert::Into<#target_ty> for #ident #ty_generics #where_clause {
                             #[inline]

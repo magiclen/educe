@@ -1,12 +1,13 @@
-use quote::quote;
-use syn::{DeriveInput, Path, Type};
+use syn::{DeriveInput, ExprPath, Type};
+
+use crate::common::quote_mixed;
 
 /// Builds the helper type that prints a map key without the quotes a `str` would be formatted with.
 ///
 /// A nameless struct or variant is formatted as a map, and its keys are the field names; the type is declared once per generated `fmt` body, so an enum with several such variants does not repeat it.
 #[inline]
 pub(crate) fn create_raw_string_type() -> proc_macro2::TokenStream {
-    quote!(
+    quote_mixed!(
         #[allow(non_camel_case_types)] // We're using __ to help avoid clashes.
         struct Educe__RawString(&'static str);
 
@@ -22,61 +23,65 @@ pub(crate) fn create_raw_string_type() -> proc_macro2::TokenStream {
 /// Builds the statement that starts a map builder; the caller has to emit [`create_raw_string_type`] once in the same block.
 #[inline]
 pub(crate) fn create_debug_map_builder() -> proc_macro2::TokenStream {
-    quote!(let mut builder = f.debug_map();)
+    quote_mixed!(let mut builder = f.debug_map();)
 }
 
-/// Builds the `let arg = { ... };` statement that wraps a field so it is formatted with a custom method, together with a module-level marker that keeps the method counted as used.
-///
-/// The first returned token stream belongs inside the generated `fmt` body; the second one is a standalone item that must be emitted at module level, next to the impl.
+/// Wraps a field with a closure that keeps the source impl's bounds and `Self` scope.
 #[inline]
 pub(crate) fn create_format_arg(
-    ast: &DeriveInput,
     field_ty: &Type,
-    format_method: &Path,
+    format_method: &ExprPath,
     field_expr: proc_macro2::TokenStream,
-) -> (proc_macro2::TokenStream, proc_macro2::TokenStream) {
-    let ty_ident = &ast.ident;
-
-    // We use the complete original generics, not filtered by field,
-    // and include a PhantomData<Self> in our wrapper struct to use the generics.
-    //
-    // This avoids having to try to calculate the right *subset* of the generics
-    // relevant for this field, which is nontrivial and maybe impossible.
-    let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
-
-    let arg = quote!(
+) -> proc_macro2::TokenStream {
+    let value = proc_macro2::Ident::new("educe__value", proc_macro2::Span::mixed_site());
+    let formatter = proc_macro2::Ident::new("educe__formatter", proc_macro2::Span::mixed_site());
+    quote_mixed!(
         let arg = {
-            #[allow(non_camel_case_types)] // We're using __ to help avoid clashes.
-            struct Educe__DebugField<V, M>(V, ::core::marker::PhantomData<M>);
+            #[allow(non_camel_case_types)]
+            struct Educe__DebugField<'a, V: ?Sized, F>(&'a V, F);
 
-            impl #impl_generics ::core::fmt::Debug
-                for Educe__DebugField<&#field_ty, #ty_ident #ty_generics>
-                #where_clause
+            impl<V: ?Sized, F> ::core::fmt::Debug for Educe__DebugField<'_, V, F>
+            where
+                F: ::core::ops::Fn(&V, &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result,
             {
                 #[inline]
-                fn fmt(&self, educe__f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-                    #format_method(self.0, educe__f)
+                fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                    (self.1)(self.0, f)
                 }
             }
 
-            Educe__DebugField(#field_expr, ::core::marker::PhantomData::<Self>)
+            Educe__DebugField(#field_expr, |#value: &#field_ty, #formatter: &mut ::core::fmt::Formatter<'_>| #format_method(#value, #formatter))
         };
-    );
+    )
+}
 
-    // The generated `Debug` impl is marked `#[automatically_derived]`, and `Debug` carries `#[rustc_trivial_field_reads]`, so the compiler skips its body during dead-code analysis. A custom formatting method used only inside that body would therefore be wrongly reported as unused. This marker references the method from an ordinary item that is still analyzed, so the method stays counted as used, and it mirrors the real call site so it compiles under exactly the same conditions.
-    //
-    // This function is generated glue whose only purpose is to reference the custom method, so its signature can look problematic in isolation (e.g. `&Vec<T>` would normally suggest `clippy::ptr_arg`, or an unused generic would trigger `clippy::extra_unused_type_parameters`). Lints like these already do not fire on code coming from an external proc-macro, but the `clippy::all` allow is kept here as a low-cost safeguard in case that exemption ever narrows.
-    let mark = quote!(
+/// Keeps custom formatting methods visible to dead-code analysis under the final impl bounds.
+pub(crate) fn create_mark_method_used(
+    ast: &DeriveInput,
+    generics: &syn::Generics,
+    field_ty: &Type,
+    method: &ExprPath,
+) -> proc_macro2::TokenStream {
+    use syn::visit_mut::VisitMut;
+    let lint_attributes = crate::common::attributes::generated_lint_attributes(&ast.attrs);
+    let mut replace_self = crate::common::generics::ReplaceSelf::new(ast);
+    let mut generics = generics.clone();
+    let mut field_ty = field_ty.clone();
+    let mut method = method.clone();
+    replace_self.visit_generics_mut(&mut generics);
+    replace_self.visit_type_mut(&mut field_ty);
+    replace_self.visit_expr_path_mut(&mut method);
+    let (impl_generics, _, where_clause) = generics.split_for_impl();
+    quote_mixed!(
+        #lint_attributes
         const _: () = {
             #[allow(dead_code, clippy::all)]
             fn __educe_debug_method_used #impl_generics (
                 educe__value: &#field_ty,
                 educe__f: &mut ::core::fmt::Formatter<'_>,
             ) -> ::core::fmt::Result #where_clause {
-                #format_method(educe__value, educe__f)
+                #method(educe__value, educe__f)
             }
         };
-    );
-
-    (arg, mark)
+    )
 }

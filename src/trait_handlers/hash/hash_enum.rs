@@ -1,11 +1,15 @@
-use quote::{format_ident, quote};
-use syn::{Data, DeriveInput, Fields, Meta, Path, Type};
+use quote::format_ident;
+use syn::{Data, DeriveInput, ExprPath, Fields, Meta, Type};
 
 use super::{
     TraitHandler,
     models::{FieldAttributeBuilder, TypeAttributeBuilder},
 };
-use crate::{Trait, common::bound::BOUND_EXCEPTIONS_HASH, trait_handlers::TraitHandlerContext};
+use crate::{
+    Trait,
+    common::{bound::BOUND_EXCEPTIONS_HASH, quote_mixed},
+    trait_handlers::TraitHandlerContext,
+};
 
 /// Generates the `Hash` implementation for an enum.
 pub(crate) struct HashEnumHandler;
@@ -45,11 +49,12 @@ impl TraitHandler for HashEnumHandler {
 
                 let variant_ident = &variant.ident;
 
-                let built_in_hash: Path = syn::parse2(quote!(::core::hash::Hash::hash)).unwrap();
+                let built_in_hash: ExprPath =
+                    syn::parse2(quote_mixed!(::core::hash::Hash::hash)).unwrap();
 
                 match &variant.fields {
                     Fields::Unit => {
-                        arms_token_stream.extend(quote! {
+                        arms_token_stream.extend(quote_mixed! {
                             Self::#variant_ident => {
                                 ::core::hash::Hash::hash(&#variant_index, state);
                             }
@@ -67,25 +72,31 @@ impl TraitHandler for HashEnumHandler {
                             .build_from_attributes(&field.attrs, traits)?;
 
                             let field_name_real = field.ident.as_ref().unwrap();
-                            let field_name_var = format_ident!("v_{}", field_name_real);
+                            let field_name_var = format_ident!(
+                                "v_{}",
+                                field_name_real,
+                                span = proc_macro2::Span::mixed_site()
+                            );
 
                             if field_attribute.ignore {
-                                pattern_token_stream.extend(quote!(#field_name_real: _,));
+                                pattern_token_stream.extend(quote_mixed!(#field_name_real: _,));
 
                                 continue;
                             }
 
-                            pattern_token_stream.extend(quote!(#field_name_real: #field_name_var,));
+                            pattern_token_stream
+                                .extend(quote_mixed!(#field_name_real: #field_name_var,));
 
                             let hash = field_attribute.method.as_ref().unwrap_or_else(|| {
                                 hash_types.push(&field.ty);
                                 &built_in_hash
                             });
 
-                            block_token_stream.extend(quote!( #hash(#field_name_var, state); ));
+                            block_token_stream
+                                .extend(quote_mixed!( #hash(#field_name_var, state); ));
                         }
 
-                        arms_token_stream.extend(quote! {
+                        arms_token_stream.extend(quote_mixed! {
                             Self::#variant_ident { #pattern_token_stream } => {
                                 ::core::hash::Hash::hash(&#variant_index, state);
 
@@ -104,25 +115,27 @@ impl TraitHandler for HashEnumHandler {
                             }
                             .build_from_attributes(&field.attrs, traits)?;
 
-                            let field_name_var = format_ident!("_{}", index);
+                            let field_name_var =
+                                format_ident!("_{}", index, span = proc_macro2::Span::mixed_site());
 
                             if field_attribute.ignore {
-                                pattern_token_stream.extend(quote!(_,));
+                                pattern_token_stream.extend(quote_mixed!(_,));
 
                                 continue;
                             }
 
-                            pattern_token_stream.extend(quote!(#field_name_var,));
+                            pattern_token_stream.extend(quote_mixed!(#field_name_var,));
 
                             let hash = field_attribute.method.as_ref().unwrap_or_else(|| {
                                 hash_types.push(&field.ty);
                                 &built_in_hash
                             });
 
-                            block_token_stream.extend(quote!( #hash(#field_name_var, state); ));
+                            block_token_stream
+                                .extend(quote_mixed!( #hash(#field_name_var, state); ));
                         }
 
-                        arms_token_stream.extend(quote! {
+                        arms_token_stream.extend(quote_mixed! {
                             Self::#variant_ident ( #pattern_token_stream ) => {
                                 ::core::hash::Hash::hash(&#variant_index, state);
 
@@ -135,7 +148,7 @@ impl TraitHandler for HashEnumHandler {
         }
 
         if !arms_token_stream.is_empty() {
-            hash_token_stream.extend(quote! {
+            hash_token_stream.extend(quote_mixed! {
                 match self {
                     #arms_token_stream
                 }
@@ -143,10 +156,11 @@ impl TraitHandler for HashEnumHandler {
         }
 
         let ident = &ast.ident;
+        let hasher_ident = crate::common::generics::unused_ident(&ast.generics, "H");
 
         let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
             &ast.generics.params,
-            &syn::parse2(quote!(::core::hash::Hash)).unwrap(),
+            &syn::parse2(quote_mixed!(::core::hash::Hash)).unwrap(),
             &hash_types,
             &ast.ident,
             &BOUND_EXCEPTIONS_HASH,
@@ -162,11 +176,11 @@ impl TraitHandler for HashEnumHandler {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        token_stream.extend(quote! {
+        token_stream.extend(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::hash::Hash for #ident #ty_generics #where_clause {
                 #[inline]
-                fn hash<H: ::core::hash::Hasher>(&self, state: &mut H) {
+                fn hash<#hasher_ident: ::core::hash::Hasher>(&self, state: &mut #hasher_ident) {
                     #hash_token_stream
                 }
             }

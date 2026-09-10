@@ -1,11 +1,10 @@
-use quote::quote;
 use syn::{Data, DeriveInput, Meta};
 
 use super::{
     TraitHandler,
     models::{FieldAttributeBuilder, FieldName, TypeAttributeBuilder, TypeName},
 };
-use crate::{supported_traits::Trait, trait_handlers::TraitHandlerContext};
+use crate::{common::quote_mixed, supported_traits::Trait, trait_handlers::TraitHandlerContext};
 
 /// Generates the `Debug` implementation for a union.
 pub(crate) struct DebugUnionHandler;
@@ -52,13 +51,13 @@ impl TraitHandler for DebugUnionHandler {
             }
 
             if let Some(name) = name {
-                builder_token_stream.extend(quote!(
+                builder_token_stream.extend(quote_mixed!(
                     let mut builder = f.debug_tuple(stringify!(#name));
 
                     let size = ::core::mem::size_of::<Self>();
 
-                    // SAFETY: A union does not track its active field at runtime, so the whole value is intentionally read as a `u8` slice; because `self` is a live reference, the pointer is non-null, aligned, and valid for reads of `size` bytes within a single allocation.
-                    // Those bytes may include padding that is not guaranteed to be initialized, so the output can expose uninitialized memory, a trade-off the user explicitly accepted through the `unsafe` keyword in the attribute.
+                    // SAFETY: The live union reference provides a valid pointer and size; the unsafe derive contract requires every byte, including padding and bytes outside the active field, to be initialized and unchanged during this call.
+// The user must preserve this condition after every construction, write, move, and copy; reading uninitialized bytes is undefined behavior.
                     let data = unsafe { ::core::slice::from_raw_parts(self as *const Self as *const u8, size) };
 
                     builder.field(&data);
@@ -66,11 +65,11 @@ impl TraitHandler for DebugUnionHandler {
                     builder.finish()
                 ));
             } else {
-                builder_token_stream.extend(quote!(
+                builder_token_stream.extend(quote_mixed!(
                     let size = ::core::mem::size_of::<Self>();
 
-                    // SAFETY: A union does not track its active field at runtime, so the whole value is intentionally read as a `u8` slice; because `self` is a live reference, the pointer is non-null, aligned, and valid for reads of `size` bytes within a single allocation.
-                    // Those bytes may include padding that is not guaranteed to be initialized, so the output can expose uninitialized memory, a trade-off the user explicitly accepted through the `unsafe` keyword in the attribute.
+                    // SAFETY: The live union reference provides a valid pointer and size; the unsafe derive contract requires every byte, including padding and bytes outside the active field, to be initialized and unchanged during this call.
+// The user must preserve this condition after every construction, write, move, and copy; reading uninitialized bytes is undefined behavior.
                     let data = unsafe { ::core::slice::from_raw_parts(self as *const Self as *const u8, size) };
 
                     ::core::fmt::Debug::fmt(data, f)
@@ -82,7 +81,7 @@ impl TraitHandler for DebugUnionHandler {
 
         let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
-        token_stream.extend(quote! {
+        token_stream.extend(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
                 #[inline]

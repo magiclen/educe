@@ -1,5 +1,5 @@
 use proc_macro2::Span;
-use syn::{Attribute, Meta, Path, Token, punctuated::Punctuated, spanned::Spanned};
+use syn::{Attribute, ExprPath, Meta, Token, punctuated::Punctuated, spanned::Spanned};
 
 use crate::{
     common::{
@@ -14,7 +14,7 @@ use crate::{
 /// The parsed settings of a field-level `Ord` attribute.
 pub(crate) struct FieldAttribute {
     pub(crate) ignore:    bool,
-    pub(crate) method:    Option<Path>,
+    pub(crate) method:    Option<ExprPath>,
     pub(crate) rank:      isize,
     pub(crate) rank_span: Option<Span>,
 }

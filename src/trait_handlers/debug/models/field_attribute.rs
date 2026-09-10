@@ -1,4 +1,4 @@
-use syn::{Attribute, Ident, Meta, Path, Token, punctuated::Punctuated};
+use syn::{Attribute, ExprPath, Ident, Meta, Token, punctuated::Punctuated};
 
 use crate::{
     common::{
@@ -22,7 +22,7 @@ pub(crate) enum FieldName {
 pub(crate) struct FieldAttribute {
     pub(crate) name:   FieldName,
     pub(crate) ignore: bool,
-    pub(crate) method: Option<Path>,
+    pub(crate) method: Option<ExprPath>,
 }
 
 /// Parses field-level `Debug` metas; the `enable_*` switches describe which parameters are allowed for the current shape of data.

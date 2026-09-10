@@ -1,22 +1,25 @@
-use quote::ToTokens;
 use syn::Meta;
 
 #[inline]
 pub(crate) fn union_without_unsafe(meta: &Meta) -> syn::Error {
-    let mut s = meta.into_token_stream().to_string();
-
-    match s.len() {
-        9 => s.push_str("(unsafe)"),
-        11 => s.insert_str(10, "unsafe"),
-        _ => unreachable!(),
-    }
-
+    let path = meta.path();
+    let suggestion = if let Meta::List(list) = meta
+        && !list.tokens.is_empty()
+    {
+        let arguments = &list.tokens;
+        quote::quote!(#[educe(#path(unsafe, #arguments))])
+    } else {
+        quote::quote!(#[educe(#path(unsafe))])
+    };
     syn::Error::new_spanned(
         meta,
         format!(
-            "a union's `PartialEq` implementation is not precise, because it ignores the type of \
-             fields\n* If your union doesn't care about that, use `#[educe({s})]` to implement \
-             the `PartialEq` trait for it."
+            "a union's `PartialEq` implementation reads its entire storage as bytes; reading \
+             uninitialized bytes is undefined behavior\n* Every byte must be initialized and \
+             readable during each call, including padding and bytes outside the active field.\n* \
+             The storage must not change during a call. Initialization must hold after \
+             construction, writes, moves, and copies.\n* Only if you can uphold this safety \
+             contract, use `{suggestion}`."
         ),
     )
 }

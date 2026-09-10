@@ -65,6 +65,13 @@ impl BoundExceptions {
                 return true;
             }
 
+            if let PathArguments::AngleBracketed(args) = &segment.arguments {
+                let count =
+                    args.args.iter().filter(|arg| matches!(arg, GenericArgument::Type(_))).count();
+                if (ident == "HashMap" && count > 2) || (ident == "HashSet" && count > 1) {
+                    return false;
+                }
+            }
             self.unconditional_types.iter().any(|name| ident == name)
         } else {
             false
@@ -102,6 +109,11 @@ impl BoundExceptions {
                 }
             }
 
+            if (segment.ident == "HashMap" && types.len() > 2)
+                || (segment.ident == "HashSet" && types.len() > 1)
+            {
+                return None;
+            }
             return Some(types);
         }
 
@@ -265,6 +277,42 @@ pub(crate) fn type_uses_type_params(ty: &Type, params: &Punctuated<GenericParam,
     params.iter().any(|param| {
         if let GenericParam::Type(param) = param { set.contains(&param.ident) } else { false }
     })
+}
+
+/// Constant parameters can also make a field's trait implementation conditional.
+pub(crate) fn type_uses_generic_params(
+    ty: &Type,
+    params: &Punctuated<GenericParam, Comma>,
+) -> bool {
+    use syn::visit::Visit;
+    struct FindConst<'a> {
+        params: &'a Punctuated<GenericParam, Comma>,
+        found:  bool,
+    }
+    impl<'ast> Visit<'ast> for FindConst<'_> {
+        fn visit_path(&mut self, path: &'ast Path) {
+            if path.leading_colon.is_none()
+                && let Some(segment) = path.segments.first()
+            {
+                self.found |= self.params.iter().any(|param| {
+                    matches!(param, GenericParam::Const(param) if param.ident == segment.ident)
+                });
+            }
+            syn::visit::visit_path(self, path);
+        }
+    }
+    if type_uses_type_params(ty, params) {
+        return true;
+    }
+    if !params.iter().any(|param| matches!(param, GenericParam::Const(_))) {
+        return false;
+    }
+    let mut visitor = FindConst {
+        params,
+        found: false,
+    };
+    visitor.visit_type(ty);
+    visitor.found
 }
 
 /// Returns true if any path segment in the type is exactly the given ident.

@@ -416,3 +416,88 @@ fn bound_inheritance() {
         f1: 1
     });
 }
+
+#[test]
+#[allow(dead_code)]
+fn ignored_generic_bound() {
+    struct NotEq;
+
+    #[derive(Educe)]
+    #[educe(PartialEq, Eq)]
+    struct Struct<T> {
+        value:   u8,
+        #[educe(PartialEq(ignore))]
+        ignored: T,
+    }
+
+    fn equal<T: Eq>(a: T, b: T) -> bool {
+        a == b
+    }
+
+    assert!(equal(
+        Struct {
+            value: 1, ignored: NotEq
+        },
+        Struct {
+            value: 1, ignored: NotEq
+        }
+    ));
+}
+
+#[test]
+fn custom_comparison_without_eq_bound() {
+    fn equal<T>(_: &T, _: &T) -> bool {
+        true
+    }
+
+    #[derive(Educe)]
+    #[educe(PartialEq, Eq)]
+    struct Value<T>(#[educe(PartialEq(method = equal))] T);
+
+    fn assert_eq_impl<T: Eq>(value: T) {
+        assert!(value == value);
+    }
+
+    assert_eq_impl(Value(1.0f64));
+}
+
+#[test]
+fn explicit_bounds_keep_manual_equality() {
+    #[derive(Educe)]
+    #[educe(Eq(bound(false)))]
+    struct Disabled(f64);
+
+    impl PartialEq for Disabled {
+        fn eq(&self, other: &Self) -> bool {
+            self.0.to_bits() == other.0.to_bits()
+        }
+    }
+
+    #[derive(Educe)]
+    #[educe(Eq(bound(*)))]
+    struct All<T>(T, f64);
+
+    impl<T: PartialEq> PartialEq for All<T> {
+        fn eq(&self, other: &Self) -> bool {
+            self.0 == other.0 && self.1.to_bits() == other.1.to_bits()
+        }
+    }
+
+    #[derive(Educe)]
+    #[educe(Eq(bound(T: Eq)))]
+    struct Custom<T>(T, f64);
+
+    impl<T: PartialEq> PartialEq for Custom<T> {
+        fn eq(&self, other: &Self) -> bool {
+            self.0 == other.0 && self.1.to_bits() == other.1.to_bits()
+        }
+    }
+
+    fn assert_eq_impl<T: Eq>(left: T, right: T) {
+        assert!(left == right);
+    }
+
+    assert_eq_impl(Disabled(f64::NAN), Disabled(f64::NAN));
+    assert_eq_impl(All(1u8, f64::NAN), All(1u8, f64::NAN));
+    assert_eq_impl(Custom(1u8, f64::NAN), Custom(1u8, f64::NAN));
+}

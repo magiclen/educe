@@ -1,10 +1,10 @@
-use syn::{Attribute, Meta, Path, Token, punctuated::Punctuated};
+use syn::{Attribute, ExprPath, Meta, Token, punctuated::Punctuated};
 
 use crate::{common::path::meta_2_path, panic, supported_traits::Trait};
 
 /// The parsed settings of a field-level `Clone` attribute.
 pub(crate) struct FieldAttribute {
-    pub(crate) method: Option<Path>,
+    pub(crate) method: Option<ExprPath>,
 }
 
 /// Parses field-level `Clone` metas; the `enable_*` switches describe which parameters are allowed for the current shape of data.

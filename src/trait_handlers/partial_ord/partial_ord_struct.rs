@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
-use quote::quote;
-use syn::{Data, DeriveInput, Field, Meta, Path, Type, spanned::Spanned};
+use syn::{Data, DeriveInput, ExprPath, Field, Meta, Type, spanned::Spanned};
 
 use super::{
     TraitHandler,
@@ -12,6 +11,7 @@ use crate::{
     common::{
         bound::{BOUND_EXCEPTIONS_ORDER, Bound},
         ident_index::IdentOrIndex,
+        quote_mixed,
     },
     trait_handlers::TraitHandlerContext,
 };
@@ -70,8 +70,8 @@ impl TraitHandler for PartialOrdStructHandler {
                 fields.insert(rank, (index, field, field_attribute));
             }
 
-            let built_in_partial_cmp: Path =
-                syn::parse2(quote!(::core::cmp::PartialOrd::partial_cmp)).unwrap();
+            let built_in_partial_cmp: ExprPath =
+                syn::parse2(quote_mixed!(::core::cmp::PartialOrd::partial_cmp)).unwrap();
 
             for (index, field, field_attribute) in fields.values() {
                 let field_name = IdentOrIndex::from_ident_with_index(field.ident.as_ref(), *index);
@@ -84,12 +84,12 @@ impl TraitHandler for PartialOrdStructHandler {
 
                 // A method taken from a fallback `Ord` field attribute returns `Ordering`, so its result has to be wrapped in `Some` here.
                 let comparison = if field_attribute.method_returns_ordering {
-                    quote!(::core::option::Option::Some(#partial_cmp(&self.#field_name, &other.#field_name)))
+                    quote_mixed!(::core::option::Option::Some(#partial_cmp(&self.#field_name, &other.#field_name)))
                 } else {
-                    quote!(#partial_cmp(&self.#field_name, &other.#field_name))
+                    quote_mixed!(#partial_cmp(&self.#field_name, &other.#field_name))
                 };
 
-                partial_cmp_token_stream.extend(quote! {
+                partial_cmp_token_stream.extend(quote_mixed! {
                     match #comparison {
                         ::core::option::Option::Some(::core::cmp::Ordering::Equal) => (),
                         ::core::option::Option::Some(::core::cmp::Ordering::Greater) => return ::core::option::Option::Some(::core::cmp::Ordering::Greater),
@@ -107,7 +107,7 @@ impl TraitHandler for PartialOrdStructHandler {
         let mut bound =
             type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
                 &ast.generics.params,
-                &syn::parse2(quote!(::core::cmp::PartialOrd)).unwrap(),
+                &syn::parse2(quote_mixed!(::core::cmp::PartialOrd)).unwrap(),
                 &partial_ord_types,
                 &ast.ident,
                 &BOUND_EXCEPTIONS_ORDER,
@@ -129,7 +129,7 @@ impl TraitHandler for PartialOrdStructHandler {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        token_stream.extend(quote! {
+        token_stream.extend(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::cmp::PartialOrd for #ident #ty_generics #where_clause {
                 #[inline]

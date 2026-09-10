@@ -371,3 +371,40 @@ fn use_partial_eq_attr_ignore() {
     assert!(Enum::Tuple(1, 2) == Enum::Tuple(2, 2));
     assert!(Enum::Tuple(1, 2) != Enum::Tuple(2, 3));
 }
+
+#[test]
+#[allow(dead_code)]
+fn ignored_generic_bound() {
+    struct NotEq;
+
+    #[derive(Educe)]
+    #[educe(PartialEq, Eq)]
+    enum Enum<T> {
+        Tuple(u8, #[educe(PartialEq(ignore))] T),
+    }
+
+    fn equal<T: Eq>(a: T, b: T) -> bool {
+        a == b
+    }
+
+    assert!(equal(Enum::Tuple(1, NotEq), Enum::Tuple(1, NotEq)));
+}
+
+#[test]
+fn custom_comparison_without_eq_bound() {
+    fn equal<T>(_: &T, _: &T) -> bool {
+        true
+    }
+
+    #[derive(Educe)]
+    #[educe(PartialEq, Eq)]
+    enum Value<T> {
+        Tuple(#[educe(PartialEq(method = equal))] T),
+    }
+
+    fn assert_eq_impl<T: Eq>(value: T) {
+        assert!(value == value);
+    }
+
+    assert_eq_impl(Value::Tuple(1.0f64));
+}

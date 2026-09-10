@@ -1,6 +1,6 @@
 #![cfg(any(feature = "Debug", feature = "Clone"))]
 #![no_std]
-#![deny(clippy::used_underscore_binding, clippy::ptr_arg)]
+#![deny(deprecated, clippy::used_underscore_binding, clippy::ptr_arg)]
 // The types in these tests only exist to exercise the derived impls, and `#[automatically_derived]` impls do not count as uses for dead-code analysis.
 #![allow(dead_code)]
 
@@ -26,21 +26,33 @@ fn automatically_derived() {
     };
 }
 
-#[cfg(feature = "Debug")]
 #[test]
 fn lint_attribute_propagation() {
-    #[allow(dead_code)]
     #[deprecated]
     struct Deprecated;
 
-    // The `#[allow(deprecated)]` on the type is copied onto the generated impl, so using the deprecated field type inside it does not fail under `#![deny(deprecated)]`.
-    #[allow(dead_code)]
+    #[cfg(feature = "Debug")]
+    #[allow(deprecated)]
+    #[deprecated]
+    fn format_deprecated(_: &Deprecated, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("Deprecated")
+    }
+
+    #[cfg(feature = "Clone")]
+    #[allow(deprecated)]
+    #[deprecated]
+    fn clone_deprecated(_: &Deprecated) -> Deprecated {
+        Deprecated
+    }
+
     #[allow(deprecated)]
     #[derive(Educe)]
-    #[educe(Debug)]
+    #[cfg_attr(feature = "Debug", educe(Debug))]
+    #[cfg_attr(feature = "Clone", educe(Clone))]
     struct Struct {
-        #[educe(Debug(ignore))]
-        f1: Deprecated,
+        #[cfg_attr(feature = "Debug", educe(Debug(method = format_deprecated)))]
+        #[cfg_attr(feature = "Clone", educe(Clone(method = clone_deprecated)))]
+        field: Deprecated,
     }
 }
 
@@ -89,4 +101,20 @@ fn clone_method_marker_does_not_trigger_ptr_arg() {
         f1: vec![1, 2, 3]
     }
     .clone();
+}
+
+#[cfg(feature = "Eq")]
+#[test]
+fn eq_helper_lint_propagation() {
+    #[derive(PartialEq, Eq)]
+    #[deprecated]
+    struct Deprecated;
+
+    #[allow(deprecated)]
+    #[derive(PartialEq, Educe)]
+    #[educe(Eq)]
+    struct Struct(Deprecated);
+
+    fn assert_eq_impl<T: Eq>() {}
+    assert_eq_impl::<Struct>();
 }

@@ -1,8 +1,7 @@
 use std::collections::BTreeMap;
 
-use proc_macro2::Literal;
-use quote::{format_ident, quote};
-use syn::{Data, DeriveInput, Field, Fields, Ident, Meta, Path, Type, spanned::Spanned};
+use quote::format_ident;
+use syn::{Data, DeriveInput, ExprPath, Field, Fields, Ident, Meta, Type, spanned::Spanned};
 
 use super::{
     TraitHandler,
@@ -12,6 +11,7 @@ use crate::{
     Trait,
     common::{
         bound::{BOUND_EXCEPTIONS_ORDER, Bound},
+        quote_mixed,
         tools::DiscriminantType,
     },
     trait_handlers::TraitHandlerContext,
@@ -59,24 +59,24 @@ impl TraitHandler for PartialOrdEnumHandler {
 
                 let variant_ident = &variant.ident;
 
-                let discriminant = Literal::i128_unsuffixed(discriminant_values[variant_index]);
+                let discriminant = &discriminant_values[variant_index];
 
                 let key_pattern = match &variant.fields {
-                    Fields::Unit => quote!(Self::#variant_ident),
-                    Fields::Named(_) => quote!(Self::#variant_ident { .. }),
-                    Fields::Unnamed(_) => quote!(Self::#variant_ident ( .. )),
+                    Fields::Unit => quote_mixed!(Self::#variant_ident),
+                    Fields::Named(_) => quote_mixed!(Self::#variant_ident { .. }),
+                    Fields::Unnamed(_) => quote_mixed!(Self::#variant_ident ( .. )),
                 };
 
-                key_arms_token_stream.extend(quote! {
+                key_arms_token_stream.extend(quote_mixed! {
                     #key_pattern => #discriminant,
                 });
 
-                let built_in_partial_cmp: Path =
-                    syn::parse2(quote!(::core::cmp::PartialOrd::partial_cmp)).unwrap();
+                let built_in_partial_cmp: ExprPath =
+                    syn::parse2(quote_mixed!(::core::cmp::PartialOrd::partial_cmp)).unwrap();
 
                 match &variant.fields {
                     Fields::Unit => {
-                        arms_token_stream.extend(quote! {
+                        arms_token_stream.extend(quote_mixed! {
                             Self::#variant_ident => {
                                 return ::core::option::Option::Some(::core::cmp::Ordering::Equal);
                             }
@@ -102,20 +102,30 @@ impl TraitHandler for PartialOrdEnumHandler {
                             .build_from_attributes(&field.attrs, traits)?;
 
                             let field_name_real = field.ident.as_ref().unwrap();
-                            let field_name_var_self = format_ident!("_s_{}", field_name_real);
-                            let field_name_var_other = format_ident!("_o_{}", field_name_real);
+                            let field_name_var_self = format_ident!(
+                                "_s_{}",
+                                field_name_real,
+                                span = proc_macro2::Span::mixed_site()
+                            );
+                            let field_name_var_other = format_ident!(
+                                "_o_{}",
+                                field_name_real,
+                                span = proc_macro2::Span::mixed_site()
+                            );
 
                             if field_attribute.ignore {
-                                pattern_self_token_stream.extend(quote!(#field_name_real: _,));
-                                pattern_other_token_stream.extend(quote!(#field_name_real: _,));
+                                pattern_self_token_stream
+                                    .extend(quote_mixed!(#field_name_real: _,));
+                                pattern_other_token_stream
+                                    .extend(quote_mixed!(#field_name_real: _,));
 
                                 continue;
                             }
 
                             pattern_self_token_stream
-                                .extend(quote!(#field_name_real: #field_name_var_self,));
+                                .extend(quote_mixed!(#field_name_real: #field_name_var_self,));
                             pattern_other_token_stream
-                                .extend(quote!(#field_name_real: #field_name_var_other,));
+                                .extend(quote_mixed!(#field_name_real: #field_name_var_other,));
 
                             let rank = field_attribute.rank;
 
@@ -144,12 +154,12 @@ impl TraitHandler for PartialOrdEnumHandler {
 
                             // A method taken from a fallback `Ord` field attribute returns `Ordering`, so its result has to be wrapped in `Some` here.
                             let comparison = if field_attribute.method_returns_ordering {
-                                quote!(::core::option::Option::Some(#partial_cmp(#field_name_var_self, #field_name_var_other)))
+                                quote_mixed!(::core::option::Option::Some(#partial_cmp(#field_name_var_self, #field_name_var_other)))
                             } else {
-                                quote!(#partial_cmp(#field_name_var_self, #field_name_var_other))
+                                quote_mixed!(#partial_cmp(#field_name_var_self, #field_name_var_other))
                             };
 
-                            block_token_stream.extend(quote! {
+                            block_token_stream.extend(quote_mixed! {
                                 match #comparison {
                                     ::core::option::Option::Some(::core::cmp::Ordering::Equal) => (),
                                     ::core::option::Option::Some(::core::cmp::Ordering::Greater) => return ::core::option::Option::Some(::core::cmp::Ordering::Greater),
@@ -159,7 +169,7 @@ impl TraitHandler for PartialOrdEnumHandler {
                             });
                         }
 
-                        arms_token_stream.extend(quote! {
+                        arms_token_stream.extend(quote_mixed! {
                             Self::#variant_ident { #pattern_self_token_stream } => {
                                 if let Self::#variant_ident { #pattern_other_token_stream } = other {
                                     #block_token_stream
@@ -186,19 +196,24 @@ impl TraitHandler for PartialOrdEnumHandler {
                             }
                             .build_from_attributes(&field.attrs, traits)?;
 
-                            let field_name_var_self = format_ident!("_{}", index);
+                            let field_name_var_self =
+                                format_ident!("_{}", index, span = proc_macro2::Span::mixed_site());
 
                             if field_attribute.ignore {
-                                pattern_token_stream.extend(quote!(_,));
-                                pattern2_token_stream.extend(quote!(_,));
+                                pattern_token_stream.extend(quote_mixed!(_,));
+                                pattern2_token_stream.extend(quote_mixed!(_,));
 
                                 continue;
                             }
 
-                            let field_name_var_other = format_ident!("_{}", field_name_var_self);
+                            let field_name_var_other = format_ident!(
+                                "_{}",
+                                field_name_var_self,
+                                span = proc_macro2::Span::mixed_site()
+                            );
 
-                            pattern_token_stream.extend(quote!(#field_name_var_self,));
-                            pattern2_token_stream.extend(quote!(#field_name_var_other,));
+                            pattern_token_stream.extend(quote_mixed!(#field_name_var_self,));
+                            pattern2_token_stream.extend(quote_mixed!(#field_name_var_other,));
 
                             let rank = field_attribute.rank;
 
@@ -225,12 +240,12 @@ impl TraitHandler for PartialOrdEnumHandler {
 
                             // A method taken from a fallback `Ord` field attribute returns `Ordering`, so its result has to be wrapped in `Some` here.
                             let comparison = if field_attribute.method_returns_ordering {
-                                quote!(::core::option::Option::Some(#partial_cmp(#field_name, #field_name2)))
+                                quote_mixed!(::core::option::Option::Some(#partial_cmp(#field_name, #field_name2)))
                             } else {
-                                quote!(#partial_cmp(#field_name, #field_name2))
+                                quote_mixed!(#partial_cmp(#field_name, #field_name2))
                             };
 
-                            block_token_stream.extend(quote! {
+                            block_token_stream.extend(quote_mixed! {
                                 match #comparison {
                                     ::core::option::Option::Some(::core::cmp::Ordering::Equal) => (),
                                     ::core::option::Option::Some(::core::cmp::Ordering::Greater) => return ::core::option::Option::Some(::core::cmp::Ordering::Greater),
@@ -240,7 +255,7 @@ impl TraitHandler for PartialOrdEnumHandler {
                             });
                         }
 
-                        arms_token_stream.extend(quote! {
+                        arms_token_stream.extend(quote_mixed! {
                             Self::#variant_ident ( #pattern_token_stream ) => {
                                 if let Self::#variant_ident ( #pattern2_token_stream ) = other {
                                     #block_token_stream
@@ -254,10 +269,10 @@ impl TraitHandler for PartialOrdEnumHandler {
 
         if arms_token_stream.is_empty() {
             partial_cmp_token_stream
-                .extend(quote!(::core::option::Option::Some(::core::cmp::Ordering::Equal)));
+                .extend(quote_mixed!(::core::option::Option::Some(::core::cmp::Ordering::Equal)));
         } else {
-            // Order variants by their discriminant, which is computed at expansion time so that no unsafe assumption about the in-memory layout of the enum is needed; this reproduces the ordering of the standard `PartialOrd` derive.
-            let discriminant = quote! {
+            // Order variants by their discriminant, which is evaluated by the compiler so that no unsafe assumption about the in-memory layout of the enum is needed; this reproduces the ordering of the standard `PartialOrd` derive.
+            let discriminant = quote_mixed! {
                 let discriminant = |this: &Self| -> #discriminant_type {
                     match this {
                         #key_arms_token_stream
@@ -266,13 +281,13 @@ impl TraitHandler for PartialOrdEnumHandler {
             };
 
             partial_cmp_token_stream.extend(if all_unit {
-                quote! {
+                quote_mixed! {
                     #discriminant
 
                     ::core::option::Option::Some(::core::cmp::Ord::cmp(&discriminant(self), &discriminant(other)))
                 }
             } else {
-                quote! {
+                quote_mixed! {
                     #discriminant
 
                     match ::core::cmp::Ord::cmp(&discriminant(self), &discriminant(other)) {
@@ -301,7 +316,7 @@ impl TraitHandler for PartialOrdEnumHandler {
         let mut bound =
             type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
                 &ast.generics.params,
-                &syn::parse2(quote!(::core::cmp::PartialOrd)).unwrap(),
+                &syn::parse2(quote_mixed!(::core::cmp::PartialOrd)).unwrap(),
                 &partial_ord_types,
                 &ast.ident,
                 &BOUND_EXCEPTIONS_ORDER,
@@ -323,7 +338,7 @@ impl TraitHandler for PartialOrdEnumHandler {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        token_stream.extend(quote! {
+        token_stream.extend(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::cmp::PartialOrd for #ident #ty_generics #where_clause {
                 #[inline]

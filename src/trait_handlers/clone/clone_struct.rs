@@ -1,11 +1,10 @@
-use quote::quote;
-use syn::{Data, DeriveInput, Field, Fields, Index, Meta, Path, Type, punctuated::Punctuated};
+use syn::{Data, DeriveInput, ExprPath, Field, Fields, Index, Meta, Type, punctuated::Punctuated};
 
 use super::models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder};
 use crate::{
     TraitHandler,
     common::{
-        bound::BOUND_EXCEPTIONS_CLONE, r#type::type_uses_type_params,
+        bound::BOUND_EXCEPTIONS_CLONE, quote_mixed, r#type::type_uses_generic_params,
         where_predicates_bool::WherePredicates,
     },
     supported_traits::Trait,
@@ -35,7 +34,7 @@ impl TraitHandler for CloneStructHandler {
         let mut bound: WherePredicates = Punctuated::new();
 
         // Custom clone methods are referenced only inside the derived impl body, which dead-code analysis skips, so each one is collected here and later re-referenced by a marker item.
-        let mut mark_fields: Vec<(&Type, Path)> = Vec::new();
+        let mut mark_fields: Vec<(&Type, ExprPath)> = Vec::new();
 
         let mut clone_token_stream = proc_macro2::TokenStream::new();
         let mut clone_from_token_stream = proc_macro2::TokenStream::new();
@@ -64,29 +63,29 @@ impl TraitHandler for CloneStructHandler {
             let uses_generics = data
                 .fields
                 .iter()
-                .any(|field| type_uses_type_params(&field.ty, &ast.generics.params));
+                .any(|field| type_uses_generic_params(&field.ty, &ast.generics.params));
 
-            // Like the built-in derives, `clone` can be a plain bitwise copy only when `Copy` is derived together, no generic type parameter is involved, and no field uses a custom clone method.
-            // When generic type parameters are involved, a field-wise clone keeps the `Clone` impl usable for type arguments that are `Clone` but not `Copy`.
+            // Like the built-in derives, `clone` can be a plain bitwise copy only when `Copy` is derived together, no generic parameter is involved, and no field uses a custom clone method.
+            // When generic parameters are involved, a field-wise clone keeps the `Clone` impl usable for type arguments that are `Clone` but not `Copy`.
             let use_bitwise_copy = contains_copy && !uses_generics && !has_custom_method;
 
             let mut clone_types: Vec<&Type> = Vec::new();
 
             if use_bitwise_copy {
                 // A bitwise copy reads no field on its own, and this path is only taken when no field type uses a generic type parameter, so the field-wise body and the bound types would both be thrown away.
-                clone_token_stream.extend(quote!(*self));
+                clone_token_stream.extend(quote_mixed!(*self));
             } else {
                 match &data.fields {
                     Fields::Unit => {
-                        clone_token_stream.extend(quote!(Self));
-                        clone_from_token_stream.extend(quote!(let _ = source;));
+                        clone_token_stream.extend(quote_mixed!(Self));
+                        clone_from_token_stream.extend(quote_mixed!(let _ = source;));
                     },
                     Fields::Named(_) => {
                         let mut fields_token_stream = proc_macro2::TokenStream::new();
                         let mut clone_from_body_token_stream = proc_macro2::TokenStream::new();
 
                         if fields.is_empty() {
-                            clone_from_body_token_stream.extend(quote!(let _ = source;));
+                            clone_from_body_token_stream.extend(quote_mixed!(let _ = source;));
                         } else {
                             for (field, field_attribute) in fields {
                                 let field_name = field.ident.as_ref().unwrap();
@@ -94,28 +93,28 @@ impl TraitHandler for CloneStructHandler {
                                 if let Some(clone) = field_attribute.method.as_ref() {
                                     mark_fields.push((&field.ty, clone.clone()));
 
-                                    fields_token_stream.extend(quote! {
+                                    fields_token_stream.extend(quote_mixed! {
                                         #field_name: #clone(&self.#field_name),
                                     });
 
                                     clone_from_body_token_stream.extend(
-                                        quote!(self.#field_name = #clone(&source.#field_name);),
+                                        quote_mixed!(self.#field_name = #clone(&source.#field_name);),
                                     );
                                 } else {
                                     clone_types.push(&field.ty);
 
-                                    fields_token_stream.extend(quote! {
+                                    fields_token_stream.extend(quote_mixed! {
                                         #field_name: ::core::clone::Clone::clone(&self.#field_name),
                                     });
 
                                     clone_from_body_token_stream.extend(
-                                        quote!( ::core::clone::Clone::clone_from(&mut self.#field_name, &source.#field_name); ),
+                                        quote_mixed!( ::core::clone::Clone::clone_from(&mut self.#field_name, &source.#field_name); ),
                                     );
                                 }
                             }
                         }
 
-                        clone_token_stream.extend(quote! {
+                        clone_token_stream.extend(quote_mixed! {
                             Self {
                                 #fields_token_stream
                             }
@@ -128,7 +127,7 @@ impl TraitHandler for CloneStructHandler {
                         let mut clone_from_body_token_stream = proc_macro2::TokenStream::new();
 
                         if fields.is_empty() {
-                            clone_from_body_token_stream.extend(quote!(let _ = source;));
+                            clone_from_body_token_stream.extend(quote_mixed!(let _ = source;));
                         } else {
                             for (index, (field, field_attribute)) in fields.into_iter().enumerate()
                             {
@@ -137,26 +136,27 @@ impl TraitHandler for CloneStructHandler {
                                 if let Some(clone) = field_attribute.method.as_ref() {
                                     mark_fields.push((&field.ty, clone.clone()));
 
-                                    fields_token_stream.extend(quote!(#clone(&self.#field_name),));
+                                    fields_token_stream
+                                        .extend(quote_mixed!(#clone(&self.#field_name),));
 
                                     clone_from_body_token_stream.extend(
-                                        quote!(self.#field_name = #clone(&source.#field_name);),
+                                        quote_mixed!(self.#field_name = #clone(&source.#field_name);),
                                     );
                                 } else {
                                     clone_types.push(&field.ty);
 
                                     fields_token_stream.extend(
-                                        quote! ( ::core::clone::Clone::clone(&self.#field_name), ),
+                                        quote_mixed! ( ::core::clone::Clone::clone(&self.#field_name), ),
                                     );
 
                                     clone_from_body_token_stream.extend(
-                                        quote!( ::core::clone::Clone::clone_from(&mut self.#field_name, &source.#field_name); ),
+                                        quote_mixed!( ::core::clone::Clone::clone_from(&mut self.#field_name, &source.#field_name); ),
                                     );
                                 }
                             }
                         }
 
-                        clone_token_stream.extend(quote!(Self ( #fields_token_stream )));
+                        clone_token_stream.extend(quote_mixed!(Self ( #fields_token_stream )));
                         clone_from_token_stream.extend(clone_from_body_token_stream);
                     },
                 }
@@ -165,7 +165,7 @@ impl TraitHandler for CloneStructHandler {
             // The bound trait is always `Clone`; the `Copy` impl is emitted by the `Copy` handler with its own bounds.
             bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
                 &ast.generics.params,
-                &syn::parse2(quote!(::core::clone::Clone)).unwrap(),
+                &syn::parse2(quote_mixed!(::core::clone::Clone)).unwrap(),
                 &clone_types,
                 &ast.ident,
                 &BOUND_EXCEPTIONS_CLONE,
@@ -177,7 +177,7 @@ impl TraitHandler for CloneStructHandler {
         let clone_from_fn_token_stream = if clone_from_token_stream.is_empty() {
             None
         } else {
-            Some(quote! {
+            Some(quote_mixed! {
                 #[inline]
                 fn clone_from(&mut self, source: &Self) {
                     #clone_from_token_stream
@@ -197,7 +197,7 @@ impl TraitHandler for CloneStructHandler {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        token_stream.extend(quote! {
+        token_stream.extend(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::clone::Clone for #ident #ty_generics #where_clause {
                 #[inline]
@@ -210,7 +210,7 @@ impl TraitHandler for CloneStructHandler {
         });
 
         for (field_ty, method) in &mark_fields {
-            token_stream.extend(super::create_mark_method_used(&generics, field_ty, method));
+            token_stream.extend(super::create_mark_method_used(ast, &generics, field_ty, method));
         }
 
         Ok(())

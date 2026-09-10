@@ -36,10 +36,10 @@ fn recursive_enum() {
 #[test]
 fn recursive_struct() {
     #[derive(Educe)]
-    #[educe(Debug, Clone, PartialEq)]
+    #[educe(Debug, Clone, PartialEq, Eq)]
     struct Node<T> {
         value:    T,
-        children: Vec<Node<T>>,
+        children: Vec<Self>,
     }
 
     let node = Node {

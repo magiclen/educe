@@ -1,4 +1,3 @@
-use quote::quote;
 use syn::{Data, DeriveInput, Meta, Type};
 
 use super::{
@@ -7,7 +6,7 @@ use super::{
 };
 use crate::{
     Trait,
-    common::{bound::BOUND_EXCEPTIONS_EQUALITY, ident_index::IdentOrIndex},
+    common::{bound::BOUND_EXCEPTIONS_EQUALITY, ident_index::IdentOrIndex, quote_mixed},
     trait_handlers::TraitHandlerContext,
 };
 
@@ -51,7 +50,7 @@ impl TraitHandler for PartialEqStructHandler {
                 let field_name = IdentOrIndex::from_ident_with_index(field.ident.as_ref(), index);
 
                 if let Some(method) = field_attribute.method {
-                    eq_token_stream.extend(quote! {
+                    eq_token_stream.extend(quote_mixed! {
                         if !#method(&self.#field_name, &other.#field_name) {
                             return false;
                         }
@@ -61,7 +60,7 @@ impl TraitHandler for PartialEqStructHandler {
 
                     partial_eq_types.push(ty);
 
-                    eq_token_stream.extend(quote! {
+                    eq_token_stream.extend(quote_mixed! {
                         if ::core::cmp::PartialEq::ne(&self.#field_name, &other.#field_name) {
                             return false;
                         }
@@ -74,7 +73,7 @@ impl TraitHandler for PartialEqStructHandler {
 
         let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
             &ast.generics.params,
-            &syn::parse2(quote!(::core::cmp::PartialEq)).unwrap(),
+            &syn::parse2(quote_mixed!(::core::cmp::PartialEq)).unwrap(),
             &partial_eq_types,
             &ast.ident,
             &BOUND_EXCEPTIONS_EQUALITY,
@@ -92,7 +91,7 @@ impl TraitHandler for PartialEqStructHandler {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        token_stream.extend(quote! {
+        token_stream.extend(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::cmp::PartialEq for #ident #ty_generics #where_clause {
                 #[inline]

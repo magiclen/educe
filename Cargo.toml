@@ -1,6 +1,6 @@
 [package]
 name = "educe"
-version = "0.7.6"
+version = "0.8.0"
 authors = ["Magic Len <len@magiclen.org>"]
 edition = "2024"
 rust-version = "1.89"
@@ -16,7 +16,7 @@ include = ["src/**/*", "Cargo.toml", "README.md", "LICENSE"]
 proc-macro = true
 
 [dependencies]
-syn = "3"
+syn = { version = "3", features = ["visit", "visit-mut"] }
 quote = "1.0.44"
 proc-macro2 = "1.0.91"
 

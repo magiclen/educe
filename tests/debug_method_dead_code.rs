@@ -65,3 +65,39 @@ fn method_is_marked_used() {
     );
     assert_eq!("Tuple(Hi)", format!("{:?}", Enum::Tuple(1u8)));
 }
+
+#[derive(Educe)]
+#[educe(Debug(bound(T: core::fmt::Display)))]
+pub struct Associated<T> {
+    #[educe(Debug(method = Self::render))]
+    pub value: T,
+}
+
+impl<T: core::fmt::Display> Associated<T> {
+    fn render(value: &T, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{value}")
+    }
+}
+
+#[derive(Educe)]
+#[educe(Debug(bound(T: core::fmt::Display)))]
+pub enum AssociatedEnum<T> {
+    Tuple(#[educe(Debug(method = Self::render))] T),
+}
+
+impl<T: core::fmt::Display> AssociatedEnum<T> {
+    fn render(value: &T, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{value}")
+    }
+}
+
+#[test]
+fn associated_method_with_bound() {
+    assert_eq!(
+        "Associated { value: 7 }",
+        format!("{:?}", Associated {
+            value: 7
+        })
+    );
+    assert_eq!("Tuple(7)", format!("{:?}", AssociatedEnum::Tuple(7)));
+}

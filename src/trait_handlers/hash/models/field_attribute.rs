@@ -1,4 +1,4 @@
-use syn::{Attribute, Meta, Path, Token, punctuated::Punctuated};
+use syn::{Attribute, ExprPath, Meta, Token, punctuated::Punctuated};
 
 use crate::{
     common::{
@@ -12,7 +12,7 @@ use crate::{
 /// The parsed settings of a field-level `Hash` attribute.
 pub(crate) struct FieldAttribute {
     pub(crate) ignore: bool,
-    pub(crate) method: Option<Path>,
+    pub(crate) method: Option<ExprPath>,
 }
 
 /// Parses field-level `Hash` metas; the `enable_*` switches describe which parameters are allowed for the current shape of data.

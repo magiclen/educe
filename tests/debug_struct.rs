@@ -534,3 +534,37 @@ fn bound_3() {
 
     assert_eq!("Tuple(1)", format!("{:?}", Tuple(1)));
 }
+
+#[test]
+fn dynamically_sized_fields() {
+    #[derive(Educe)]
+    #[educe(Debug)]
+    struct Struct<T: ?Sized> {
+        field: T,
+    }
+
+    #[derive(Educe)]
+    #[educe(Debug)]
+    struct Tuple<T: ?Sized>(T);
+
+    #[derive(Educe)]
+    #[educe(Debug(name = false))]
+    struct Map<T: ?Sized> {
+        field: T,
+    }
+
+    let named = Struct {
+        field: [1u8, 2]
+    };
+    let tuple = Tuple([1u8, 2]);
+    let map = Map {
+        field: [1u8, 2]
+    };
+    let named: &Struct<[u8]> = &named;
+    let tuple: &Tuple<[u8]> = &tuple;
+    let map: &Map<[u8]> = &map;
+
+    assert_eq!("Struct { field: [1, 2] }", format!("{named:?}"));
+    assert_eq!("Tuple([1, 2])", format!("{tuple:?}"));
+    assert_eq!("{field: [1, 2]}", format!("{map:?}"));
+}

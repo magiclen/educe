@@ -1,9 +1,8 @@
-use quote::quote;
 use syn::{Data, DeriveInput, Meta};
 
 use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
 use crate::{
-    common::where_predicates_bool::WherePredicates,
+    common::{quote_mixed, where_predicates_bool::WherePredicates},
     supported_traits::Trait,
     trait_handlers::{TraitHandler, TraitHandlerContext},
 };
@@ -49,21 +48,21 @@ impl TraitHandler for PartialEqUnionHandler {
 
         let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
-        token_stream.extend(quote! {
+        token_stream.extend(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::cmp::PartialEq for #ident #ty_generics #where_clause {
                 #[inline]
                 fn eq(&self, other: &Self) -> bool {
                     let size = ::core::mem::size_of::<Self>();
 
-                    // SAFETY: A union does not track its active field at runtime, so the whole value is intentionally read as a `u8` slice; because `self` is a live reference, the pointer is non-null, aligned, and valid for reads of `size` bytes within a single allocation.
-                    // Those bytes may include padding that is not guaranteed to be initialized, so the comparison can read uninitialized memory, a trade-off the user explicitly accepted through the `unsafe` keyword in the attribute.
+                    // SAFETY: The live union reference provides a valid pointer and size; the unsafe derive contract requires every byte, including padding and bytes outside the active field, to be initialized and unchanged during this call.
+// The user must preserve this condition after every construction, write, move, and copy; reading uninitialized bytes is undefined behavior.
                     let self_data = unsafe {
                         ::core::slice::from_raw_parts(self as *const Self as *const u8, size)
                     };
 
-                    // SAFETY: A union does not track its active field at runtime, so the whole value is intentionally read as a `u8` slice; because `other` is a live reference, the pointer is non-null, aligned, and valid for reads of `size` bytes within a single allocation.
-                    // Those bytes may include padding that is not guaranteed to be initialized, so the comparison can read uninitialized memory, a trade-off the user explicitly accepted through the `unsafe` keyword in the attribute.
+                    // SAFETY: The live union reference provides a valid pointer and size; the unsafe derive contract requires every byte, including padding and bytes outside the active field, to be initialized and unchanged during this call.
+// The user must preserve this condition after every construction, write, move, and copy; reading uninitialized bytes is undefined behavior.
                     let other_data = unsafe {
                         ::core::slice::from_raw_parts(other as *const Self as *const u8, size)
                     };

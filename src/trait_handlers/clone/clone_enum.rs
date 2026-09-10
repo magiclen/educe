@@ -1,13 +1,15 @@
-use quote::{format_ident, quote};
-use syn::{Data, DeriveInput, Field, Fields, Meta, Path, Type, Variant, punctuated::Punctuated};
+use quote::format_ident;
+use syn::{
+    Data, DeriveInput, ExprPath, Field, Fields, Meta, Type, Variant, punctuated::Punctuated,
+};
 
 use super::models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder};
 // Only the bitwise-copy fast path, gated on the `Copy` trait, needs to inspect whether a field uses a type parameter.
 #[cfg(feature = "Copy")]
-use crate::common::r#type::type_uses_type_params;
+use crate::common::r#type::type_uses_generic_params;
 use crate::{
     TraitHandler,
-    common::{bound::BOUND_EXCEPTIONS_CLONE, where_predicates_bool::WherePredicates},
+    common::{bound::BOUND_EXCEPTIONS_CLONE, quote_mixed, where_predicates_bool::WherePredicates},
     supported_traits::Trait,
     trait_handlers::TraitHandlerContext,
 };
@@ -35,7 +37,7 @@ impl TraitHandler for CloneEnumHandler {
         let mut bound: WherePredicates = Punctuated::new();
 
         // Custom clone methods are referenced only inside the derived impl body, which dead-code analysis skips, so each one is collected here and later re-referenced by a marker item.
-        let mut mark_fields: Vec<(&Type, Path)> = Vec::new();
+        let mut mark_fields: Vec<(&Type, ExprPath)> = Vec::new();
 
         let mut clone_token_stream = proc_macro2::TokenStream::new();
         let mut clone_from_token_stream = proc_macro2::TokenStream::new();
@@ -73,8 +75,8 @@ impl TraitHandler for CloneEnumHandler {
                 variants.push((variant, variant_fields));
             }
 
-            // Like the built-in derives, `clone` can be a plain bitwise copy only when `Copy` is derived together, no generic type parameter is involved, and no field uses a custom clone method.
-            // When generic type parameters are involved, a field-wise clone keeps the `Clone` impl usable for type arguments that are `Clone` but not `Copy`.
+            // Like the built-in derives, `clone` can be a plain bitwise copy only when `Copy` is derived together, no generic parameter is involved, and no field uses a custom clone method.
+            // When generic parameters are involved, a field-wise clone keeps the `Clone` impl usable for type arguments that are `Clone` but not `Copy`.
             #[cfg(feature = "Copy")]
             let use_bitwise_copy = !has_custom_clone_method
                 && traits.contains(&Trait::Copy)
@@ -82,7 +84,7 @@ impl TraitHandler for CloneEnumHandler {
                     variant
                         .fields
                         .iter()
-                        .any(|field| type_uses_type_params(&field.ty, &ast.generics.params))
+                        .any(|field| type_uses_generic_params(&field.ty, &ast.generics.params))
                 });
 
             #[cfg(not(feature = "Copy"))]
@@ -92,10 +94,10 @@ impl TraitHandler for CloneEnumHandler {
 
             if use_bitwise_copy {
                 // A bitwise copy reads no field on its own, and this path is only taken when no field type uses a generic type parameter, so the field-wise body and the bound types would both be thrown away.
-                clone_token_stream.extend(quote!(*self));
+                clone_token_stream.extend(quote_mixed!(*self));
             } else if variants.is_empty() {
-                clone_token_stream.extend(quote!(::core::unreachable!()));
-                clone_from_token_stream.extend(quote!(let _ = source;));
+                clone_token_stream.extend(quote_mixed!(::core::unreachable!()));
+                clone_from_token_stream.extend(quote_mixed!(let _ = source;));
             } else {
                 let mut clone_variants_token_stream = proc_macro2::TokenStream::new();
                 let mut clone_from_variants_token_stream = proc_macro2::TokenStream::new();
@@ -105,10 +107,10 @@ impl TraitHandler for CloneEnumHandler {
 
                     match &variant.fields {
                         Fields::Unit => {
-                            clone_variants_token_stream.extend(quote! {
+                            clone_variants_token_stream.extend(quote_mixed! {
                                 Self::#variant_ident => Self::#variant_ident,
                             });
-                            clone_from_variants_token_stream.extend(quote! {
+                            clone_from_variants_token_stream.extend(quote_mixed! {
                                 Self::#variant_ident => {
                                     if let Self::#variant_ident = source {
                                         // same
@@ -126,40 +128,48 @@ impl TraitHandler for CloneEnumHandler {
 
                             for (field, field_attribute) in variant_fields {
                                 let field_name_real = field.ident.as_ref().unwrap();
-                                let field_name_src = format_ident!("_s_{}", field_name_real);
-                                let field_name_dst = format_ident!("_d_{}", field_name_real);
+                                let field_name_src = format_ident!(
+                                    "_s_{}",
+                                    field_name_real,
+                                    span = proc_macro2::Span::mixed_site()
+                                );
+                                let field_name_dst = format_ident!(
+                                    "_d_{}",
+                                    field_name_real,
+                                    span = proc_macro2::Span::mixed_site()
+                                );
 
                                 pattern_src_token_stream
-                                    .extend(quote!(#field_name_real: #field_name_src,));
+                                    .extend(quote_mixed!(#field_name_real: #field_name_src,));
                                 pattern_dst_token_stream
-                                    .extend(quote!(#field_name_real: #field_name_dst,));
+                                    .extend(quote_mixed!(#field_name_real: #field_name_dst,));
 
                                 if let Some(clone) = field_attribute.method.as_ref() {
                                     mark_fields.push((&field.ty, clone.clone()));
 
-                                    cl_fields_token_stream.extend(quote! {
+                                    cl_fields_token_stream.extend(quote_mixed! {
                                         #field_name_real: #clone(#field_name_src),
                                     });
                                     cf_body_token_stream.extend(
-                                        quote!(*#field_name_dst = #clone(#field_name_src);),
+                                        quote_mixed!(*#field_name_dst = #clone(#field_name_src);),
                                     );
                                 } else {
                                     clone_types.push(&field.ty);
 
-                                    cl_fields_token_stream.extend(quote! {
+                                    cl_fields_token_stream.extend(quote_mixed! {
                                         #field_name_real: ::core::clone::Clone::clone(#field_name_src),
                                     });
                                     cf_body_token_stream.extend(
-                                        quote!( ::core::clone::Clone::clone_from(#field_name_dst, #field_name_src); ),
+                                        quote_mixed!( ::core::clone::Clone::clone_from(#field_name_dst, #field_name_src); ),
                                     );
                                 }
                             }
 
-                            clone_variants_token_stream.extend(quote! {
+                            clone_variants_token_stream.extend(quote_mixed! {
                                     Self::#variant_ident { #pattern_src_token_stream } => Self::#variant_ident { #cl_fields_token_stream },
                                 });
 
-                            clone_from_variants_token_stream.extend(quote! {
+                            clone_from_variants_token_stream.extend(quote_mixed! {
                                     Self::#variant_ident { #pattern_dst_token_stream } => {
                                         if let Self::#variant_ident { #pattern_src_token_stream } = source {
                                             #cf_body_token_stream
@@ -178,38 +188,47 @@ impl TraitHandler for CloneEnumHandler {
                             for (index, (field, field_attribute)) in
                                 variant_fields.into_iter().enumerate()
                             {
-                                let field_name_src = format_ident!("_{}", index);
+                                let field_name_src = format_ident!(
+                                    "_{}",
+                                    index,
+                                    span = proc_macro2::Span::mixed_site()
+                                );
 
-                                pattern_token_stream.extend(quote!(#field_name_src,));
+                                pattern_token_stream.extend(quote_mixed!(#field_name_src,));
 
-                                let field_name_dst = format_ident!("_{}", field_name_src);
+                                let field_name_dst = format_ident!(
+                                    "_{}",
+                                    field_name_src,
+                                    span = proc_macro2::Span::mixed_site()
+                                );
 
-                                pattern2_token_stream.extend(quote!(#field_name_dst,));
+                                pattern2_token_stream.extend(quote_mixed!(#field_name_dst,));
 
                                 if let Some(clone) = field_attribute.method.as_ref() {
                                     mark_fields.push((&field.ty, clone.clone()));
 
-                                    fields_token_stream.extend(quote! (#clone(#field_name_src),));
+                                    fields_token_stream
+                                        .extend(quote_mixed! (#clone(#field_name_src),));
                                     body_token_stream.extend(
-                                        quote!(*#field_name_src = #clone(#field_name_dst);),
+                                        quote_mixed!(*#field_name_src = #clone(#field_name_dst);),
                                     );
                                 } else {
                                     clone_types.push(&field.ty);
 
                                     fields_token_stream.extend(
-                                        quote! ( ::core::clone::Clone::clone(#field_name_src), ),
+                                        quote_mixed! ( ::core::clone::Clone::clone(#field_name_src), ),
                                     );
                                     body_token_stream.extend(
-                                        quote!( ::core::clone::Clone::clone_from(#field_name_src, #field_name_dst); ),
+                                        quote_mixed!( ::core::clone::Clone::clone_from(#field_name_src, #field_name_dst); ),
                                     );
                                 }
                             }
 
-                            clone_variants_token_stream.extend(quote! {
+                            clone_variants_token_stream.extend(quote_mixed! {
                                     Self::#variant_ident ( #pattern_token_stream ) => Self::#variant_ident ( #fields_token_stream ),
                                 });
 
-                            clone_from_variants_token_stream.extend(quote! {
+                            clone_from_variants_token_stream.extend(quote_mixed! {
                                     Self::#variant_ident ( #pattern_token_stream ) => {
                                         if let Self::#variant_ident ( #pattern2_token_stream ) = source {
                                             #body_token_stream
@@ -222,13 +241,13 @@ impl TraitHandler for CloneEnumHandler {
                     }
                 }
 
-                clone_token_stream.extend(quote! {
+                clone_token_stream.extend(quote_mixed! {
                     match self {
                         #clone_variants_token_stream
                     }
                 });
 
-                clone_from_token_stream.extend(quote! {
+                clone_from_token_stream.extend(quote_mixed! {
                     match self {
                         #clone_from_variants_token_stream
                     }
@@ -238,7 +257,7 @@ impl TraitHandler for CloneEnumHandler {
             // The bound trait is always `Clone`; the `Copy` impl is emitted by the `Copy` handler with its own bounds.
             bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
                 &ast.generics.params,
-                &syn::parse2(quote!(::core::clone::Clone)).unwrap(),
+                &syn::parse2(quote_mixed!(::core::clone::Clone)).unwrap(),
                 &clone_types,
                 &ast.ident,
                 &BOUND_EXCEPTIONS_CLONE,
@@ -250,7 +269,7 @@ impl TraitHandler for CloneEnumHandler {
         let clone_from_fn_token_stream = if clone_from_token_stream.is_empty() {
             None
         } else {
-            Some(quote! {
+            Some(quote_mixed! {
                 #[inline]
                 fn clone_from(&mut self, source: &Self) {
                     #clone_from_token_stream
@@ -270,7 +289,7 @@ impl TraitHandler for CloneEnumHandler {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        token_stream.extend(quote! {
+        token_stream.extend(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::clone::Clone for #ident #ty_generics #where_clause {
                 #[inline]
@@ -283,7 +302,7 @@ impl TraitHandler for CloneEnumHandler {
         });
 
         for (field_ty, method) in &mark_fields {
-            token_stream.extend(super::create_mark_method_used(&generics, field_ty, method));
+            token_stream.extend(super::create_mark_method_used(ast, &generics, field_ty, method));
         }
 
         Ok(())

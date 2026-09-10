@@ -393,3 +393,24 @@ fn bound_4() {
     assert!(s.f2.is_none());
     assert!(s.f3.is_empty());
 }
+
+#[test]
+fn const_generic_bound() {
+    #[derive(Educe)]
+    #[educe(Default)]
+    struct Array<const N: usize>([u8; N]);
+
+    struct Buffer<const N: usize>([u8; N]);
+    impl Default for Buffer<4> {
+        fn default() -> Self {
+            Self([0; 4])
+        }
+    }
+
+    #[derive(Educe)]
+    #[educe(Default)]
+    struct Wrapper<const N: usize>(Buffer<N>);
+
+    assert_eq!([0; 4], Array::<4>::default().0);
+    assert_eq!([0; 4], Wrapper::<4>::default().0.0);
+}

@@ -33,10 +33,14 @@ fn basic() {
 #[test]
 fn bound() {
     #[derive(Educe)]
-    #[educe(PartialEq(unsafe))]
+    #[educe(PartialEq(unsafe), Eq)]
     union Union<T: Copy> {
         f1: T,
     }
+
+    fn assert_eq_impl<T: Eq>() {}
+
+    assert_eq_impl::<Union<u8>>();
 
     assert!(
         Union {

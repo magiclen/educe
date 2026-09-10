@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use syn::{Attribute, Meta, Path, Token, punctuated::Punctuated};
+use syn::{Attribute, ExprPath, Meta, Token, punctuated::Punctuated};
 
 use crate::{
     Trait,
@@ -10,7 +10,7 @@ use crate::{
 
 /// The parsed settings of a field-level `Into` attribute.
 pub(crate) struct FieldAttribute {
-    pub(crate) types: BTreeMap<HashType, Option<Path>>,
+    pub(crate) types: BTreeMap<HashType, Option<ExprPath>>,
 }
 
 #[derive(Debug)]

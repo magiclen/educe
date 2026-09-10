@@ -1,5 +1,4 @@
-use quote::quote;
-use syn::{Data, DeriveInput, Meta, Path, Type};
+use syn::{Data, DeriveInput, ExprPath, Meta, Type};
 
 use super::{
     TraitHandler,
@@ -7,7 +6,7 @@ use super::{
 };
 use crate::{
     Trait,
-    common::{bound::BOUND_EXCEPTIONS_HASH, ident_index::IdentOrIndex},
+    common::{bound::BOUND_EXCEPTIONS_HASH, ident_index::IdentOrIndex, quote_mixed},
     trait_handlers::TraitHandlerContext,
 };
 
@@ -37,7 +36,8 @@ impl TraitHandler for HashStructHandler {
         let mut hash_token_stream = proc_macro2::TokenStream::new();
 
         if let Data::Struct(data) = &ast.data {
-            let built_in_hash: Path = syn::parse2(quote!(::core::hash::Hash::hash)).unwrap();
+            let built_in_hash: ExprPath =
+                syn::parse2(quote_mixed!(::core::hash::Hash::hash)).unwrap();
 
             for (index, field) in data.fields.iter().enumerate() {
                 let field_attribute = FieldAttributeBuilder {
@@ -61,15 +61,16 @@ impl TraitHandler for HashStructHandler {
                     &built_in_hash
                 });
 
-                hash_token_stream.extend(quote!( #hash(&self.#field_name, state); ));
+                hash_token_stream.extend(quote_mixed!( #hash(&self.#field_name, state); ));
             }
         }
 
         let ident = &ast.ident;
+        let hasher_ident = crate::common::generics::unused_ident(&ast.generics, "H");
 
         let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
             &ast.generics.params,
-            &syn::parse2(quote!(::core::hash::Hash)).unwrap(),
+            &syn::parse2(quote_mixed!(::core::hash::Hash)).unwrap(),
             &hash_types,
             &ast.ident,
             &BOUND_EXCEPTIONS_HASH,
@@ -85,11 +86,11 @@ impl TraitHandler for HashStructHandler {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        token_stream.extend(quote! {
+        token_stream.extend(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::hash::Hash for #ident #ty_generics #where_clause {
                 #[inline]
-                fn hash<H: ::core::hash::Hasher>(&self, state: &mut H) {
+                fn hash<#hasher_ident: ::core::hash::Hasher>(&self, state: &mut #hasher_ident) {
                     #hash_token_stream
                 }
             }
