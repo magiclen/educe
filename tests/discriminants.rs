@@ -5,6 +5,40 @@ use core::cmp::Ordering;
 
 use educe::Educe;
 
+#[allow(non_camel_case_types, dead_code)]
+#[test]
+fn primitive_names() {
+    type isize = u8;
+    type i16 = u8;
+
+    #[derive(PartialEq, Eq, Educe)]
+    #[cfg_attr(feature = "Ord", educe(Ord))]
+    #[cfg_attr(feature = "PartialOrd", educe(PartialOrd))]
+    #[cfg_attr(not(feature = "PartialOrd"), derive(PartialOrd))]
+    enum DefaultRepr {
+        First = -2,
+        Next,
+    }
+
+    #[derive(PartialEq, Eq, Educe)]
+    #[cfg_attr(feature = "Ord", educe(Ord))]
+    #[cfg_attr(feature = "PartialOrd", educe(PartialOrd))]
+    #[cfg_attr(not(feature = "PartialOrd"), derive(PartialOrd))]
+    #[repr(i16)]
+    enum ExplicitRepr {
+        First = -2,
+        Next,
+    }
+
+    assert_eq!(Some(Ordering::Less), DefaultRepr::First.partial_cmp(&DefaultRepr::Next));
+    assert_eq!(Some(Ordering::Less), ExplicitRepr::First.partial_cmp(&ExplicitRepr::Next));
+    #[cfg(feature = "Ord")]
+    {
+        assert_eq!(Ordering::Less, DefaultRepr::First.cmp(&DefaultRepr::Next));
+        assert_eq!(Ordering::Less, ExplicitRepr::First.cmp(&ExplicitRepr::Next));
+    }
+}
+
 #[test]
 fn expressions_and_alignment() {
     const BASE: isize = 4;

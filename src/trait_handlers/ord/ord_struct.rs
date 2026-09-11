@@ -84,7 +84,9 @@ impl TraitHandler for OrdStructHandler {
             for (index, field, field_attribute) in fields.values() {
                 let field_name = IdentOrIndex::from_ident_with_index(field.ident.as_ref(), *index);
 
-                copy_types.push(&field.ty);
+                if is_packed {
+                    copy_types.push(&field.ty);
+                }
 
                 let cmp = field_attribute.method.as_ref().unwrap_or_else(|| {
                     ord_types.push(&field.ty);

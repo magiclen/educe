@@ -6,6 +6,45 @@
 use educe::Educe;
 
 #[test]
+fn generic_container_names() {
+    extern crate alloc;
+    use alloc::{boxed::Box, string::String};
+
+    #[derive(Educe)]
+    #[educe(Clone)]
+    struct Bare<PhantomData>(PhantomData);
+
+    #[derive(Educe)]
+    #[educe(Clone)]
+    struct Recursive<PhantomData>((PhantomData, Option<Box<Self>>));
+
+    trait Types {
+        type PhantomData;
+        type Option<T>;
+    }
+
+    struct Provider;
+    impl Types for Provider {
+        type Option<T> = Option<T>;
+        type PhantomData = String;
+    }
+
+    #[derive(Educe)]
+    #[educe(Clone)]
+    struct Associated<T: Types>(T::PhantomData, T::Option<u8>);
+
+    assert_eq!("bare", Bare(String::from("bare")).clone().0);
+    let recursive =
+        Recursive((String::from("root"), Some(Box::new(Recursive((String::from("leaf"), None))))));
+    let cloned = Clone::clone(&recursive);
+    assert_eq!("leaf", cloned.0.1.unwrap().0.0);
+    let associated = Associated::<Provider>(String::from("value"), Some(7));
+    let cloned = associated.clone();
+    assert_eq!("value", cloned.0);
+    assert_eq!(Some(7), cloned.1);
+}
+
+#[test]
 fn empty() {
     #[derive(Educe)]
     #[educe(Clone)]

@@ -159,7 +159,7 @@ pub(crate) fn create_where_predicates_from_field_types(
         };
 
         // Rule 1: the trait is implemented for this type no matter what the type arguments are.
-        if exceptions.type_is_unconditional(ty) {
+        if exceptions.type_is_unconditional(ty, params) {
             return;
         }
 
@@ -169,7 +169,7 @@ pub(crate) fn create_where_predicates_from_field_types(
         }
 
         // Rule 3: a forwarding type is replaced by its type arguments, processed recursively.
-        if let Some(argument_types) = exceptions.forwarding_type_arguments(ty) {
+        if let Some(argument_types) = exceptions.forwarding_type_arguments(ty, params) {
             for ty in argument_types {
                 process_type(
                     ty,
@@ -189,7 +189,7 @@ pub(crate) fn create_where_predicates_from_field_types(
             // Rule 4: degrade a self-referencing type to per-parameter bounds.
             let mut used = HashSet::new();
 
-            find_idents_in_type(&mut used, ty, exceptions);
+            find_idents_in_type(&mut used, ty, exceptions, params);
 
             for param in params {
                 if let GenericParam::Type(param) = param

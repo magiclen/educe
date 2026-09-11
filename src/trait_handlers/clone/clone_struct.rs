@@ -7,7 +7,6 @@ use crate::{
         attributes::{borrow_field, is_packed},
         bound::BOUND_EXCEPTIONS_CLONE,
         quote_mixed,
-        r#type::type_uses_generic_params,
         where_predicates_bool::{WherePredicates, extend_where_predicates},
     },
     supported_traits::Trait,
@@ -51,12 +50,6 @@ impl TraitHandler for CloneStructHandler {
         if let Data::Struct(data) = &ast.data {
             let mut fields: Vec<(&Field, FieldAttribute)> = Vec::new();
 
-            #[cfg(feature = "Copy")]
-            let contains_copy = traits.contains(&Trait::Copy);
-
-            #[cfg(not(feature = "Copy"))]
-            let contains_copy = false;
-
             for field in data.fields.iter() {
                 let field_attribute = FieldAttributeBuilder {
                     enable_method: true
@@ -69,19 +62,12 @@ impl TraitHandler for CloneStructHandler {
             let has_custom_method =
                 fields.iter().any(|(_, field_attribute)| field_attribute.method.is_some());
 
-            let uses_generics = data
-                .fields
-                .iter()
-                .any(|field| type_uses_generic_params(&field.ty, &ast.generics.params));
-
-            // Like the built-in derives, `clone` can be a plain bitwise copy only when `Copy` is derived together, no generic parameter is involved, and no field uses a custom clone method.
-            // When generic parameters are involved, a field-wise clone keeps the `Clone` impl usable for type arguments that are `Clone` but not `Copy`.
-            let use_bitwise_copy = contains_copy && !uses_generics && !has_custom_method;
+            let use_bitwise_copy = super::can_use_bitwise_copy(ast, traits, has_custom_method)?;
 
             let mut clone_types: Vec<&Type> = Vec::new();
 
             if use_bitwise_copy {
-                // A bitwise copy reads no field on its own, and this path is only taken when no field type uses a generic type parameter, so the field-wise body and the bound types would both be thrown away.
+                // A whole-value copy needs no field-wise body or field bounds.
                 clone_token_stream.extend(quote_mixed!(*self));
             } else {
                 match &data.fields {
@@ -99,7 +85,9 @@ impl TraitHandler for CloneStructHandler {
                             for (field, field_attribute) in fields {
                                 let field_name = field.ident.as_ref().unwrap();
 
-                                copy_types.push(&field.ty);
+                                if is_packed {
+                                    copy_types.push(&field.ty);
+                                }
 
                                 let self_ref = borrow_field(is_packed, &this, field_name);
                                 let source_ref = borrow_field(is_packed, &source, field_name);
@@ -150,7 +138,9 @@ impl TraitHandler for CloneStructHandler {
                             {
                                 let field_name = Index::from(index);
 
-                                copy_types.push(&field.ty);
+                                if is_packed {
+                                    copy_types.push(&field.ty);
+                                }
 
                                 let self_ref = borrow_field(is_packed, &this, &field_name);
                                 let source_ref = borrow_field(is_packed, &source, &field_name);

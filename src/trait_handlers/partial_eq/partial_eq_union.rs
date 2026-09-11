@@ -52,19 +52,19 @@ impl TraitHandler for PartialEqUnionHandler {
             #generated_impl_attributes
             impl #impl_generics ::core::cmp::PartialEq for #ident #ty_generics #where_clause {
                 #[inline]
-                fn eq(&self, other: &Self) -> bool {
+                fn eq(&self, other: &Self) -> ::core::primitive::bool {
                     let size = ::core::mem::size_of::<Self>();
 
                     // SAFETY: The live union reference provides a valid pointer and size; the unsafe derive contract requires every byte, including padding and bytes outside the active field, to be initialized and unchanged during this call.
                     // The user must preserve this condition after every construction, write, move, and copy; reading uninitialized bytes is undefined behavior.
                     let self_data = unsafe {
-                        ::core::slice::from_raw_parts(self as *const Self as *const u8, size)
+                        ::core::slice::from_raw_parts(self as *const Self as *const ::core::primitive::u8, size)
                     };
 
                     // SAFETY: The live union reference provides a valid pointer and size; the unsafe derive contract requires every byte, including padding and bytes outside the active field, to be initialized and unchanged during this call.
                     // The user must preserve this condition after every construction, write, move, and copy; reading uninitialized bytes is undefined behavior.
                     let other_data = unsafe {
-                        ::core::slice::from_raw_parts(other as *const Self as *const u8, size)
+                        ::core::slice::from_raw_parts(other as *const Self as *const ::core::primitive::u8, size)
                     };
 
                     ::core::cmp::PartialEq::eq(self_data, other_data)

@@ -4,9 +4,6 @@ use syn::{
 };
 
 use super::models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder};
-// Only the bitwise-copy fast path, gated on the `Copy` trait, needs to inspect whether a field uses a type parameter.
-#[cfg(feature = "Copy")]
-use crate::common::r#type::type_uses_generic_params;
 use crate::{
     TraitHandler,
     common::{bound::BOUND_EXCEPTIONS_CLONE, quote_mixed, where_predicates_bool::WherePredicates},
@@ -47,7 +44,6 @@ impl TraitHandler for CloneEnumHandler {
 
             let mut variants: Variants = Vec::new();
 
-            #[cfg(feature = "Copy")]
             let mut has_custom_clone_method = false;
 
             for variant in data.variants.iter() {
@@ -64,7 +60,6 @@ impl TraitHandler for CloneEnumHandler {
                     }
                     .build_from_attributes(&field.attrs, traits)?;
 
-                    #[cfg(feature = "Copy")]
                     if field_attribute.method.is_some() {
                         has_custom_clone_method = true;
                     }
@@ -75,25 +70,13 @@ impl TraitHandler for CloneEnumHandler {
                 variants.push((variant, variant_fields));
             }
 
-            // Like the built-in derives, `clone` can be a plain bitwise copy only when `Copy` is derived together, no generic parameter is involved, and no field uses a custom clone method.
-            // When generic parameters are involved, a field-wise clone keeps the `Clone` impl usable for type arguments that are `Clone` but not `Copy`.
-            #[cfg(feature = "Copy")]
-            let use_bitwise_copy = !has_custom_clone_method
-                && traits.contains(&Trait::Copy)
-                && !data.variants.iter().any(|variant| {
-                    variant
-                        .fields
-                        .iter()
-                        .any(|field| type_uses_generic_params(&field.ty, &ast.generics.params))
-                });
-
-            #[cfg(not(feature = "Copy"))]
-            let use_bitwise_copy = false;
+            let use_bitwise_copy =
+                super::can_use_bitwise_copy(ast, traits, has_custom_clone_method)?;
 
             let mut clone_types: Vec<&Type> = Vec::new();
 
             if use_bitwise_copy {
-                // A bitwise copy reads no field on its own, and this path is only taken when no field type uses a generic type parameter, so the field-wise body and the bound types would both be thrown away.
+                // A whole-value copy needs no field-wise body or field bounds.
                 clone_token_stream.extend(quote_mixed!(*self));
             } else if variants.is_empty() {
                 clone_token_stream.extend(quote_mixed!(::core::unreachable!()));

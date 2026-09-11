@@ -52,12 +52,26 @@ pub(crate) struct BoundExceptions {
     pub(crate) shared_reference_is_unconditional: bool,
 }
 
+/// Generic parameters and their associated types must not use container-name exceptions.
+fn path_starts_with_type_param(path: &Path, params: &Punctuated<GenericParam, Comma>) -> bool {
+    path.leading_colon.is_none()
+        && path.segments.first().is_some_and(|segment| {
+            params.iter().any(
+                |param| matches!(param, GenericParam::Type(param) if param.ident == segment.ident),
+            )
+        })
+}
+
 impl BoundExceptions {
     /// Checks whether the last segment of the path names a type that implements the trait unconditionally.
     ///
     /// `PhantomData` implements every trait supported by Educe unconditionally, so it is always treated as an exception.
     #[inline]
-    fn path_is_unconditional(&self, path: &Path) -> bool {
+    fn path_is_unconditional(&self, path: &Path, params: &Punctuated<GenericParam, Comma>) -> bool {
+        if path_starts_with_type_param(path, params) {
+            return false;
+        }
+
         if let Some(segment) = path.segments.last() {
             let ident = &segment.ident;
 
@@ -82,9 +96,13 @@ impl BoundExceptions {
     ///
     /// Raw pointers and bare function pointers are unconditional for every trait supported by Educe, because their implementations only look at the address value.
     #[inline]
-    pub(crate) fn type_is_unconditional(&self, ty: &Type) -> bool {
+    pub(crate) fn type_is_unconditional(
+        &self,
+        ty: &Type,
+        params: &Punctuated<GenericParam, Comma>,
+    ) -> bool {
         match ty {
-            Type::Path(ty) => ty.qself.is_none() && self.path_is_unconditional(&ty.path),
+            Type::Path(ty) => ty.qself.is_none() && self.path_is_unconditional(&ty.path, params),
             Type::Ptr(_) | Type::FnPtr(_) => true,
             Type::Reference(ty) => {
                 ty.mutability.is_none() && self.shared_reference_is_unconditional
@@ -94,10 +112,15 @@ impl BoundExceptions {
     }
 
     /// Returns the type arguments of a type that forwards the trait to them, or `None` if the type is not in the forwarding table.
-    pub(crate) fn forwarding_type_arguments<'a>(&self, ty: &'a Type) -> Option<Vec<&'a Type>> {
+    pub(crate) fn forwarding_type_arguments<'a>(
+        &self,
+        ty: &'a Type,
+        params: &Punctuated<GenericParam, Comma>,
+    ) -> Option<Vec<&'a Type>> {
         if let Type::Path(ty) = ty
             && ty.qself.is_none()
             && let Some(segment) = ty.path.segments.last()
+            && !path_starts_with_type_param(&ty.path, params)
             && self.forwarding_types.iter().any(|name| segment.ident == name)
             && let PathArguments::AngleBracketed(args) = &segment.arguments
         {
@@ -124,7 +147,11 @@ impl BoundExceptions {
 /// Walks a type and collects every ident that could refer to a generic type parameter.
 ///
 /// When `exceptions` is provided, positions that the exception table marks as unconditional are not descended into, so parameters that only appear there are not collected.
-fn walk_type<'a>(set: &mut HashSet<&'a Ident>, ty: &'a Type, exceptions: Option<&BoundExceptions>) {
+fn walk_type<'a>(
+    set: &mut HashSet<&'a Ident>,
+    ty: &'a Type,
+    exceptions: Option<(&BoundExceptions, &Punctuated<GenericParam, Comma>)>,
+) {
     match ty {
         Type::Array(ty) => walk_type(set, ty.elem.as_ref(), exceptions),
         Type::Group(ty) => walk_type(set, ty.elem.as_ref(), exceptions),
@@ -137,7 +164,7 @@ fn walk_type<'a>(set: &mut HashSet<&'a Ident>, ty: &'a Type, exceptions: Option<
         },
         Type::Reference(ty) => {
             // A shared reference implements `Copy`/`Clone` no matter what it points to, so those traits do not need the pointee's parameters.
-            if let Some(exceptions) = exceptions
+            if let Some((exceptions, _)) = exceptions
                 && ty.mutability.is_none()
                 && exceptions.shared_reference_is_unconditional
             {
@@ -197,10 +224,10 @@ fn walk_type<'a>(set: &mut HashSet<&'a Ident>, ty: &'a Type, exceptions: Option<
 fn walk_path<'a>(
     set: &mut HashSet<&'a Ident>,
     path: &'a Path,
-    exceptions: Option<&BoundExceptions>,
+    exceptions: Option<(&BoundExceptions, &Punctuated<GenericParam, Comma>)>,
 ) {
-    if let Some(exceptions) = exceptions
-        && exceptions.path_is_unconditional(path)
+    if let Some((exceptions, params)) = exceptions
+        && exceptions.path_is_unconditional(path, params)
     {
         return;
     }
@@ -250,8 +277,9 @@ pub(crate) fn find_idents_in_type<'a>(
     set: &mut HashSet<&'a Ident>,
     ty: &'a Type,
     exceptions: &BoundExceptions,
+    params: &Punctuated<GenericParam, Comma>,
 ) {
-    walk_type(set, ty, Some(exceptions));
+    walk_type(set, ty, Some((exceptions, params)));
 }
 
 /// Collects only a bare, single-segment type ident such as `T`, without descending into any structure.
@@ -315,11 +343,17 @@ pub(crate) fn type_uses_generic_params(
     visitor.found
 }
 
-/// Returns true if any path segment in the type is exactly the given ident.
+/// Returns true if a type mentions the derived type by name or through `Self`.
 ///
 /// This is used to detect field types that refer to the type currently being derived, e.g. `Box<List<T>>` inside `List<T>`, so that the bound engine can avoid generating a self-referencing predicate that would overflow the trait solver.
 pub(crate) fn type_mentions_ident(ty: &Type, ident: &Ident) -> bool {
     fn path_mentions_ident(path: &Path, ident: &Ident) -> bool {
+        if path.leading_colon.is_none()
+            && path.segments.first().is_some_and(|segment| segment.ident == "Self")
+        {
+            return true;
+        }
+
         for segment in &path.segments {
             if segment.ident == *ident {
                 return true;

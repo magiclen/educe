@@ -25,7 +25,7 @@ When a trait is derived with Educe and no explicit `bound` is set, the where pre
 1. A type that is known to implement the trait unconditionally produces no predicate at all. This covers `PhantomData`, raw pointers, and function pointers for every trait, shared references for `Clone` and `Copy`, plus the types in table A.
 2. A type that does not use any generic type or const parameter produces no predicate, because such a predicate would be constant.
 3. A std type that implements the trait whenever its type arguments do (table B) produces the predicates of its type arguments instead, with these rules applied recursively: a field of type `Option<T>` produces `T: Trait`, and one of type `Vec<Box<T>>` produces just `T: Clone` for `Clone`.
-4. A type that mentions the derived type itself (e.g. `Box<List<T>>` inside `List<T>`) produces `Param: Trait` bounds for the type parameters it uses, because a self-referencing predicate would overflow the trait solver (E0275).
+4. A type that mentions the derived type itself, by name or through `Self` (e.g. `Box<List<T>>` or `(Self, T)` inside `List<T>`) produces `Param: Trait` bounds for the type parameters it uses, because a self-referencing predicate would overflow the trait solver (E0275).
 5. Any other type produces the precise predicate `FieldType: Trait`, so the compiler verifies the real requirement: a field of type `Wrapper<T>` where `Wrapper` has its own conditional `Clone` impl produces `Wrapper<T>: Clone`, which works for exactly the type arguments that `Wrapper` supports.
 
 Table A — types whose type arguments never need a bound:
@@ -53,7 +53,7 @@ Table B — types that forward the trait to their type arguments:
 
 `HashMap` and `HashSet` are not in the comparison rows of table B because their comparison impls additionally require `K: Eq + Hash`; such fields get the precise whole-type predicate from rule 5 instead.
 
-Both tables match type names syntactically (by the last path segment), so a user-defined type that happens to share a name with one of these std types is treated the same way; if the resulting bounds do not fit such a type, set them explicitly with `bound(...)`.
+Both tables match type names syntactically (by the last path segment), except for declared generic type parameters and paths that start with them, such as `T::PhantomData`. These parameters and associated types use their own trait requirements. Other user-defined types that share a name with a std type are still treated like that std type; if the resulting bounds do not fit, set them explicitly with `bound(...)`.
 
 ###### Bound Inheritance
 
@@ -89,6 +89,7 @@ Custom methods accept full paths, including qualified paths such as `<Type as Tr
 The `method = path`, `method(path)`, `method = "path"`, and `method("path")` forms are supported.
 In custom method paths, `Self` refers to the type being derived, including its generic arguments.
 For `Into`, this also applies when the generated implementation is `From` for the target type; use an explicit target type path to call a target method.
+Generated primitive types use `::core::primitive` paths, and the `Debug` helper type names avoid identifiers in the input, including method paths written as strings.
 
 ## Traits
 
@@ -336,6 +337,15 @@ union Union {
 ```
 
 #### Clone
+
+When `Clone` and `Copy` are derived together, Educe can copy the whole value if no field uses a type or const parameter and no field has a custom clone method.
+For a struct or enum with any generic parameters, a nonempty custom `Copy(bound(...))` also disables this shortcut.
+In that case, `clone` and `clone_from` use the existing field-wise implementation, while the custom `Copy` conditions are not added to `Clone`.
+For example, `Copy(bound('a: 'static))` on `S<'a>(&'a i32)` allows `Copy` only for `'static`, but `Clone` still works with shorter lifetimes.
+This rule also covers const parameters that do not appear in the fields.
+Field clone methods can have visible side effects, and the performance difference has not been measured.
+The automatic, `bound(*)`, `bound(false)`, and empty custom `Copy` modes keep the original shortcut rules; unions keep their existing clone behavior.
+
 
 Use `#[derive(Educe)]` and `#[educe(Clone)]` to implement the `Clone` trait for a struct, an enum, or a union. You can set a method to replace the `Clone` trait.
 

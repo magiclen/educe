@@ -68,7 +68,9 @@ impl TraitHandler for HashStructHandler {
                     IdentOrIndex::from(index)
                 };
 
-                copy_types.push(&field.ty);
+                if is_packed {
+                    copy_types.push(&field.ty);
+                }
 
                 let hash = field_attribute.method.as_ref().unwrap_or_else(|| {
                     hash_types.push(&field.ty);

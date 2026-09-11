@@ -1,5 +1,5 @@
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::{ToTokens, TokenStreamExt, quote};
+use quote::{ToTokens, quote};
 use syn::{Data, DeriveInput, Meta, Token, punctuated::Punctuated};
 
 #[derive(Debug)]
@@ -63,7 +63,8 @@ impl DiscriminantType {
 impl ToTokens for DiscriminantType {
     #[inline]
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        tokens.append(Ident::new(self.as_str(), Span::call_site()));
+        let ident = Ident::new(self.as_str(), Span::call_site());
+        tokens.extend(quote!(::core::primitive::#ident));
     }
 }
 

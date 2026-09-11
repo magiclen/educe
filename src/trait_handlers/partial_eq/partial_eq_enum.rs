@@ -226,7 +226,7 @@ impl TraitHandler for PartialEqEnumHandler {
             #generated_impl_attributes
             impl #impl_generics ::core::cmp::PartialEq for #ident #ty_generics #where_clause {
                 #[inline]
-                fn eq(&self, other: &Self) -> bool {
+                fn eq(&self, other: &Self) -> ::core::primitive::bool {
                     #eq_token_stream
 
                     true

@@ -34,6 +34,8 @@ impl TraitHandler for DebugEnumHandler {
         .build_from_debug_meta(meta)?;
 
         let name = type_attribute.name.to_ident_by_ident(&ast.ident);
+        let helper_types = super::common::HelperTypes::new(ast);
+        let raw_string_ident = &helper_types.raw_string;
 
         let mut debug_types: Vec<&Type> = Vec::new();
 
@@ -136,6 +138,7 @@ impl TraitHandler for DebugEnumHandler {
 
                                 if let Some(method) = field_attribute.method {
                                     let arg = super::common::create_format_arg(
+                                        &helper_types.field,
                                         ty,
                                         &method,
                                         quote_mixed!(#field_name_var),
@@ -147,7 +150,7 @@ impl TraitHandler for DebugEnumHandler {
                                     block_token_stream.extend(if name_string.is_some() {
                                         quote_mixed! (builder.field(#key, &arg);)
                                     } else {
-                                        quote_mixed! (builder.entry(&Educe__RawString(#key), &arg);)
+                                        quote_mixed! (builder.entry(&#raw_string_ident(#key), &arg);)
                                     });
                                 } else {
                                     debug_types.push(ty);
@@ -155,7 +158,7 @@ impl TraitHandler for DebugEnumHandler {
                                     block_token_stream.extend(if name_string.is_some() {
                                         quote_mixed! (builder.field(#key, #field_name_var);)
                                     } else {
-                                        quote_mixed! (builder.entry(&Educe__RawString(#key), #field_name_var);)
+                                        quote_mixed! (builder.entry(&#raw_string_ident(#key), #field_name_var);)
                                     });
                                 }
 
@@ -198,6 +201,7 @@ impl TraitHandler for DebugEnumHandler {
 
                                 if let Some(method) = field_attribute.method {
                                     let arg = super::common::create_format_arg(
+                                        &helper_types.field,
                                         ty,
                                         &method,
                                         quote_mixed!(#field_name_var),
@@ -277,6 +281,7 @@ impl TraitHandler for DebugEnumHandler {
 
                                 if let Some(method) = field_attribute.method {
                                     let arg = super::common::create_format_arg(
+                                        &helper_types.field,
                                         ty,
                                         &method,
                                         quote_mixed!(#field_name_var),
@@ -288,7 +293,7 @@ impl TraitHandler for DebugEnumHandler {
                                     block_token_stream.extend(if name_string.is_some() {
                                         quote_mixed! (builder.field(#key, &arg);)
                                     } else {
-                                        quote_mixed! (builder.entry(&Educe__RawString(#key), &arg);)
+                                        quote_mixed! (builder.entry(&#raw_string_ident(#key), &arg);)
                                     });
                                 } else {
                                     debug_types.push(ty);
@@ -296,7 +301,7 @@ impl TraitHandler for DebugEnumHandler {
                                     block_token_stream.extend(if name_string.is_some() {
                                         quote_mixed! (builder.field(#key, #field_name_var);)
                                     } else {
-                                        quote_mixed! (builder.entry(&Educe__RawString(#key), #field_name_var);)
+                                        quote_mixed! (builder.entry(&#raw_string_ident(#key), #field_name_var);)
                                     });
                                 }
 
@@ -337,6 +342,7 @@ impl TraitHandler for DebugEnumHandler {
 
                                 if let Some(method) = field_attribute.method {
                                     let arg = super::common::create_format_arg(
+                                        &helper_types.field,
                                         ty,
                                         &method,
                                         quote_mixed!(#field_name_var),
@@ -384,8 +390,11 @@ impl TraitHandler for DebugEnumHandler {
                 return Err(super::panic::unit_enum_need_name(ident));
             }
         } else {
-            let raw_string_type =
-                if uses_raw_string { Some(super::common::create_raw_string_type()) } else { None };
+            let raw_string_type = if uses_raw_string {
+                Some(super::common::create_raw_string_type(raw_string_ident))
+            } else {
+                None
+            };
 
             builder_token_stream.extend(quote_mixed! {
                 #raw_string_type

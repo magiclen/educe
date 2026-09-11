@@ -10,6 +10,15 @@ use assert_eq_float::assert_eq_float;
 use educe::Educe;
 
 #[test]
+fn generic_container_name() {
+    #[derive(Educe)]
+    #[educe(Default)]
+    struct Struct<Option>(Option);
+
+    assert_eq!(0, Struct::<u8>::default().0);
+}
+
+#[test]
 fn empty() {
     #[derive(Educe)]
     #[educe(Default)]

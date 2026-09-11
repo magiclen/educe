@@ -16,6 +16,19 @@ use alloc::{boxed::Box, vec::Vec};
 use educe::Educe;
 
 #[test]
+fn nested_self() {
+    #[derive(Educe)]
+    #[educe(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    struct Node<T>(T, Option<Box<(Self, T)>>);
+
+    let node = Node(1, Some(Box::new((Node(2, None), 3))));
+    let cloned = Clone::clone(&node);
+
+    assert_eq!(node, cloned);
+    assert_eq!(core::cmp::Ordering::Equal, node.cmp(&cloned));
+}
+
+#[test]
 fn recursive_enum() {
     #[derive(Educe)]
     #[educe(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

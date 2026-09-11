@@ -49,6 +49,8 @@ impl TraitHandler for DebugStructHandler {
         .build_from_debug_meta(meta)?;
 
         let name = type_attribute.name.to_ident_by_ident(&ast.ident);
+        let helper_types = super::common::HelperTypes::new(ast);
+        let raw_string_ident = &helper_types.raw_string;
 
         let mut debug_types: Vec<&Type> = Vec::new();
 
@@ -65,7 +67,7 @@ impl TraitHandler for DebugStructHandler {
             builder_token_stream.extend(if let Some(name) = name {
                 quote_mixed!(let mut builder = f.debug_struct(stringify!(#name));)
             } else {
-                let raw_string_type = super::common::create_raw_string_type();
+                let raw_string_type = super::common::create_raw_string_type(raw_string_ident);
                 let map_builder = super::common::create_debug_map_builder();
 
                 quote_mixed! {
@@ -108,12 +110,19 @@ impl TraitHandler for DebugStructHandler {
 
                     let ty = &field.ty;
 
-                    copy_types.push(ty);
+                    if is_packed {
+                        copy_types.push(ty);
+                    }
 
                     let field_ref = borrow_field(is_packed, &this, &field_name);
 
                     if let Some(method) = field_attribute.method {
-                        let arg = super::common::create_format_arg(ty, &method, field_ref);
+                        let arg = super::common::create_format_arg(
+                            &helper_types.field,
+                            ty,
+                            &method,
+                            field_ref,
+                        );
 
                         builder_token_stream.extend(arg);
                         mark_fields.push((ty, method));
@@ -121,7 +130,7 @@ impl TraitHandler for DebugStructHandler {
                         builder_token_stream.extend(if name.is_some() {
                             quote_mixed! (builder.field(#key, &arg);)
                         } else {
-                            quote_mixed! (builder.entry(&Educe__RawString(#key), &arg);)
+                            quote_mixed! (builder.entry(&#raw_string_ident(#key), &arg);)
                         });
                     } else {
                         debug_types.push(ty);
@@ -129,7 +138,7 @@ impl TraitHandler for DebugStructHandler {
                         builder_token_stream.extend(if name.is_some() {
                             quote_mixed! (builder.field(#key, &#field_ref);)
                         } else {
-                            quote_mixed! (builder.entry(&Educe__RawString(#key), &#field_ref);)
+                            quote_mixed! (builder.entry(&#raw_string_ident(#key), &#field_ref);)
                         });
                     }
 
@@ -165,12 +174,19 @@ impl TraitHandler for DebugStructHandler {
 
                     let ty = &field.ty;
 
-                    copy_types.push(ty);
+                    if is_packed {
+                        copy_types.push(ty);
+                    }
 
                     let field_ref = borrow_field(is_packed, &this, &field_name);
 
                     if let Some(method) = field_attribute.method {
-                        let arg = super::common::create_format_arg(ty, &method, field_ref);
+                        let arg = super::common::create_format_arg(
+                            &helper_types.field,
+                            ty,
+                            &method,
+                            field_ref,
+                        );
 
                         builder_token_stream.extend(arg);
                         mark_fields.push((ty, method));

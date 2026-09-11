@@ -1,17 +1,65 @@
-use syn::{DeriveInput, ExprPath, Type};
+use std::collections::HashSet;
+
+use proc_macro2::{Ident, Span, TokenStream, TokenTree};
+use quote::ToTokens;
+use syn::{DeriveInput, ExprPath, LitStr, Type, ext::IdentExt};
 
 use crate::common::quote_mixed;
+
+pub(crate) struct HelperTypes {
+    pub(crate) field:      Ident,
+    pub(crate) raw_string: Ident,
+}
+
+impl HelperTypes {
+    pub(crate) fn new(ast: &DeriveInput) -> Self {
+        fn collect(tokens: TokenStream, used: &mut HashSet<String>) {
+            for token in tokens {
+                match token {
+                    TokenTree::Ident(ident) => {
+                        used.insert(ident.unraw().to_string());
+                    },
+                    TokenTree::Group(group) => collect(group.stream(), used),
+                    TokenTree::Literal(literal) => {
+                        // Method paths can also be written inside string literals.
+                        if let Ok(literal) = syn::parse2::<LitStr>(literal.into_token_stream())
+                            && let Ok(tokens) = literal.value().parse::<TokenStream>()
+                        {
+                            collect(tokens, used);
+                        }
+                    },
+                    TokenTree::Punct(_) => (),
+                }
+            }
+        }
+
+        fn select(used: &mut HashSet<String>, name: &str) -> Ident {
+            let mut name = name.to_owned();
+            while !used.insert(name.clone()) {
+                name.insert(0, '_');
+            }
+            Ident::new(&name, Span::mixed_site())
+        }
+
+        let mut used = HashSet::new();
+        collect(ast.to_token_stream(), &mut used);
+        Self {
+            field:      select(&mut used, "Educe__DebugField"),
+            raw_string: select(&mut used, "Educe__RawString"),
+        }
+    }
+}
 
 /// Builds the helper type that prints a map key without the quotes a `str` would be formatted with.
 ///
 /// A nameless struct or variant is formatted as a map, and its keys are the field names; the type is declared once per generated `fmt` body, so an enum with several such variants does not repeat it.
 #[inline]
-pub(crate) fn create_raw_string_type() -> proc_macro2::TokenStream {
+pub(crate) fn create_raw_string_type(ident: &Ident) -> proc_macro2::TokenStream {
     quote_mixed!(
-        #[allow(non_camel_case_types)] // We're using __ to help avoid clashes.
-        struct Educe__RawString(&'static str);
+        #[allow(non_camel_case_types)]
+        struct #ident(&'static ::core::primitive::str);
 
-        impl ::core::fmt::Debug for Educe__RawString {
+        impl ::core::fmt::Debug for #ident {
             #[inline]
             fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
                 f.write_str(self.0)
@@ -29,6 +77,7 @@ pub(crate) fn create_debug_map_builder() -> proc_macro2::TokenStream {
 /// Wraps a field with a closure that keeps the source impl's bounds and `Self` scope.
 #[inline]
 pub(crate) fn create_format_arg(
+    ident: &Ident,
     field_ty: &Type,
     format_method: &ExprPath,
     field_expr: proc_macro2::TokenStream,
@@ -38,9 +87,9 @@ pub(crate) fn create_format_arg(
     quote_mixed!(
         let arg = {
             #[allow(non_camel_case_types)]
-            struct Educe__DebugField<'a, V: ?Sized, F>(&'a V, F);
+            struct #ident<'a, V: ?Sized, F>(&'a V, F);
 
-            impl<V: ?Sized, F> ::core::fmt::Debug for Educe__DebugField<'_, V, F>
+            impl<V: ?Sized, F> ::core::fmt::Debug for #ident<'_, V, F>
             where
                 F: ::core::ops::Fn(&V, &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result,
             {
@@ -50,7 +99,7 @@ pub(crate) fn create_format_arg(
                 }
             }
 
-            Educe__DebugField(#field_expr, |#value: &#field_ty, #formatter: &mut ::core::fmt::Formatter<'_>| #format_method(#value, #formatter))
+            #ident(#field_expr, |#value: &#field_ty, #formatter: &mut ::core::fmt::Formatter<'_>| #format_method(#value, #formatter))
         };
     )
 }

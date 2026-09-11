@@ -5,6 +5,12 @@ Several correctness fixes change generated bounds, conversion signatures, or met
 
 ## Breaking and Upgrade Notes
 
+- For structs and enums with any generic parameters, a nonempty custom `Copy(bound(...))` disables the whole-value `Clone` shortcut.
+  `clone` and `clone_from` use the field-wise implementation, so `Clone` stays available even when the custom `Copy` conditions do not hold.
+  This includes lifetime bounds and const parameters that do not appear in fields.
+  Field clone side effects can become observable even if the custom bound is redundant; the performance difference has not been measured.
+  Other `Copy` bound modes and union cloning keep their existing behavior.
+
 - Automatic `Eq` now requires every ordinary struct or enum field to implement `Eq`, including concrete fields such as `f64` and fields that use const generic parameters.
   A type that previously compiled with an ordinary non-`Eq` field can now fail to compile.
   If an external, manually written `PartialEq` implementation provides an equivalence relation without requiring every field to implement `Eq`, use explicit `Eq(bound(false))`, `Eq(bound(*))`, or custom predicates.
@@ -39,6 +45,11 @@ Implementation references: [`EqHandler`](src/trait_handlers/eq/mod.rs), [`IntoSt
 
 ## Custom Methods and Generated Code
 
+- `Debug` helper type names avoid input identifiers, including raw identifiers and method paths written as strings.
+  Fields and methods named `Educe__DebugField` or `Educe__RawString` no longer resolve to generated helper types.
+- Struct handlers collect packed-field `Copy` requirements only for packed types, and `Clone` scans field generics only when its copy shortcut is still possible.
+  These changes reduce work during macro expansion; no performance gain has been measured.
+
 - Custom methods accept complete expression paths, including `<Type as Trait>::method::<T>`, while preserving generic arguments and source spans.
   The existing `method = path`, `method(path)`, `method = "path"`, and `method("path")` forms remain supported.
 - Custom `Debug` methods now use the final implementation bounds and keep `Self` in the source type's scope.
@@ -52,6 +63,13 @@ Implementation references: [`EqHandler`](src/trait_handlers/eq/mod.rs), [`IntoSt
 Implementation references: [`meta_2_path`](src/common/path.rs), [`ReplaceSelf` and `unused_ident`](src/common/generics.rs), [`quote_mixed`](src/common/mod.rs), [`debug::common`](src/trait_handlers/debug/common.rs), and [`generated_lint_attributes`](src/common/attributes.rs).
 
 ## Trait Fixes
+
+- Union `Debug`, `PartialEq`, and `Hash` now use `::core::primitive::u8` for byte access.
+  A user-defined alias or generic parameter named `u8` could previously change the slice element type while its length remained a byte count, causing out-of-bounds access even for a fully initialized union.
+  The byte-reading algorithm and the user's initialization contract are otherwise unchanged.
+- Generated `bool`, `str`, and enum discriminant integer types use fully qualified primitive paths so input names cannot change their meaning.
+- Recursive field types that contain `Self` alongside generic parameters use the same bound fallback as fields that spell out the source type name.
+- Generic type parameters and associated types such as `T::PhantomData` are excluded from the standard-container name exceptions, including during recursive bound inference.
 
 - Ordinary `Debug` fields support dynamically sized types such as `T: ?Sized + Debug`, including named, tuple, and map-style struct output.
 - `Into` field matching ignores reference lifetimes while preserving mutability and reference depth.

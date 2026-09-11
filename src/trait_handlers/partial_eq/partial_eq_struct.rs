@@ -62,7 +62,9 @@ impl TraitHandler for PartialEqStructHandler {
 
                 let field_name = IdentOrIndex::from_ident_with_index(field.ident.as_ref(), index);
 
-                copy_types.push(&field.ty);
+                if is_packed {
+                    copy_types.push(&field.ty);
+                }
 
                 let self_ref = borrow_field(is_packed, &this, &field_name);
                 let other_ref = borrow_field(is_packed, &that, &field_name);
@@ -126,7 +128,7 @@ impl TraitHandler for PartialEqStructHandler {
             #generated_impl_attributes
             impl #impl_generics ::core::cmp::PartialEq for #ident #ty_generics #where_clause {
                 #[inline]
-                fn eq(&self, other: &Self) -> bool {
+                fn eq(&self, other: &Self) -> ::core::primitive::bool {
                     #eq_token_stream
 
                     true

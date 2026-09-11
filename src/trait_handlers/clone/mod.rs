@@ -9,6 +9,42 @@ use syn::{Data, DeriveInput, ExprPath, Generics, Meta, Type, visit_mut::VisitMut
 use super::TraitHandler;
 use crate::{Trait, common::quote_mixed};
 
+/// Uses a whole-value copy only when it does not add requirements to `Clone`.
+fn can_use_bitwise_copy(
+    ast: &DeriveInput,
+    traits: &[Trait],
+    has_custom_method: bool,
+) -> syn::Result<bool> {
+    #[cfg(feature = "Copy")]
+    {
+        if !traits.contains(&Trait::Copy) || has_custom_method {
+            return Ok(false);
+        }
+
+        // A custom `Copy` bound can limit lifetimes or unused const parameters even when the fields do not mention a type parameter.
+        if !ast.generics.params.is_empty() && super::copy::has_custom_bound(ast, traits)? {
+            return Ok(false);
+        }
+
+        let uses_generics = |field: &syn::Field| {
+            crate::common::r#type::type_uses_generic_params(&field.ty, &ast.generics.params)
+        };
+
+        Ok(match &ast.data {
+            Data::Struct(data) => !data.fields.iter().any(uses_generics),
+            Data::Enum(data) => {
+                !data.variants.iter().any(|variant| variant.fields.iter().any(uses_generics))
+            },
+            Data::Union(_) => false,
+        })
+    }
+    #[cfg(not(feature = "Copy"))]
+    {
+        let _ = (ast, traits, has_custom_method);
+        Ok(false)
+    }
+}
+
 /// Builds a module-level marker that references a field's custom clone method so it stays counted as used.
 ///
 /// The generated `Clone` impl is marked `#[automatically_derived]`, and `Clone` carries `#[rustc_trivial_field_reads]`, so the compiler skips its body during dead-code analysis. A custom clone method used only inside that body would therefore be wrongly reported as unused. This marker calls the method from an ordinary item that is still analyzed, and it takes the same generics and where clause as the impl so it compiles under exactly the same conditions.

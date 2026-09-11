@@ -23,6 +23,16 @@ pub(crate) fn prerequisites() -> &'static [Trait] {
 
 pub(crate) struct CopyHandler;
 
+#[cfg(feature = "Clone")]
+pub(crate) fn has_custom_bound(ast: &DeriveInput, traits: &[Trait]) -> syn::Result<bool> {
+    let attribute = TypeAttributeBuilder {
+        enable_flag: true, enable_bound: true
+    }
+    .build_from_attributes(&ast.attrs, traits)?;
+
+    Ok(matches!(attribute.bound, Bound::Custom(predicates) if !predicates.is_empty()))
+}
+
 impl TraitHandler for CopyHandler {
     #[inline]
     fn trait_meta_handler(
