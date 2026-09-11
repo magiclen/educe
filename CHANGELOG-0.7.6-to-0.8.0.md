@@ -31,6 +31,9 @@ Several correctness fixes change generated bounds, conversion signatures, or met
 - Custom method paths now preserve qualified types and avoid capture by generated local variables.
   Code that depended on a dropped qualifier or accidental name capture can resolve to a different method or fail to compile.
   Write the intended function as an explicit path.
+- A `#[repr(packed)]` or `#[repr(packed(N))]` type now has each field it reads copied into a temporary before being borrowed, so every field the generated code reads must implement `Copy`.
+  Every packing level is treated the same way, matching the built-in derives, because a field's alignment cannot be worked out from the type syntax.
+  A packed type with a non-`Copy` field whose alignment happens to fit the packing, such as `#[repr(packed(8))] struct S(Vec<u8>)`, compiled before and no longer does; the built-in derives reject it as well.
 
 Implementation references: [`EqHandler`](src/trait_handlers/eq/mod.rs), [`IntoStructHandler`](src/trait_handlers/into/into_struct.rs), [`IntoEnumHandler`](src/trait_handlers/into/into_enum.rs), [`BoundExceptions` and `type_uses_generic_params`](src/common/type.rs), [`CloneStructHandler`](src/trait_handlers/clone/clone_struct.rs), and [`CloneEnumHandler`](src/trait_handlers/clone/clone_enum.rs).
 
@@ -57,8 +60,12 @@ Implementation references: [`meta_2_path`](src/common/path.rs), [`ReplaceSelf` a
   This supports constant expressions, `Self` references, large unsigned values such as `u128::MAX`, and combined representation attributes such as `repr(C, align(8))`.
 - Automatic `Eq` checks complete field types under the final implementation bounds without adding runtime calls or concrete field predicates to the public `where` clause.
   Explicit bound modes and unions keep their existing behavior.
+- `Debug`, `Clone`, `PartialEq`, `PartialOrd`, `Ord`, and `Hash` support `#[repr(packed)]` and `#[repr(packed(N))]` structs, which previously failed to compile with `error[E0793]: reference to field of packed struct is unaligned`.
+  Fields are copied before being read and the automatic bound adds the `Copy` predicates they need, so a packed type whose fields need no predicate at all, such as `#[repr(packed)] struct S<T>(i32, PhantomData<T>)`, gets an implementation without any bound.
+  `Clone::clone_from` assigns the cloned value back instead of cloning in place, because a packed field cannot be borrowed mutably either.
+  `Deref` and `DerefMut` are unchanged: they return a reference to a field, so they still require the target field to fit the packing.
 
-Implementation references: [`DebugStructHandler`](src/trait_handlers/debug/debug_struct.rs), [`field_matches_target`](src/trait_handlers/into/common.rs), [`DiscriminantType::from_ast`](src/common/tools/discriminant_type.rs), and [`EqHandler`](src/trait_handlers/eq/mod.rs).
+Implementation references: [`DebugStructHandler`](src/trait_handlers/debug/debug_struct.rs), [`field_matches_target`](src/trait_handlers/into/common.rs), [`DiscriminantType::from_ast`](src/common/tools/discriminant_type.rs), [`EqHandler`](src/trait_handlers/eq/mod.rs), and [`is_packed` and `borrow_field`](src/common/attributes.rs).
 
 ## Documentation and Tests
 
@@ -68,7 +75,7 @@ Implementation references: [`DebugStructHandler`](src/trait_handlers/debug/debug
 - Corrected the `Default` documentation to describe default expressions and the selected enum variant or union field.
 - Migration guidance for reference targets, `Self`, automatic bounds, and custom equality lives in this changelog; the README and the crate documentation describe only the current behavior.
 - Restored the missing test attributes on the enum `Into` method tests and made the generic union test require `Eq`.
-- Added regression coverage for qualified method paths, name clashes, reference conversions, generic bounds, dynamically sized fields, discriminants, lint propagation, and dead-code analysis.
+- Added regression coverage for qualified method paths, name clashes, reference conversions, generic bounds, dynamically sized fields, discriminants, lint propagation, dead-code analysis, and packed types.
   Two compile-fail doctests verify that automatic `Eq` rejects ordinary non-`Eq` fields in structs and enums.
 
 References: [`README.md`](README.md), [crate documentation](src/lib.rs), [`into_enum::method_1` and `method_2`](tests/into_enum.rs), [`eq_union::bound`](tests/eq_union.rs), and [regression tests](tests).

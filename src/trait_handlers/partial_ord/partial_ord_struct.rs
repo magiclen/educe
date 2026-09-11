@@ -9,9 +9,11 @@ use super::{
 use crate::{
     Trait,
     common::{
+        attributes::{borrow_field, is_packed},
         bound::{BOUND_EXCEPTIONS_ORDER, Bound},
         ident_index::IdentOrIndex,
         quote_mixed,
+        where_predicates_bool::{WherePredicates, extend_where_predicates},
     },
     trait_handlers::TraitHandlerContext,
 };
@@ -38,9 +40,16 @@ impl TraitHandler for PartialOrdStructHandler {
 
         let mut partial_ord_types: Vec<&Type> = Vec::new();
 
+        // A `#[repr(packed)]` type reads every compared field through a copy, so those field types additionally have to be `Copy`.
+        let is_packed = is_packed(&ast.attrs);
+        let mut copy_types: Vec<&Type> = Vec::new();
+
         let mut partial_cmp_token_stream = proc_macro2::TokenStream::new();
 
         if let Data::Struct(data) = &ast.data {
+            let this = quote_mixed!(self);
+            let that = quote_mixed!(other);
+
             // Fields are compared in ascending rank order, so they are collected into a map keyed by rank.
             // The default rank of a field is `isize::MIN` plus its ordinal position, which keeps the declaration order when no rank is given.
             let mut fields: BTreeMap<isize, (usize, &Field, FieldAttribute)> = BTreeMap::new();
@@ -76,17 +85,22 @@ impl TraitHandler for PartialOrdStructHandler {
             for (index, field, field_attribute) in fields.values() {
                 let field_name = IdentOrIndex::from_ident_with_index(field.ident.as_ref(), *index);
 
+                copy_types.push(&field.ty);
+
                 let partial_cmp = field_attribute.method.as_ref().unwrap_or_else(|| {
                     partial_ord_types.push(&field.ty);
 
                     &built_in_partial_cmp
                 });
 
+                let self_ref = borrow_field(is_packed, &this, &field_name);
+                let other_ref = borrow_field(is_packed, &that, &field_name);
+
                 // A method taken from a fallback `Ord` field attribute returns `Ordering`, so its result has to be wrapped in `Some` here.
                 let comparison = if field_attribute.method_returns_ordering {
-                    quote_mixed!(::core::option::Option::Some(#partial_cmp(&self.#field_name, &other.#field_name)))
+                    quote_mixed!(::core::option::Option::Some(#partial_cmp(#self_ref, #other_ref)))
                 } else {
-                    quote_mixed!(#partial_cmp(&self.#field_name, &other.#field_name))
+                    quote_mixed!(#partial_cmp(#self_ref, #other_ref))
                 };
 
                 partial_cmp_token_stream.extend(quote_mixed! {
@@ -104,6 +118,16 @@ impl TraitHandler for PartialOrdStructHandler {
 
         let bound_is_auto = matches!(type_attribute.bound, Bound::Auto);
 
+        let packed_copy_predicates = if is_packed {
+            type_attribute.bound.packed_copy_predicates(
+                &ast.generics.params,
+                &copy_types,
+                &ast.ident,
+            )
+        } else {
+            WherePredicates::new()
+        };
+
         let mut bound =
             type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
                 &ast.generics.params,
@@ -112,6 +136,8 @@ impl TraitHandler for PartialOrdStructHandler {
                 &ast.ident,
                 &BOUND_EXCEPTIONS_ORDER,
             );
+
+        extend_where_predicates(&mut bound, packed_copy_predicates);
 
         if bound_is_auto {
             ctx.inherit_from(super::prerequisites(), &mut bound);

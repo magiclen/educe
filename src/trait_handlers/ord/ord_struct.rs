@@ -9,9 +9,11 @@ use super::{
 use crate::{
     Trait,
     common::{
+        attributes::{borrow_field, is_packed},
         bound::{BOUND_EXCEPTIONS_ORDER, Bound},
         ident_index::IdentOrIndex,
         quote_mixed,
+        where_predicates_bool::{WherePredicates, extend_where_predicates},
     },
     trait_handlers::TraitHandlerContext,
 };
@@ -38,9 +40,16 @@ impl TraitHandler for OrdStructHandler {
 
         let mut ord_types: Vec<&Type> = Vec::new();
 
+        // A `#[repr(packed)]` type reads every compared field through a copy, so those field types additionally have to be `Copy`.
+        let is_packed = is_packed(&ast.attrs);
+        let mut copy_types: Vec<&Type> = Vec::new();
+
         let mut cmp_token_stream = proc_macro2::TokenStream::new();
 
         if let Data::Struct(data) = &ast.data {
+            let this = quote_mixed!(self);
+            let that = quote_mixed!(other);
+
             // Fields are compared in ascending rank order, so they are collected into a map keyed by rank.
             // The default rank of a field is `isize::MIN` plus its ordinal position, which keeps the declaration order when no rank is given.
             let mut fields: BTreeMap<isize, (usize, &Field, FieldAttribute)> = BTreeMap::new();
@@ -75,14 +84,19 @@ impl TraitHandler for OrdStructHandler {
             for (index, field, field_attribute) in fields.values() {
                 let field_name = IdentOrIndex::from_ident_with_index(field.ident.as_ref(), *index);
 
+                copy_types.push(&field.ty);
+
                 let cmp = field_attribute.method.as_ref().unwrap_or_else(|| {
                     ord_types.push(&field.ty);
 
                     &built_in_cmp
                 });
 
+                let self_ref = borrow_field(is_packed, &this, &field_name);
+                let other_ref = borrow_field(is_packed, &that, &field_name);
+
                 cmp_token_stream.extend(quote_mixed! {
-                    match #cmp(&self.#field_name, &other.#field_name) {
+                    match #cmp(#self_ref, #other_ref) {
                         ::core::cmp::Ordering::Equal => (),
                         ::core::cmp::Ordering::Greater => return ::core::cmp::Ordering::Greater,
                         ::core::cmp::Ordering::Less => return ::core::cmp::Ordering::Less,
@@ -95,6 +109,16 @@ impl TraitHandler for OrdStructHandler {
 
         let bound_is_auto = matches!(type_attribute.bound, Bound::Auto);
 
+        let packed_copy_predicates = if is_packed {
+            type_attribute.bound.packed_copy_predicates(
+                &ast.generics.params,
+                &copy_types,
+                &ast.ident,
+            )
+        } else {
+            WherePredicates::new()
+        };
+
         let mut bound =
             type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
                 &ast.generics.params,
@@ -103,6 +127,8 @@ impl TraitHandler for OrdStructHandler {
                 &ast.ident,
                 &BOUND_EXCEPTIONS_ORDER,
             );
+
+        extend_where_predicates(&mut bound, packed_copy_predicates);
 
         if bound_is_auto {
             ctx.inherit_from(super::prerequisites(), &mut bound);

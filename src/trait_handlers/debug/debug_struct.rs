@@ -6,7 +6,13 @@ use super::{
 };
 use crate::{
     Trait,
-    common::{bound::BOUND_EXCEPTIONS_DEBUG, ident_index::IdentOrIndex, quote_mixed},
+    common::{
+        attributes::{borrow_field, is_packed},
+        bound::BOUND_EXCEPTIONS_DEBUG,
+        ident_index::IdentOrIndex,
+        quote_mixed,
+        where_predicates_bool::{WherePredicates, extend_where_predicates},
+    },
     trait_handlers::TraitHandlerContext,
 };
 
@@ -45,6 +51,11 @@ impl TraitHandler for DebugStructHandler {
         let name = type_attribute.name.to_ident_by_ident(&ast.ident);
 
         let mut debug_types: Vec<&Type> = Vec::new();
+
+        // A `#[repr(packed)]` type reads every formatted field through a copy, so those field types additionally have to be `Copy`.
+        let is_packed = is_packed(&ast.attrs);
+        let mut copy_types: Vec<&Type> = Vec::new();
+        let this = quote_mixed!(self);
 
         let mut builder_token_stream = proc_macro2::TokenStream::new();
         let mut mark_fields = Vec::new();
@@ -97,12 +108,12 @@ impl TraitHandler for DebugStructHandler {
 
                     let ty = &field.ty;
 
+                    copy_types.push(ty);
+
+                    let field_ref = borrow_field(is_packed, &this, &field_name);
+
                     if let Some(method) = field_attribute.method {
-                        let arg = super::common::create_format_arg(
-                            ty,
-                            &method,
-                            quote_mixed!(&self.#field_name),
-                        );
+                        let arg = super::common::create_format_arg(ty, &method, field_ref);
 
                         builder_token_stream.extend(arg);
                         mark_fields.push((ty, method));
@@ -116,9 +127,9 @@ impl TraitHandler for DebugStructHandler {
                         debug_types.push(ty);
 
                         builder_token_stream.extend(if name.is_some() {
-                            quote_mixed! (builder.field(#key, &&self.#field_name);)
+                            quote_mixed! (builder.field(#key, &#field_ref);)
                         } else {
-                            quote_mixed! (builder.entry(&Educe__RawString(#key), &&self.#field_name);)
+                            quote_mixed! (builder.entry(&Educe__RawString(#key), &#field_ref);)
                         });
                     }
 
@@ -154,12 +165,12 @@ impl TraitHandler for DebugStructHandler {
 
                     let ty = &field.ty;
 
+                    copy_types.push(ty);
+
+                    let field_ref = borrow_field(is_packed, &this, &field_name);
+
                     if let Some(method) = field_attribute.method {
-                        let arg = super::common::create_format_arg(
-                            ty,
-                            &method,
-                            quote_mixed!(&self.#field_name),
-                        );
+                        let arg = super::common::create_format_arg(ty, &method, field_ref);
 
                         builder_token_stream.extend(arg);
                         mark_fields.push((ty, method));
@@ -168,8 +179,7 @@ impl TraitHandler for DebugStructHandler {
                     } else {
                         debug_types.push(ty);
 
-                        builder_token_stream
-                            .extend(quote_mixed! (builder.field(&&self.#field_name);));
+                        builder_token_stream.extend(quote_mixed! (builder.field(&#field_ref);));
                     }
 
                     has_fields = true;
@@ -183,13 +193,26 @@ impl TraitHandler for DebugStructHandler {
             return Err(super::panic::unit_struct_need_name(ident));
         }
 
-        let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
-            &ast.generics.params,
-            &syn::parse2(quote_mixed!(::core::fmt::Debug)).unwrap(),
-            &debug_types,
-            &ast.ident,
-            &BOUND_EXCEPTIONS_DEBUG,
-        );
+        let packed_copy_predicates = if is_packed {
+            type_attribute.bound.packed_copy_predicates(
+                &ast.generics.params,
+                &copy_types,
+                &ast.ident,
+            )
+        } else {
+            WherePredicates::new()
+        };
+
+        let mut bound =
+            type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
+                &ast.generics.params,
+                &syn::parse2(quote_mixed!(::core::fmt::Debug)).unwrap(),
+                &debug_types,
+                &ast.ident,
+                &BOUND_EXCEPTIONS_DEBUG,
+            );
+
+        extend_where_predicates(&mut bound, packed_copy_predicates);
 
         let mut generics = ast.generics.clone();
 

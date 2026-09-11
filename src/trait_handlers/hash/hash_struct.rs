@@ -6,7 +6,13 @@ use super::{
 };
 use crate::{
     Trait,
-    common::{bound::BOUND_EXCEPTIONS_HASH, ident_index::IdentOrIndex, quote_mixed},
+    common::{
+        attributes::{borrow_field, is_packed},
+        bound::BOUND_EXCEPTIONS_HASH,
+        ident_index::IdentOrIndex,
+        quote_mixed,
+        where_predicates_bool::{WherePredicates, extend_where_predicates},
+    },
     trait_handlers::TraitHandlerContext,
 };
 
@@ -33,9 +39,15 @@ impl TraitHandler for HashStructHandler {
 
         let mut hash_types: Vec<&Type> = Vec::new();
 
+        // A `#[repr(packed)]` type reads every hashed field through a copy, so those field types additionally have to be `Copy`.
+        let is_packed = is_packed(&ast.attrs);
+        let mut copy_types: Vec<&Type> = Vec::new();
+
         let mut hash_token_stream = proc_macro2::TokenStream::new();
 
         if let Data::Struct(data) = &ast.data {
+            let this = quote_mixed!(self);
+
             let built_in_hash: ExprPath =
                 syn::parse2(quote_mixed!(::core::hash::Hash::hash)).unwrap();
 
@@ -56,25 +68,42 @@ impl TraitHandler for HashStructHandler {
                     IdentOrIndex::from(index)
                 };
 
+                copy_types.push(&field.ty);
+
                 let hash = field_attribute.method.as_ref().unwrap_or_else(|| {
                     hash_types.push(&field.ty);
                     &built_in_hash
                 });
 
-                hash_token_stream.extend(quote_mixed!( #hash(&self.#field_name, state); ));
+                let field_ref = borrow_field(is_packed, &this, &field_name);
+
+                hash_token_stream.extend(quote_mixed!( #hash(#field_ref, state); ));
             }
         }
 
         let ident = &ast.ident;
         let hasher_ident = crate::common::generics::unused_ident(&ast.generics, "H");
 
-        let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
-            &ast.generics.params,
-            &syn::parse2(quote_mixed!(::core::hash::Hash)).unwrap(),
-            &hash_types,
-            &ast.ident,
-            &BOUND_EXCEPTIONS_HASH,
-        );
+        let packed_copy_predicates = if is_packed {
+            type_attribute.bound.packed_copy_predicates(
+                &ast.generics.params,
+                &copy_types,
+                &ast.ident,
+            )
+        } else {
+            WherePredicates::new()
+        };
+
+        let mut bound =
+            type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
+                &ast.generics.params,
+                &syn::parse2(quote_mixed!(::core::hash::Hash)).unwrap(),
+                &hash_types,
+                &ast.ident,
+                &BOUND_EXCEPTIONS_HASH,
+            );
+
+        extend_where_predicates(&mut bound, packed_copy_predicates);
 
         let mut generics = ast.generics.clone();
 

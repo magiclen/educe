@@ -94,6 +94,20 @@ pub(crate) fn meta_2_where_predicates(meta: &Meta) -> syn::Result<WherePredicate
     }
 }
 
+/// Appends the predicates that are not present yet.
+///
+/// Predicates are compared by their token strings because `WherePredicate` implements neither `Eq` nor `Hash`.
+pub(crate) fn extend_where_predicates(own: &mut WherePredicates, extra: WherePredicates) {
+    let mut seen: HashSet<String> =
+        own.iter().map(|predicate| predicate.to_token_stream().to_string()).collect();
+
+    for predicate in extra {
+        if seen.insert(predicate.to_token_stream().to_string()) {
+            own.push(predicate);
+        }
+    }
+}
+
 /// Creates a `Param: Trait` predicate for every generic type parameter, matching the behavior of the built-in derives.
 #[inline]
 pub(crate) fn create_where_predicates_from_all_generic_parameters(

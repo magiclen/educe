@@ -4,8 +4,11 @@ use super::models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder}
 use crate::{
     TraitHandler,
     common::{
-        bound::BOUND_EXCEPTIONS_CLONE, quote_mixed, r#type::type_uses_generic_params,
-        where_predicates_bool::WherePredicates,
+        attributes::{borrow_field, is_packed},
+        bound::BOUND_EXCEPTIONS_CLONE,
+        quote_mixed,
+        r#type::type_uses_generic_params,
+        where_predicates_bool::{WherePredicates, extend_where_predicates},
     },
     supported_traits::Trait,
     trait_handlers::TraitHandlerContext,
@@ -35,6 +38,12 @@ impl TraitHandler for CloneStructHandler {
 
         // Custom clone methods are referenced only inside the derived impl body, which dead-code analysis skips, so each one is collected here and later re-referenced by a marker item.
         let mut mark_fields: Vec<(&Type, ExprPath)> = Vec::new();
+
+        // A `#[repr(packed)]` type reads every cloned field through a copy, so those field types additionally have to be `Copy`.
+        let is_packed = is_packed(&ast.attrs);
+        let mut copy_types: Vec<&Type> = Vec::new();
+        let this = quote_mixed!(self);
+        let source = quote_mixed!(source);
 
         let mut clone_token_stream = proc_macro2::TokenStream::new();
         let mut clone_from_token_stream = proc_macro2::TokenStream::new();
@@ -90,26 +99,34 @@ impl TraitHandler for CloneStructHandler {
                             for (field, field_attribute) in fields {
                                 let field_name = field.ident.as_ref().unwrap();
 
+                                copy_types.push(&field.ty);
+
+                                let self_ref = borrow_field(is_packed, &this, field_name);
+                                let source_ref = borrow_field(is_packed, &source, field_name);
+
                                 if let Some(clone) = field_attribute.method.as_ref() {
                                     mark_fields.push((&field.ty, clone.clone()));
 
                                     fields_token_stream.extend(quote_mixed! {
-                                        #field_name: #clone(&self.#field_name),
+                                        #field_name: #clone(#self_ref),
                                     });
 
                                     clone_from_body_token_stream.extend(
-                                        quote_mixed!(self.#field_name = #clone(&source.#field_name);),
+                                        quote_mixed!(self.#field_name = #clone(#source_ref);),
                                     );
                                 } else {
                                     clone_types.push(&field.ty);
 
                                     fields_token_stream.extend(quote_mixed! {
-                                        #field_name: ::core::clone::Clone::clone(&self.#field_name),
+                                        #field_name: ::core::clone::Clone::clone(#self_ref),
                                     });
 
-                                    clone_from_body_token_stream.extend(
-                                        quote_mixed!( ::core::clone::Clone::clone_from(&mut self.#field_name, &source.#field_name); ),
-                                    );
+                                    // A packed field cannot be borrowed mutably either, so the cloned value is assigned back instead of being cloned in place.
+                                    clone_from_body_token_stream.extend(if is_packed {
+                                        quote_mixed!(self.#field_name = ::core::clone::Clone::clone(#source_ref);)
+                                    } else {
+                                        quote_mixed!( ::core::clone::Clone::clone_from(&mut self.#field_name, #source_ref); )
+                                    });
                                 }
                             }
                         }
@@ -133,25 +150,32 @@ impl TraitHandler for CloneStructHandler {
                             {
                                 let field_name = Index::from(index);
 
+                                copy_types.push(&field.ty);
+
+                                let self_ref = borrow_field(is_packed, &this, &field_name);
+                                let source_ref = borrow_field(is_packed, &source, &field_name);
+
                                 if let Some(clone) = field_attribute.method.as_ref() {
                                     mark_fields.push((&field.ty, clone.clone()));
 
-                                    fields_token_stream
-                                        .extend(quote_mixed!(#clone(&self.#field_name),));
+                                    fields_token_stream.extend(quote_mixed!(#clone(#self_ref),));
 
                                     clone_from_body_token_stream.extend(
-                                        quote_mixed!(self.#field_name = #clone(&source.#field_name);),
+                                        quote_mixed!(self.#field_name = #clone(#source_ref);),
                                     );
                                 } else {
                                     clone_types.push(&field.ty);
 
                                     fields_token_stream.extend(
-                                        quote_mixed! ( ::core::clone::Clone::clone(&self.#field_name), ),
+                                        quote_mixed! ( ::core::clone::Clone::clone(#self_ref), ),
                                     );
 
-                                    clone_from_body_token_stream.extend(
-                                        quote_mixed!( ::core::clone::Clone::clone_from(&mut self.#field_name, &source.#field_name); ),
-                                    );
+                                    // A packed field cannot be borrowed mutably either, so the cloned value is assigned back instead of being cloned in place.
+                                    clone_from_body_token_stream.extend(if is_packed {
+                                        quote_mixed!(self.#field_name = ::core::clone::Clone::clone(#source_ref);)
+                                    } else {
+                                        quote_mixed!( ::core::clone::Clone::clone_from(&mut self.#field_name, #source_ref); )
+                                    });
                                 }
                             }
                         }
@@ -162,6 +186,16 @@ impl TraitHandler for CloneStructHandler {
                 }
             }
 
+            let packed_copy_predicates = if is_packed {
+                type_attribute.bound.packed_copy_predicates(
+                    &ast.generics.params,
+                    &copy_types,
+                    &ast.ident,
+                )
+            } else {
+                WherePredicates::new()
+            };
+
             // The bound trait is always `Clone`; the `Copy` impl is emitted by the `Copy` handler with its own bounds.
             bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
                 &ast.generics.params,
@@ -170,6 +204,8 @@ impl TraitHandler for CloneStructHandler {
                 &ast.ident,
                 &BOUND_EXCEPTIONS_CLONE,
             );
+
+            extend_where_predicates(&mut bound, packed_copy_predicates);
 
             ctx.record(Trait::Clone, &bound);
         }

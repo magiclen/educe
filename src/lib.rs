@@ -72,6 +72,14 @@ Explicit bounds are still used as written.
 
 An explicit bound is used verbatim; if a prerequisite impl carries predicates that the explicit bound does not imply, the compiler reports an unsatisfied supertrait and the missing predicates have to be added by hand.
 
+###### Packed Types
+
+A field of a `#[repr(packed)]` or `#[repr(packed(N))]` type cannot be borrowed where it lies, so the generated code copies each field it reads into a temporary first.
+Every field that the generated code reads therefore has to implement `Copy`, and the automatic bound adds the matching `FieldType: Copy` predicates, just like the built-in derives do.
+Any packing level is treated the same way, because a field's alignment cannot be worked out from the type syntax.
+
+`Deref` and `DerefMut` return a reference to a field, so they can only be derived for a packed type whose target field does not need more alignment than the packing allows.
+
 ###### Limitations
 
 * Mutually recursive generic types (an `A<T>` containing `Vec<B<T>>` while `B<T>` contains `A<T>`) cannot be detected from a single type definition, so automatic bounds make the trait solver overflow (E0275) on them; use `bound(*)` or a custom bound for such types.

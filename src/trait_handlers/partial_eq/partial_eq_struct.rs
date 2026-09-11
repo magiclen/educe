@@ -6,7 +6,13 @@ use super::{
 };
 use crate::{
     Trait,
-    common::{bound::BOUND_EXCEPTIONS_EQUALITY, ident_index::IdentOrIndex, quote_mixed},
+    common::{
+        attributes::{borrow_field, is_packed},
+        bound::BOUND_EXCEPTIONS_EQUALITY,
+        ident_index::IdentOrIndex,
+        quote_mixed,
+        where_predicates_bool::{WherePredicates, extend_where_predicates},
+    },
     trait_handlers::TraitHandlerContext,
 };
 
@@ -33,9 +39,16 @@ impl TraitHandler for PartialEqStructHandler {
 
         let mut partial_eq_types: Vec<&Type> = Vec::new();
 
+        // A `#[repr(packed)]` type reads every compared field through a copy, so those field types additionally have to be `Copy`.
+        let is_packed = is_packed(&ast.attrs);
+        let mut copy_types: Vec<&Type> = Vec::new();
+
         let mut eq_token_stream = proc_macro2::TokenStream::new();
 
         if let Data::Struct(data) = &ast.data {
+            let this = quote_mixed!(self);
+            let that = quote_mixed!(other);
+
             for (index, field) in data.fields.iter().enumerate() {
                 let field_attribute = FieldAttributeBuilder {
                     enable_ignore: true,
@@ -49,9 +62,14 @@ impl TraitHandler for PartialEqStructHandler {
 
                 let field_name = IdentOrIndex::from_ident_with_index(field.ident.as_ref(), index);
 
+                copy_types.push(&field.ty);
+
+                let self_ref = borrow_field(is_packed, &this, &field_name);
+                let other_ref = borrow_field(is_packed, &that, &field_name);
+
                 if let Some(method) = field_attribute.method {
                     eq_token_stream.extend(quote_mixed! {
-                        if !#method(&self.#field_name, &other.#field_name) {
+                        if !#method(#self_ref, #other_ref) {
                             return false;
                         }
                     });
@@ -61,7 +79,7 @@ impl TraitHandler for PartialEqStructHandler {
                     partial_eq_types.push(ty);
 
                     eq_token_stream.extend(quote_mixed! {
-                        if ::core::cmp::PartialEq::ne(&self.#field_name, &other.#field_name) {
+                        if ::core::cmp::PartialEq::ne(#self_ref, #other_ref) {
                             return false;
                         }
                     });
@@ -71,13 +89,26 @@ impl TraitHandler for PartialEqStructHandler {
 
         let ident = &ast.ident;
 
-        let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
-            &ast.generics.params,
-            &syn::parse2(quote_mixed!(::core::cmp::PartialEq)).unwrap(),
-            &partial_eq_types,
-            &ast.ident,
-            &BOUND_EXCEPTIONS_EQUALITY,
-        );
+        let packed_copy_predicates = if is_packed {
+            type_attribute.bound.packed_copy_predicates(
+                &ast.generics.params,
+                &copy_types,
+                &ast.ident,
+            )
+        } else {
+            WherePredicates::new()
+        };
+
+        let mut bound =
+            type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
+                &ast.generics.params,
+                &syn::parse2(quote_mixed!(::core::cmp::PartialEq)).unwrap(),
+                &partial_eq_types,
+                &ast.ident,
+                &BOUND_EXCEPTIONS_EQUALITY,
+            );
+
+        extend_where_predicates(&mut bound, packed_copy_predicates);
 
         ctx.record(Trait::PartialEq, &bound);
 

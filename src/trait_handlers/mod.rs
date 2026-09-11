@@ -7,11 +7,7 @@
     feature = "PartialOrd"
 ))]
 use std::collections::HashMap;
-#[cfg(any(feature = "Copy", feature = "Eq", feature = "Ord", feature = "PartialOrd"))]
-use std::collections::HashSet;
 
-#[cfg(any(feature = "Copy", feature = "Eq", feature = "Ord", feature = "PartialOrd"))]
-use quote::ToTokens;
 use syn::{DeriveInput, Meta};
 
 use crate::Trait;
@@ -24,6 +20,8 @@ use crate::Trait;
     feature = "PartialOrd"
 ))]
 use crate::common::where_predicates_bool::WherePredicates;
+#[cfg(any(feature = "Copy", feature = "Eq", feature = "Ord", feature = "PartialOrd"))]
+use crate::common::where_predicates_bool::extend_where_predicates;
 
 #[cfg(feature = "Clone")]
 pub(crate) mod clone;
@@ -86,17 +84,9 @@ impl TraitHandlerContext {
     /// Prerequisites that were not handled by Educe (e.g. implemented manually by the user) simply have no record and contribute nothing.
     #[cfg(any(feature = "Copy", feature = "Eq", feature = "Ord", feature = "PartialOrd"))]
     pub(crate) fn inherit_from(&self, prerequisites: &[Trait], own: &mut WherePredicates) {
-        // Compare predicates by their token strings because `WherePredicate` implements neither `Eq` nor `Hash`.
-        let mut seen: HashSet<String> =
-            own.iter().map(|predicate| predicate.to_token_stream().to_string()).collect();
-
         for prerequisite in prerequisites {
             if let Some(predicates) = self.final_predicates.get(prerequisite) {
-                for predicate in predicates {
-                    if seen.insert(predicate.to_token_stream().to_string()) {
-                        own.push(predicate.clone());
-                    }
-                }
+                extend_where_predicates(own, predicates.clone());
             }
         }
     }

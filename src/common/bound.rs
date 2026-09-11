@@ -1,3 +1,4 @@
+use quote::quote;
 use syn::{
     GenericParam, Ident, Meta, Path, Type, WherePredicate, punctuated::Punctuated, token::Comma,
 };
@@ -209,6 +210,31 @@ impl Bound {
             ),
             Self::All => create_where_predicates_from_all_generic_parameters(params, bound_trait),
             Self::Custom(where_predicates) => where_predicates,
+        }
+    }
+
+    /// Builds the extra `Copy` predicates that a `#[repr(packed)]` type needs, because its fields have to be copied out before they can be borrowed.
+    ///
+    /// `types` are the field types that the generated code reads, including the ones handled by a custom method. Explicit predicates are used verbatim, so only the automatic modes contribute anything here.
+    #[inline]
+    pub(crate) fn packed_copy_predicates(
+        &self,
+        params: &Punctuated<GenericParam, Comma>,
+        types: &[&Type],
+        self_ident: &Ident,
+    ) -> WherePredicates {
+        let copy_trait: Path = syn::parse2(quote!(::core::marker::Copy)).unwrap();
+
+        match self {
+            Self::Auto => create_where_predicates_from_field_types(
+                params,
+                &copy_trait,
+                types,
+                self_ident,
+                &BOUND_EXCEPTIONS_COPY,
+            ),
+            Self::All => create_where_predicates_from_all_generic_parameters(params, &copy_trait),
+            Self::Disabled | Self::Custom(_) => Punctuated::new(),
         }
     }
 
