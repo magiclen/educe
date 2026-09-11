@@ -126,8 +126,14 @@ impl TraitHandler for DebugStructHandler {
                 }
             }
         } else {
+            // A struct without a name is formatted like a plain tuple, which the standard builder spells with an empty name.
+            let name_string = syn::LitStr::new(
+                &name.map(|name| name.to_string()).unwrap_or_default(),
+                proc_macro2::Span::call_site(),
+            );
+
             builder_token_stream
-                .extend(quote_mixed!(let mut builder = f.debug_tuple(stringify!(#name));));
+                .extend(quote_mixed!(let mut builder = f.debug_tuple(#name_string);));
 
             if let Data::Struct(data) = &ast.data {
                 for (index, field) in data.fields.iter().enumerate() {

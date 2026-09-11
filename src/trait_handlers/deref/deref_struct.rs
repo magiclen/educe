@@ -1,4 +1,3 @@
-use quote::quote;
 use syn::{Data, DeriveInput, Field, Meta};
 
 use super::{
@@ -7,7 +6,7 @@ use super::{
 };
 use crate::{
     Trait,
-    common::{ident_index::IdentOrIndex, r#type::dereference_changed},
+    common::{ident_index::IdentOrIndex, quote_mixed, r#type::dereference_changed},
     trait_handlers::TraitHandlerContext,
 };
 
@@ -79,14 +78,14 @@ impl TraitHandler for DerefStructHandler {
             let ty = &field.ty;
             let (dereference_ty, is_ref) = dereference_changed(ty);
 
-            target_token_stream.extend(quote!(#dereference_ty));
+            target_token_stream.extend(quote_mixed!(#dereference_ty));
 
             let field_name = IdentOrIndex::from_ident_with_index(field.ident.as_ref(), index);
 
             deref_token_stream.extend(if is_ref {
-                quote! (self.#field_name)
+                quote_mixed! (self.#field_name)
             } else {
-                quote! (&self.#field_name)
+                quote_mixed! (&self.#field_name)
             });
         }
 
@@ -94,7 +93,7 @@ impl TraitHandler for DerefStructHandler {
 
         let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
-        token_stream.extend(quote! {
+        token_stream.extend(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::ops::Deref for #ident #ty_generics #where_clause {
                 type Target = #target_token_stream;

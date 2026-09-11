@@ -1,13 +1,15 @@
 mod models;
 
 use models::{FieldAttributeBuilder, TypeAttributeBuilder};
-use quote::quote;
 use syn::{Data, DeriveInput, Meta};
 
 use super::TraitHandler;
 use crate::{
     Trait,
-    common::bound::{BOUND_EXCEPTIONS_COPY, Bound},
+    common::{
+        bound::{BOUND_EXCEPTIONS_COPY, Bound},
+        quote_mixed,
+    },
     trait_handlers::TraitHandlerContext,
 };
 
@@ -79,7 +81,7 @@ impl TraitHandler for CopyHandler {
         let mut bound =
             type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
                 &ast.generics.params,
-                &syn::parse2(quote!(::core::marker::Copy)).unwrap(),
+                &syn::parse2(quote_mixed!(::core::marker::Copy)).unwrap(),
                 &field_types,
                 &ast.ident,
                 &BOUND_EXCEPTIONS_COPY,
@@ -102,7 +104,7 @@ impl TraitHandler for CopyHandler {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        token_stream.extend(quote! {
+        token_stream.extend(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::marker::Copy for #ident #ty_generics #where_clause {
             }

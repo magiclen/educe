@@ -1,11 +1,13 @@
-use quote::{format_ident, quote};
+use quote::format_ident;
 use syn::{Data, DeriveInput, Field, Fields, Ident, Meta};
 
 use super::{
     TraitHandler,
     models::{FieldAttributeBuilder, TypeAttributeBuilder},
 };
-use crate::{panic, supported_traits::Trait, trait_handlers::TraitHandlerContext};
+use crate::{
+    common::quote_mixed, panic, supported_traits::Trait, trait_handlers::TraitHandlerContext,
+};
 
 /// Generates the `DerefMut` implementation for an enum.
 pub(crate) struct DerefMutEnumHandler;
@@ -89,7 +91,9 @@ impl TraitHandler for DerefMutEnumHandler {
 
                 let (field_name, is_tuple): (Ident, bool) = match field.ident.as_ref() {
                     Some(ident) => (ident.clone(), false),
-                    None => (format_ident!("_{}", index), true),
+                    None => {
+                        (format_ident!("_{}", index, span = proc_macro2::Span::mixed_site()), true)
+                    },
                 };
 
                 variants.push((&variant.ident, is_tuple, index, field_name));
@@ -104,19 +108,19 @@ impl TraitHandler for DerefMutEnumHandler {
 
                 if is_tuple {
                     for _ in 0..index {
-                        pattern_token_stream.extend(quote!(_,));
+                        pattern_token_stream.extend(quote_mixed!(_,));
                     }
 
-                    pattern_token_stream.extend(quote!( #field_name, .. ));
+                    pattern_token_stream.extend(quote_mixed!( #field_name, .. ));
 
                     arms_token_stream.extend(
-                        quote!( Self::#variant_ident ( #pattern_token_stream ) => #field_name, ),
+                        quote_mixed!( Self::#variant_ident ( #pattern_token_stream ) => #field_name, ),
                     );
                 } else {
-                    pattern_token_stream.extend(quote!( #field_name, .. ));
+                    pattern_token_stream.extend(quote_mixed!( #field_name, .. ));
 
                     arms_token_stream.extend(
-                        quote!( Self::#variant_ident { #pattern_token_stream } => #field_name, ),
+                        quote_mixed!( Self::#variant_ident { #pattern_token_stream } => #field_name, ),
                     );
                 }
             }
@@ -126,7 +130,7 @@ impl TraitHandler for DerefMutEnumHandler {
 
         let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
-        token_stream.extend(quote! {
+        token_stream.extend(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::ops::DerefMut for #ident #ty_generics #where_clause {
                 #[inline]

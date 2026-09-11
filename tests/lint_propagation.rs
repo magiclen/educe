@@ -1,12 +1,14 @@
-#![cfg(any(feature = "Debug", feature = "Clone"))]
+#![cfg(any(feature = "Debug", feature = "Clone", feature = "Eq", feature = "Default"))]
 #![no_std]
 #![deny(deprecated, clippy::used_underscore_binding, clippy::ptr_arg)]
 // The types in these tests only exist to exercise the derived impls, and `#[automatically_derived]` impls do not count as uses for dead-code analysis.
 #![allow(dead_code)]
 
+#[cfg(any(feature = "Debug", feature = "Clone"))]
 #[macro_use]
 extern crate alloc;
 
+#[cfg(any(feature = "Debug", feature = "Clone"))]
 use alloc::vec::Vec;
 
 use educe::Educe;
@@ -26,6 +28,7 @@ fn automatically_derived() {
     };
 }
 
+#[cfg(any(feature = "Debug", feature = "Clone"))]
 #[test]
 fn lint_attribute_propagation() {
     #[deprecated]
@@ -117,4 +120,24 @@ fn eq_helper_lint_propagation() {
 
     fn assert_eq_impl<T: Eq>() {}
     assert_eq_impl::<Struct>();
+}
+
+#[cfg(feature = "Default")]
+#[test]
+fn default_new_lint_propagation() {
+    #[deprecated]
+    trait Deprecated {}
+
+    #[allow(deprecated)]
+    impl Deprecated for u8 {}
+
+    // `Default(new)` puts `new` in an inherent impl that repeats the type's own generic bounds, so the type's `allow` has to reach that impl as well.
+    #[allow(deprecated)]
+    #[derive(Educe)]
+    #[educe(Default(new))]
+    struct Struct<T: Deprecated + Default>(T);
+
+    let value: Struct<u8> = Struct::new();
+
+    assert_eq!(0, value.0);
 }

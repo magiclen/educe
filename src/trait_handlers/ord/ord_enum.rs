@@ -51,6 +51,8 @@ impl TraitHandler for OrdEnumHandler {
         let mut all_unit = true;
 
         if let Data::Enum(data) = &ast.data {
+            let built_in_cmp: ExprPath = syn::parse2(quote_mixed!(::core::cmp::Ord::cmp)).unwrap();
+
             for (variant_index, variant) in data.variants.iter().enumerate() {
                 let _ = TypeAttributeBuilder {
                     enable_flag: false, enable_bound: false
@@ -70,9 +72,6 @@ impl TraitHandler for OrdEnumHandler {
                 key_arms_token_stream.extend(quote_mixed! {
                     #key_pattern => #discriminant,
                 });
-
-                let built_in_cmp: ExprPath =
-                    syn::parse2(quote_mixed!(::core::cmp::Ord::cmp)).unwrap();
 
                 match &variant.fields {
                     Fields::Unit => {

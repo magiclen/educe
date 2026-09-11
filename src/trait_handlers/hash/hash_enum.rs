@@ -39,6 +39,9 @@ impl TraitHandler for HashEnumHandler {
         let mut arms_token_stream = proc_macro2::TokenStream::new();
 
         if let Data::Enum(data) = &ast.data {
+            let built_in_hash: ExprPath =
+                syn::parse2(quote_mixed!(::core::hash::Hash::hash)).unwrap();
+
             for (variant_index, variant) in data.variants.iter().enumerate() {
                 let _ = TypeAttributeBuilder {
                     enable_flag:   false,
@@ -48,9 +51,6 @@ impl TraitHandler for HashEnumHandler {
                 .build_from_attributes(&variant.attrs, traits)?;
 
                 let variant_ident = &variant.ident;
-
-                let built_in_hash: ExprPath =
-                    syn::parse2(quote_mixed!(::core::hash::Hash::hash)).unwrap();
 
                 match &variant.fields {
                     Fields::Unit => {

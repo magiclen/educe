@@ -180,8 +180,9 @@ impl TraitHandler for CloneEnumHandler {
                                 });
                         },
                         Fields::Unnamed(_) => {
-                            let mut pattern_token_stream = proc_macro2::TokenStream::new();
-                            let mut pattern2_token_stream = proc_macro2::TokenStream::new();
+                            // Like the named branch above, the bindings are named after their role: the source pattern matches `self` in `clone` and `source` in `clone_from`, while the destination pattern only matches `self` in `clone_from`.
+                            let mut pattern_src_token_stream = proc_macro2::TokenStream::new();
+                            let mut pattern_dst_token_stream = proc_macro2::TokenStream::new();
                             let mut fields_token_stream = proc_macro2::TokenStream::new();
                             let mut body_token_stream = proc_macro2::TokenStream::new();
 
@@ -193,16 +194,14 @@ impl TraitHandler for CloneEnumHandler {
                                     index,
                                     span = proc_macro2::Span::mixed_site()
                                 );
-
-                                pattern_token_stream.extend(quote_mixed!(#field_name_src,));
-
                                 let field_name_dst = format_ident!(
                                     "_{}",
                                     field_name_src,
                                     span = proc_macro2::Span::mixed_site()
                                 );
 
-                                pattern2_token_stream.extend(quote_mixed!(#field_name_dst,));
+                                pattern_src_token_stream.extend(quote_mixed!(#field_name_src,));
+                                pattern_dst_token_stream.extend(quote_mixed!(#field_name_dst,));
 
                                 if let Some(clone) = field_attribute.method.as_ref() {
                                     mark_fields.push((&field.ty, clone.clone()));
@@ -210,7 +209,7 @@ impl TraitHandler for CloneEnumHandler {
                                     fields_token_stream
                                         .extend(quote_mixed! (#clone(#field_name_src),));
                                     body_token_stream.extend(
-                                        quote_mixed!(*#field_name_src = #clone(#field_name_dst);),
+                                        quote_mixed!(*#field_name_dst = #clone(#field_name_src);),
                                     );
                                 } else {
                                     clone_types.push(&field.ty);
@@ -219,18 +218,18 @@ impl TraitHandler for CloneEnumHandler {
                                         quote_mixed! ( ::core::clone::Clone::clone(#field_name_src), ),
                                     );
                                     body_token_stream.extend(
-                                        quote_mixed!( ::core::clone::Clone::clone_from(#field_name_src, #field_name_dst); ),
+                                        quote_mixed!( ::core::clone::Clone::clone_from(#field_name_dst, #field_name_src); ),
                                     );
                                 }
                             }
 
                             clone_variants_token_stream.extend(quote_mixed! {
-                                    Self::#variant_ident ( #pattern_token_stream ) => Self::#variant_ident ( #fields_token_stream ),
+                                    Self::#variant_ident ( #pattern_src_token_stream ) => Self::#variant_ident ( #fields_token_stream ),
                                 });
 
                             clone_from_variants_token_stream.extend(quote_mixed! {
-                                    Self::#variant_ident ( #pattern_token_stream ) => {
-                                        if let Self::#variant_ident ( #pattern2_token_stream ) = source {
+                                    Self::#variant_ident ( #pattern_dst_token_stream ) => {
+                                        if let Self::#variant_ident ( #pattern_src_token_stream ) = source {
                                             #body_token_stream
                                         } else {
                                             *self = ::core::clone::Clone::clone(source);

@@ -66,7 +66,7 @@ Implementation references: [`DebugStructHandler`](src/trait_handlers/debug/debug
   The contract must hold after construction, writes, moves, and copies.
   This documents existing undefined-behavior risks; the byte-reading algorithms are unchanged.
 - Corrected the `Default` documentation to describe default expressions and the selected enum variant or union field.
-- Added migration guidance for reference targets, `Self`, automatic bounds, and custom equality in both the README and crate documentation.
+- Migration guidance for reference targets, `Self`, automatic bounds, and custom equality lives in this changelog; the README and the crate documentation describe only the current behavior.
 - Restored the missing test attributes on the enum `Into` method tests and made the generic union test require `Eq`.
 - Added regression coverage for qualified method paths, name clashes, reference conversions, generic bounds, dynamically sized fields, discriminants, lint propagation, and dead-code analysis.
   Two compile-fail doctests verify that automatic `Eq` rejects ordinary non-`Eq` fields in structs and enums.

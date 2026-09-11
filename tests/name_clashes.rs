@@ -1,6 +1,15 @@
 // These types test that we don't have name clashes between field names and our local variables and parameter names.
 
-#![cfg(feature = "default")]
+#![cfg(all(
+    feature = "Debug",
+    feature = "Clone",
+    feature = "PartialEq",
+    feature = "Eq",
+    feature = "PartialOrd",
+    feature = "Ord",
+    feature = "Hash",
+    feature = "Into"
+))]
 #![allow(dead_code)]
 
 use educe::Educe;

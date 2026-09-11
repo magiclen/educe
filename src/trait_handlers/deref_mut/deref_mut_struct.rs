@@ -1,11 +1,14 @@
-use quote::quote;
 use syn::{Data, DeriveInput, Field, Meta, Type};
 
 use super::{
     TraitHandler,
     models::{FieldAttributeBuilder, TypeAttributeBuilder},
 };
-use crate::{Trait, common::ident_index::IdentOrIndex, trait_handlers::TraitHandlerContext};
+use crate::{
+    Trait,
+    common::{ident_index::IdentOrIndex, quote_mixed},
+    trait_handlers::TraitHandlerContext,
+};
 
 /// Generates the `DerefMut` implementation for a struct.
 pub(crate) struct DerefMutStructHandler;
@@ -74,9 +77,9 @@ impl TraitHandler for DerefMutStructHandler {
             let field_name = IdentOrIndex::from_ident_with_index(field.ident.as_ref(), index);
 
             deref_mut_token_stream.extend(if let Type::Reference(_) = &field.ty {
-                quote! (self.#field_name)
+                quote_mixed! (self.#field_name)
             } else {
-                quote! (&mut self.#field_name)
+                quote_mixed! (&mut self.#field_name)
             });
         }
 
@@ -84,7 +87,7 @@ impl TraitHandler for DerefMutStructHandler {
 
         let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
-        token_stream.extend(quote! {
+        token_stream.extend(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::ops::DerefMut for #ident #ty_generics #where_clause {
                 #[inline]

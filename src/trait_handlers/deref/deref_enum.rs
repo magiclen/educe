@@ -1,4 +1,4 @@
-use quote::{format_ident, quote};
+use quote::format_ident;
 use syn::{Data, DeriveInput, Field, Fields, Ident, Meta, Type};
 
 use super::{
@@ -6,7 +6,9 @@ use super::{
     models::{FieldAttributeBuilder, TypeAttributeBuilder},
 };
 use crate::{
-    common::r#type::dereference, panic, supported_traits::Trait,
+    common::{quote_mixed, r#type::dereference},
+    panic,
+    supported_traits::Trait,
     trait_handlers::TraitHandlerContext,
 };
 
@@ -93,7 +95,9 @@ impl TraitHandler for DerefEnumHandler {
 
                 let (field_name, is_tuple): (Ident, bool) = match field.ident.as_ref() {
                     Some(ident) => (ident.clone(), false),
-                    None => (format_ident!("_{}", index), true),
+                    None => {
+                        (format_ident!("_{}", index, span = proc_macro2::Span::mixed_site()), true)
+                    },
                 };
 
                 variants.push((&variant.ident, is_tuple, index, field_name, &field.ty));
@@ -106,26 +110,26 @@ impl TraitHandler for DerefEnumHandler {
             let ty = variants[0].4;
             let dereference_ty = dereference(ty);
 
-            target_token_stream.extend(quote!(#dereference_ty));
+            target_token_stream.extend(quote_mixed!(#dereference_ty));
 
             for (variant_ident, is_tuple, index, field_name, _) in variants {
                 let mut pattern_token_stream = proc_macro2::TokenStream::new();
 
                 if is_tuple {
                     for _ in 0..index {
-                        pattern_token_stream.extend(quote!(_,));
+                        pattern_token_stream.extend(quote_mixed!(_,));
                     }
 
-                    pattern_token_stream.extend(quote!( #field_name, .. ));
+                    pattern_token_stream.extend(quote_mixed!( #field_name, .. ));
 
                     arms_token_stream.extend(
-                        quote!( Self::#variant_ident ( #pattern_token_stream ) => #field_name, ),
+                        quote_mixed!( Self::#variant_ident ( #pattern_token_stream ) => #field_name, ),
                     );
                 } else {
-                    pattern_token_stream.extend(quote!( #field_name, .. ));
+                    pattern_token_stream.extend(quote_mixed!( #field_name, .. ));
 
                     arms_token_stream.extend(
-                        quote!( Self::#variant_ident { #pattern_token_stream } => #field_name, ),
+                        quote_mixed!( Self::#variant_ident { #pattern_token_stream } => #field_name, ),
                     );
                 }
             }
@@ -135,7 +139,7 @@ impl TraitHandler for DerefEnumHandler {
 
         let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
-        token_stream.extend(quote! {
+        token_stream.extend(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::ops::Deref for #ident #ty_generics #where_clause {
                 type Target = #target_token_stream;

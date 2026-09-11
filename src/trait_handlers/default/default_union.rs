@@ -1,11 +1,14 @@
-use quote::quote;
 use syn::{Data, DeriveInput, Field, Meta, Type};
 
 use super::{
     TraitHandler,
     models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder},
 };
-use crate::{Trait, common::bound::BOUND_EXCEPTIONS_DEFAULT, trait_handlers::TraitHandlerContext};
+use crate::{
+    Trait,
+    common::{bound::BOUND_EXCEPTIONS_DEFAULT, quote_mixed},
+    trait_handlers::TraitHandlerContext,
+};
 
 /// Generates the `Default` implementation for a union.
 pub(crate) struct DefaultUnionHandler;
@@ -43,7 +46,7 @@ impl TraitHandler for DefaultUnionHandler {
                     .build_from_attributes(&field.attrs, traits, &field.ty)?;
                 }
 
-                default_token_stream.extend(quote!(#expression));
+                default_token_stream.extend(quote_mixed!(#expression));
             } else {
                 let (field, field_attribute) =
                     {
@@ -93,7 +96,7 @@ impl TraitHandler for DefaultUnionHandler {
                 let field_name = field.ident.as_ref().unwrap();
 
                 if let Some(expression) = field_attribute.expression {
-                    fields_token_stream.extend(quote! {
+                    fields_token_stream.extend(quote_mixed! {
                         #field_name: #expression,
                     });
                 } else {
@@ -101,12 +104,12 @@ impl TraitHandler for DefaultUnionHandler {
 
                     default_types.push(ty);
 
-                    fields_token_stream.extend(quote! {
+                    fields_token_stream.extend(quote_mixed! {
                         #field_name: <#ty as ::core::default::Default>::default(),
                     });
                 }
 
-                default_token_stream.extend(quote! {
+                default_token_stream.extend(quote_mixed! {
                     Self {
                         #fields_token_stream
                     }
@@ -118,7 +121,7 @@ impl TraitHandler for DefaultUnionHandler {
 
         let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
             &ast.generics.params,
-            &syn::parse2(quote!(::core::default::Default)).unwrap(),
+            &syn::parse2(quote_mixed!(::core::default::Default)).unwrap(),
             &default_types,
             &ast.ident,
             &BOUND_EXCEPTIONS_DEFAULT,
@@ -134,7 +137,7 @@ impl TraitHandler for DefaultUnionHandler {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        token_stream.extend(quote! {
+        token_stream.extend(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::default::Default for #ident #ty_generics #where_clause {
                 #[inline]
@@ -145,7 +148,11 @@ impl TraitHandler for DefaultUnionHandler {
         });
 
         if type_attribute.new {
-            token_stream.extend(quote! {
+            // An inherent impl is not a trait impl, so it takes the lint attributes alone instead of the full set with `#[automatically_derived]`.
+            let lint_attributes = crate::common::attributes::generated_lint_attributes(&ast.attrs);
+
+            token_stream.extend(quote_mixed! {
+                #lint_attributes
                 impl #impl_generics #ident #ty_generics #where_clause {
                     /// Returns the "default value" for a type.
                     #[inline]

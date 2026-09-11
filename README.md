@@ -84,15 +84,6 @@ The `method = path`, `method(path)`, `method = "path"`, and `method("path")` for
 In custom method paths, `Self` refers to the type being derived, including its generic arguments.
 For `Into`, this also applies when the generated implementation is `From` for the target type; use an explicit target type path to call a target method.
 
-###### Compatibility Notes
-
-* Corrected method paths preserve qualified types and avoid capture by generated local variables; write an explicit path if you relied on the previous resolution.
-* `Into` reference targets now preserve explicit lifetimes, mutability, and reference depth; adjust the target declaration or caller if it relied on conversion to `&'static T`.
-* Original generic bounds keep `Self` tied to the source type when moved into `From`; put target constraints in an explicit `bound(...)`.
-* Automatic `Eq` now checks ordinary fields, including concrete and const generic fields; use explicit bounds when a manual `PartialEq` implementation provides equality for otherwise non-`Eq` fields.
-* Ignored fields and custom comparison methods no longer add automatic `Eq` bounds, and containers with an explicit hasher use whole-type predicates; add explicit bounds if another custom method relied on an inferred `T: Eq` or `T: Clone`.
-* When a field uses a const generic parameter, deriving `Copy` with `Clone` now uses field methods for `clone` and `clone_from`; custom method side effects can change, and the performance difference has not been measured.
-
 ## Traits
 
 * [Debug](#debug)

@@ -56,13 +56,13 @@ impl TraitHandler for PartialEqUnionHandler {
                     let size = ::core::mem::size_of::<Self>();
 
                     // SAFETY: The live union reference provides a valid pointer and size; the unsafe derive contract requires every byte, including padding and bytes outside the active field, to be initialized and unchanged during this call.
-// The user must preserve this condition after every construction, write, move, and copy; reading uninitialized bytes is undefined behavior.
+                    // The user must preserve this condition after every construction, write, move, and copy; reading uninitialized bytes is undefined behavior.
                     let self_data = unsafe {
                         ::core::slice::from_raw_parts(self as *const Self as *const u8, size)
                     };
 
                     // SAFETY: The live union reference provides a valid pointer and size; the unsafe derive contract requires every byte, including padding and bytes outside the active field, to be initialized and unchanged during this call.
-// The user must preserve this condition after every construction, write, move, and copy; reading uninitialized bytes is undefined behavior.
+                    // The user must preserve this condition after every construction, write, move, and copy; reading uninitialized bytes is undefined behavior.
                     let other_data = unsafe {
                         ::core::slice::from_raw_parts(other as *const Self as *const u8, size)
                     };
