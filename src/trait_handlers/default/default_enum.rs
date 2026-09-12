@@ -6,7 +6,7 @@ use super::{
 };
 use crate::{
     Trait,
-    common::{bound::BOUND_EXCEPTIONS_DEFAULT, quote_mixed},
+    common::{bound::BOUND_EXCEPTIONS_DEFAULT, ident_index::IdentOrIndex, quote_mixed},
     trait_handlers::TraitHandlerContext,
 };
 
@@ -102,70 +102,38 @@ impl TraitHandler for DefaultEnumHandler {
 
                 let variant_ident = &variant.ident;
 
-                match &variant.fields {
-                    Fields::Unit => {
-                        default_token_stream.extend(quote_mixed!(Self::#variant_ident));
-                    },
-                    Fields::Named(_) => {
-                        let mut fields_token_stream = proc_macro2::TokenStream::new();
+                let mut fields_token_stream = proc_macro2::TokenStream::new();
 
-                        for field in variant.fields.iter() {
-                            let field_attribute = FieldAttributeBuilder {
-                                enable_flag:       false,
-                                enable_expression: true,
-                            }
-                            .build_from_attributes(&field.attrs, traits, &field.ty)?;
+                for (index, field) in variant.fields.iter().enumerate() {
+                    let field_attribute = FieldAttributeBuilder {
+                        enable_flag:       false,
+                        enable_expression: true,
+                    }
+                    .build_from_attributes(&field.attrs, traits, &field.ty)?;
 
-                            let field_name = field.ident.as_ref().unwrap();
+                    let field_name =
+                        IdentOrIndex::from_ident_with_index(field.ident.as_ref(), index);
 
-                            if let Some(expression) = field_attribute.expression {
-                                fields_token_stream.extend(quote_mixed! {
-                                    #field_name: #expression,
-                                });
-                            } else {
-                                let ty = &field.ty;
+                    let value = if let Some(expression) = field_attribute.expression {
+                        quote_mixed!(#expression)
+                    } else {
+                        let ty = &field.ty;
 
-                                default_types.push(ty);
+                        default_types.push(ty);
 
-                                fields_token_stream.extend(quote_mixed! {
-                                    #field_name: <#ty as ::core::default::Default>::default(),
-                                });
-                            }
-                        }
+                        quote_mixed!(<#ty as ::core::default::Default>::default())
+                    };
 
-                        default_token_stream.extend(quote_mixed! {
-                            Self::#variant_ident {
-                                #fields_token_stream
-                            }
-                        });
-                    },
-                    Fields::Unnamed(_) => {
-                        let mut fields_token_stream = proc_macro2::TokenStream::new();
-
-                        for field in variant.fields.iter() {
-                            let field_attribute = FieldAttributeBuilder {
-                                enable_flag:       false,
-                                enable_expression: true,
-                            }
-                            .build_from_attributes(&field.attrs, traits, &field.ty)?;
-
-                            if let Some(expression) = field_attribute.expression {
-                                fields_token_stream.extend(quote_mixed!(#expression,));
-                            } else {
-                                let ty = &field.ty;
-
-                                default_types.push(ty);
-
-                                fields_token_stream.extend(
-                                    quote_mixed!(<#ty as ::core::default::Default>::default(),),
-                                );
-                            }
-                        }
-
-                        default_token_stream
-                            .extend(quote_mixed!(Self::#variant_ident ( #fields_token_stream )));
-                    },
+                    fields_token_stream.extend(field_name.to_field(&value));
                 }
+
+                default_token_stream.extend(match &variant.fields {
+                    Fields::Unit => quote_mixed!(Self::#variant_ident),
+                    Fields::Named(_) => quote_mixed!(Self::#variant_ident { #fields_token_stream }),
+                    Fields::Unnamed(_) => {
+                        quote_mixed!(Self::#variant_ident ( #fields_token_stream ))
+                    },
+                });
             }
         }
 

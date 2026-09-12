@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 
-use quote::format_ident;
 use syn::{Data, DeriveInput, ExprPath, Field, Fields, Ident, Meta, Type, spanned::Spanned};
 
 use super::{
@@ -11,6 +10,7 @@ use crate::{
     Trait,
     common::{
         bound::{BOUND_EXCEPTIONS_ORDER, Bound},
+        ident_index::IdentOrIndex,
         quote_mixed,
         tools::DiscriminantType,
     },
@@ -74,196 +74,114 @@ impl TraitHandler for PartialOrdEnumHandler {
                     #key_pattern => #discriminant,
                 });
 
-                match &variant.fields {
-                    Fields::Unit => {
-                        arms_token_stream.extend(quote_mixed! {
-                            Self::#variant_ident => {
-                                return ::core::option::Option::Some(::core::cmp::Ordering::Equal);
-                            }
-                        });
-                    },
-                    Fields::Named(_) => {
-                        all_unit = false;
-
-                        let mut pattern_self_token_stream = proc_macro2::TokenStream::new();
-                        let mut pattern_other_token_stream = proc_macro2::TokenStream::new();
-                        let mut block_token_stream = proc_macro2::TokenStream::new();
-
-                        let mut fields: BTreeMap<isize, (&Field, Ident, Ident, FieldAttribute)> =
-                            BTreeMap::new();
-
-                        for (index, field) in variant.fields.iter().enumerate() {
-                            let field_attribute = FieldAttributeBuilder {
-                                enable_ignore: true,
-                                enable_method: true,
-                                enable_rank:   true,
-                                rank:          isize::MIN + index as isize,
-                            }
-                            .build_from_attributes(&field.attrs, traits)?;
-
-                            let field_name_real = field.ident.as_ref().unwrap();
-                            let field_name_var_self = format_ident!(
-                                "_s_{}",
-                                field_name_real,
-                                span = proc_macro2::Span::mixed_site()
-                            );
-                            let field_name_var_other = format_ident!(
-                                "_o_{}",
-                                field_name_real,
-                                span = proc_macro2::Span::mixed_site()
-                            );
-
-                            if field_attribute.ignore {
-                                pattern_self_token_stream
-                                    .extend(quote_mixed!(#field_name_real: _,));
-                                pattern_other_token_stream
-                                    .extend(quote_mixed!(#field_name_real: _,));
-
-                                continue;
-                            }
-
-                            pattern_self_token_stream
-                                .extend(quote_mixed!(#field_name_real: #field_name_var_self,));
-                            pattern_other_token_stream
-                                .extend(quote_mixed!(#field_name_real: #field_name_var_other,));
-
-                            let rank = field_attribute.rank;
-
-                            if fields.contains_key(&rank) {
-                                return Err(super::panic::reuse_a_rank(
-                                    field_attribute.rank_span.unwrap_or_else(|| field.span()),
-                                    rank,
-                                ));
-                            }
-
-                            fields.insert(
-                                rank,
-                                (field, field_name_var_self, field_name_var_other, field_attribute),
-                            );
+                if let Fields::Unit = &variant.fields {
+                    arms_token_stream.extend(quote_mixed! {
+                        Self::#variant_ident => {
+                            return ::core::option::Option::Some(::core::cmp::Ordering::Equal);
                         }
+                    });
 
-                        for (field, field_name_var_self, field_name_var_other, field_attribute) in
-                            fields.values()
-                        {
-                            let partial_cmp =
-                                field_attribute.method.as_ref().unwrap_or_else(|| {
-                                    partial_ord_types.push(&field.ty);
-
-                                    &built_in_partial_cmp
-                                });
-
-                            // A method taken from a fallback `Ord` field attribute returns `Ordering`, so its result has to be wrapped in `Some` here.
-                            let comparison = if field_attribute.method_returns_ordering {
-                                quote_mixed!(::core::option::Option::Some(#partial_cmp(#field_name_var_self, #field_name_var_other)))
-                            } else {
-                                quote_mixed!(#partial_cmp(#field_name_var_self, #field_name_var_other))
-                            };
-
-                            block_token_stream.extend(quote_mixed! {
-                                match #comparison {
-                                    ::core::option::Option::Some(::core::cmp::Ordering::Equal) => (),
-                                    ::core::option::Option::Some(::core::cmp::Ordering::Greater) => return ::core::option::Option::Some(::core::cmp::Ordering::Greater),
-                                    ::core::option::Option::Some(::core::cmp::Ordering::Less) => return ::core::option::Option::Some(::core::cmp::Ordering::Less),
-                                    ::core::option::Option::None => return ::core::option::Option::None,
-                                }
-                            });
-                        }
-
-                        arms_token_stream.extend(quote_mixed! {
-                            Self::#variant_ident { #pattern_self_token_stream } => {
-                                if let Self::#variant_ident { #pattern_other_token_stream } = other {
-                                    #block_token_stream
-                                }
-                            }
-                        });
-                    },
-                    Fields::Unnamed(_) => {
-                        all_unit = false;
-
-                        let mut pattern_token_stream = proc_macro2::TokenStream::new();
-                        let mut pattern2_token_stream = proc_macro2::TokenStream::new();
-                        let mut block_token_stream = proc_macro2::TokenStream::new();
-
-                        let mut fields: BTreeMap<isize, (&Field, Ident, Ident, FieldAttribute)> =
-                            BTreeMap::new();
-
-                        for (index, field) in variant.fields.iter().enumerate() {
-                            let field_attribute = FieldAttributeBuilder {
-                                enable_ignore: true,
-                                enable_method: true,
-                                enable_rank:   true,
-                                rank:          isize::MIN + index as isize,
-                            }
-                            .build_from_attributes(&field.attrs, traits)?;
-
-                            let field_name_var_self =
-                                format_ident!("_{}", index, span = proc_macro2::Span::mixed_site());
-
-                            if field_attribute.ignore {
-                                pattern_token_stream.extend(quote_mixed!(_,));
-                                pattern2_token_stream.extend(quote_mixed!(_,));
-
-                                continue;
-                            }
-
-                            let field_name_var_other = format_ident!(
-                                "_{}",
-                                field_name_var_self,
-                                span = proc_macro2::Span::mixed_site()
-                            );
-
-                            pattern_token_stream.extend(quote_mixed!(#field_name_var_self,));
-                            pattern2_token_stream.extend(quote_mixed!(#field_name_var_other,));
-
-                            let rank = field_attribute.rank;
-
-                            if fields.contains_key(&rank) {
-                                return Err(super::panic::reuse_a_rank(
-                                    field_attribute.rank_span.unwrap_or_else(|| field.span()),
-                                    rank,
-                                ));
-                            }
-
-                            fields.insert(
-                                rank,
-                                (field, field_name_var_self, field_name_var_other, field_attribute),
-                            );
-                        }
-
-                        for (field, field_name, field_name2, field_attribute) in fields.values() {
-                            let partial_cmp =
-                                field_attribute.method.as_ref().unwrap_or_else(|| {
-                                    partial_ord_types.push(&field.ty);
-
-                                    &built_in_partial_cmp
-                                });
-
-                            // A method taken from a fallback `Ord` field attribute returns `Ordering`, so its result has to be wrapped in `Some` here.
-                            let comparison = if field_attribute.method_returns_ordering {
-                                quote_mixed!(::core::option::Option::Some(#partial_cmp(#field_name, #field_name2)))
-                            } else {
-                                quote_mixed!(#partial_cmp(#field_name, #field_name2))
-                            };
-
-                            block_token_stream.extend(quote_mixed! {
-                                match #comparison {
-                                    ::core::option::Option::Some(::core::cmp::Ordering::Equal) => (),
-                                    ::core::option::Option::Some(::core::cmp::Ordering::Greater) => return ::core::option::Option::Some(::core::cmp::Ordering::Greater),
-                                    ::core::option::Option::Some(::core::cmp::Ordering::Less) => return ::core::option::Option::Some(::core::cmp::Ordering::Less),
-                                    ::core::option::Option::None => return ::core::option::Option::None,
-                                }
-                            });
-                        }
-
-                        arms_token_stream.extend(quote_mixed! {
-                            Self::#variant_ident ( #pattern_token_stream ) => {
-                                if let Self::#variant_ident ( #pattern2_token_stream ) = other {
-                                    #block_token_stream
-                                }
-                            }
-                        });
-                    },
+                    continue;
                 }
+
+                all_unit = false;
+
+                let mut pattern_self_token_stream = proc_macro2::TokenStream::new();
+                let mut pattern_other_token_stream = proc_macro2::TokenStream::new();
+                let mut block_token_stream = proc_macro2::TokenStream::new();
+
+                let mut fields: BTreeMap<isize, (&Field, Ident, Ident, FieldAttribute)> =
+                    BTreeMap::new();
+
+                for (index, field) in variant.fields.iter().enumerate() {
+                    let field_attribute = FieldAttributeBuilder {
+                        enable_ignore: true,
+                        enable_method: true,
+                        enable_rank:   true,
+                        rank:          isize::MIN + index as isize,
+                    }
+                    .build_from_attributes(&field.attrs, traits)?;
+
+                    let field_name =
+                        IdentOrIndex::from_ident_with_index(field.ident.as_ref(), index);
+
+                    if field_attribute.ignore {
+                        let ignored = field_name.to_field(&quote_mixed!(_));
+
+                        pattern_self_token_stream.extend(ignored.clone());
+                        pattern_other_token_stream.extend(ignored);
+
+                        continue;
+                    }
+
+                    let field_name_var_self = field_name.to_binding("_s_");
+                    let field_name_var_other = field_name.to_binding("_o_");
+
+                    pattern_self_token_stream
+                        .extend(field_name.to_field(&quote_mixed!(#field_name_var_self)));
+                    pattern_other_token_stream
+                        .extend(field_name.to_field(&quote_mixed!(#field_name_var_other)));
+
+                    let rank = field_attribute.rank;
+
+                    if fields.contains_key(&rank) {
+                        return Err(super::panic::reuse_a_rank(
+                            field_attribute.rank_span.unwrap_or_else(|| field.span()),
+                            rank,
+                        ));
+                    }
+
+                    fields.insert(
+                        rank,
+                        (field, field_name_var_self, field_name_var_other, field_attribute),
+                    );
+                }
+
+                for (field, field_name_var_self, field_name_var_other, field_attribute) in
+                    fields.values()
+                {
+                    let partial_cmp = field_attribute.method.as_ref().unwrap_or_else(|| {
+                        partial_ord_types.push(&field.ty);
+
+                        &built_in_partial_cmp
+                    });
+
+                    // A method taken from a fallback `Ord` field attribute returns `Ordering`, so its result has to be wrapped in `Some` here.
+                    let comparison = if field_attribute.method_returns_ordering {
+                        quote_mixed!(::core::option::Option::Some(#partial_cmp(#field_name_var_self, #field_name_var_other)))
+                    } else {
+                        quote_mixed!(#partial_cmp(#field_name_var_self, #field_name_var_other))
+                    };
+
+                    block_token_stream.extend(quote_mixed! {
+                        match #comparison {
+                            ::core::option::Option::Some(::core::cmp::Ordering::Equal) => (),
+                            ::core::option::Option::Some(::core::cmp::Ordering::Greater) => return ::core::option::Option::Some(::core::cmp::Ordering::Greater),
+                            ::core::option::Option::Some(::core::cmp::Ordering::Less) => return ::core::option::Option::Some(::core::cmp::Ordering::Less),
+                            ::core::option::Option::None => return ::core::option::Option::None,
+                        }
+                    });
+                }
+
+                let (pattern_self, pattern_other) = if let Fields::Named(_) = &variant.fields {
+                    (
+                        quote_mixed!(Self::#variant_ident { #pattern_self_token_stream }),
+                        quote_mixed!(Self::#variant_ident { #pattern_other_token_stream }),
+                    )
+                } else {
+                    (
+                        quote_mixed!(Self::#variant_ident ( #pattern_self_token_stream )),
+                        quote_mixed!(Self::#variant_ident ( #pattern_other_token_stream )),
+                    )
+                };
+
+                arms_token_stream.extend(quote_mixed! {
+                    #pattern_self => {
+                        if let #pattern_other = other {
+                            #block_token_stream
+                        }
+                    }
+                });
             }
         }
 

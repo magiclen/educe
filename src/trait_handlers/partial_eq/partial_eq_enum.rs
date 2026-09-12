@@ -1,4 +1,3 @@
-use quote::format_ident;
 use syn::{Data, DeriveInput, Fields, Meta, Type};
 
 use super::{
@@ -7,7 +6,7 @@ use super::{
 };
 use crate::{
     Trait,
-    common::{bound::BOUND_EXCEPTIONS_EQUALITY, quote_mixed},
+    common::{bound::BOUND_EXCEPTIONS_EQUALITY, ident_index::IdentOrIndex, quote_mixed},
     trait_handlers::TraitHandlerContext,
 };
 
@@ -49,146 +48,89 @@ impl TraitHandler for PartialEqEnumHandler {
 
                 let variant_ident = &variant.ident;
 
-                match &variant.fields {
-                    Fields::Unit => {
-                        arms_token_stream.extend(quote_mixed! {
-                            Self::#variant_ident => {
-                                if let Self::#variant_ident = other {
-                                    // same
-                                } else {
-                                    return false;
-                                }
-                            }
-                        });
-                    },
-                    Fields::Named(_) => {
-                        let mut pattern_self_token_stream = proc_macro2::TokenStream::new();
-                        let mut pattern_other_token_stream = proc_macro2::TokenStream::new();
-                        let mut block_token_stream = proc_macro2::TokenStream::new();
-
-                        for field in variant.fields.iter() {
-                            let field_attribute = FieldAttributeBuilder {
-                                enable_ignore: true,
-                                enable_method: true,
-                            }
-                            .build_from_attributes(&field.attrs, traits)?;
-
-                            let field_name_real = field.ident.as_ref().unwrap();
-                            let field_name_var_self = format_ident!(
-                                "_s_{}",
-                                field_name_real,
-                                span = proc_macro2::Span::mixed_site()
-                            );
-                            let field_name_var_other = format_ident!(
-                                "_o_{}",
-                                field_name_real,
-                                span = proc_macro2::Span::mixed_site()
-                            );
-
-                            if field_attribute.ignore {
-                                pattern_self_token_stream
-                                    .extend(quote_mixed!(#field_name_real: _,));
-                                pattern_other_token_stream
-                                    .extend(quote_mixed!(#field_name_real: _,));
-
-                                continue;
-                            }
-
-                            pattern_self_token_stream
-                                .extend(quote_mixed!(#field_name_real: #field_name_var_self,));
-                            pattern_other_token_stream
-                                .extend(quote_mixed!(#field_name_real: #field_name_var_other,));
-
-                            if let Some(method) = field_attribute.method {
-                                block_token_stream.extend(quote_mixed! {
-                                    if !#method(#field_name_var_self, #field_name_var_other) {
-                                        return false;
-                                    }
-                                });
+                if let Fields::Unit = &variant.fields {
+                    arms_token_stream.extend(quote_mixed! {
+                        Self::#variant_ident => {
+                            if let Self::#variant_ident = other {
+                                // same
                             } else {
-                                let ty = &field.ty;
-
-                                partial_eq_types.push(ty);
-
-                                block_token_stream.extend(quote_mixed! {
-                                    if ::core::cmp::PartialEq::ne(#field_name_var_self, #field_name_var_other) {
-                                        return false;
-                                    }
-                                });
+                                return false;
                             }
                         }
+                    });
 
-                        arms_token_stream.extend(quote_mixed! {
-                            Self::#variant_ident { #pattern_self_token_stream } => {
-                                if let Self::#variant_ident { #pattern_other_token_stream } = other {
-                                    #block_token_stream
-                                } else {
-                                    return false;
-                                }
-                            }
-                        });
-                    },
-                    Fields::Unnamed(_) => {
-                        let mut pattern_token_stream = proc_macro2::TokenStream::new();
-                        let mut pattern2_token_stream = proc_macro2::TokenStream::new();
-                        let mut block_token_stream = proc_macro2::TokenStream::new();
-
-                        for (index, field) in variant.fields.iter().enumerate() {
-                            let field_attribute = FieldAttributeBuilder {
-                                enable_ignore: true,
-                                enable_method: true,
-                            }
-                            .build_from_attributes(&field.attrs, traits)?;
-
-                            if field_attribute.ignore {
-                                pattern_token_stream.extend(quote_mixed!(_,));
-                                pattern2_token_stream.extend(quote_mixed!(_,));
-
-                                continue;
-                            }
-
-                            let field_name_var_self =
-                                format_ident!("_{}", index, span = proc_macro2::Span::mixed_site());
-
-                            let field_name_var_other = format_ident!(
-                                "_{}",
-                                field_name_var_self,
-                                span = proc_macro2::Span::mixed_site()
-                            );
-
-                            pattern_token_stream.extend(quote_mixed!(#field_name_var_self,));
-                            pattern2_token_stream.extend(quote_mixed!(#field_name_var_other,));
-
-                            if let Some(method) = field_attribute.method {
-                                block_token_stream.extend(quote_mixed! {
-                                    if !#method(#field_name_var_self, #field_name_var_other) {
-                                        return false;
-                                    }
-                                });
-                            } else {
-                                let ty = &field.ty;
-
-                                partial_eq_types.push(ty);
-
-                                block_token_stream.extend(quote_mixed! {
-                                    if ::core::cmp::PartialEq::ne(#field_name_var_self, #field_name_var_other) {
-                                        return false;
-                                    }
-                                });
-                            }
-                        }
-
-                        arms_token_stream.extend(quote_mixed! {
-                            Self::#variant_ident ( #pattern_token_stream ) => {
-                                if let Self::#variant_ident ( #pattern2_token_stream ) = other {
-                                    #block_token_stream
-                                } else {
-                                    return false;
-                                }
-                            }
-                        });
-                    },
+                    continue;
                 }
+
+                let mut pattern_self_token_stream = proc_macro2::TokenStream::new();
+                let mut pattern_other_token_stream = proc_macro2::TokenStream::new();
+                let mut block_token_stream = proc_macro2::TokenStream::new();
+
+                for (index, field) in variant.fields.iter().enumerate() {
+                    let field_attribute = FieldAttributeBuilder {
+                        enable_ignore: true,
+                        enable_method: true,
+                    }
+                    .build_from_attributes(&field.attrs, traits)?;
+
+                    let field_name =
+                        IdentOrIndex::from_ident_with_index(field.ident.as_ref(), index);
+
+                    if field_attribute.ignore {
+                        let ignored = field_name.to_field(&quote_mixed!(_));
+
+                        pattern_self_token_stream.extend(ignored.clone());
+                        pattern_other_token_stream.extend(ignored);
+
+                        continue;
+                    }
+
+                    let field_name_var_self = field_name.to_binding("_s_");
+                    let field_name_var_other = field_name.to_binding("_o_");
+
+                    pattern_self_token_stream
+                        .extend(field_name.to_field(&quote_mixed!(#field_name_var_self)));
+                    pattern_other_token_stream
+                        .extend(field_name.to_field(&quote_mixed!(#field_name_var_other)));
+
+                    if let Some(method) = field_attribute.method {
+                        block_token_stream.extend(quote_mixed! {
+                            if !#method(#field_name_var_self, #field_name_var_other) {
+                                return false;
+                            }
+                        });
+                    } else {
+                        partial_eq_types.push(&field.ty);
+
+                        block_token_stream.extend(quote_mixed! {
+                            if ::core::cmp::PartialEq::ne(#field_name_var_self, #field_name_var_other) {
+                                return false;
+                            }
+                        });
+                    }
+                }
+
+                let (pattern_self, pattern_other) = if let Fields::Named(_) = &variant.fields {
+                    (
+                        quote_mixed!(Self::#variant_ident { #pattern_self_token_stream }),
+                        quote_mixed!(Self::#variant_ident { #pattern_other_token_stream }),
+                    )
+                } else {
+                    (
+                        quote_mixed!(Self::#variant_ident ( #pattern_self_token_stream )),
+                        quote_mixed!(Self::#variant_ident ( #pattern_other_token_stream )),
+                    )
+                };
+
+                arms_token_stream.extend(quote_mixed! {
+                    #pattern_self => {
+                        if let #pattern_other = other {
+                            #block_token_stream
+                        } else {
+                            return false;
+                        }
+                    }
+                });
             }
         }
 

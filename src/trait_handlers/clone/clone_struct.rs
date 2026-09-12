@@ -1,4 +1,4 @@
-use syn::{Data, DeriveInput, ExprPath, Field, Fields, Index, Meta, Type, punctuated::Punctuated};
+use syn::{Data, DeriveInput, ExprPath, Field, Fields, Meta, Type, punctuated::Punctuated};
 
 use super::models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder};
 use crate::{
@@ -6,6 +6,7 @@ use crate::{
     common::{
         attributes::{borrow_field, is_packed},
         bound::BOUND_EXCEPTIONS_CLONE,
+        ident_index::IdentOrIndex,
         quote_mixed,
         where_predicates_bool::{WherePredicates, extend_where_predicates},
     },
@@ -71,110 +72,54 @@ impl TraitHandler for CloneStructHandler {
                 // A whole-value copy needs no field-wise body or field bounds.
                 clone_token_stream.extend(quote_mixed!(*self));
             } else {
-                match &data.fields {
-                    Fields::Unit => {
-                        clone_token_stream.extend(quote_mixed!(Self));
-                        clone_from_token_stream.extend(quote_mixed!(let _ = source;));
-                    },
-                    Fields::Named(_) => {
-                        let mut fields_token_stream = proc_macro2::TokenStream::new();
-                        let mut clone_from_body_token_stream = proc_macro2::TokenStream::new();
+                let mut fields_token_stream = proc_macro2::TokenStream::new();
+                let mut clone_from_body_token_stream = proc_macro2::TokenStream::new();
 
-                        if fields.is_empty() {
-                            clone_from_body_token_stream.extend(quote_mixed!(let _ = source;));
-                        } else {
-                            for (field, field_attribute) in fields {
-                                let field_name = field.ident.as_ref().unwrap();
+                if fields.is_empty() {
+                    clone_from_body_token_stream.extend(quote_mixed!(let _ = source;));
+                } else {
+                    for (index, (field, field_attribute)) in fields.into_iter().enumerate() {
+                        let field_name =
+                            IdentOrIndex::from_ident_with_index(field.ident.as_ref(), index);
 
-                                if is_packed {
-                                    copy_types.push(&field.ty);
-                                }
-
-                                let self_ref = borrow_field(is_packed, &this, field_name);
-                                let source_ref = borrow_field(is_packed, &source, field_name);
-
-                                if let Some(clone) = field_attribute.method.as_ref() {
-                                    mark_fields.push((&field.ty, clone.clone()));
-
-                                    fields_token_stream.extend(quote_mixed! {
-                                        #field_name: #clone(#self_ref),
-                                    });
-
-                                    clone_from_body_token_stream.extend(
-                                        quote_mixed!(self.#field_name = #clone(#source_ref);),
-                                    );
-                                } else {
-                                    clone_types.push(&field.ty);
-
-                                    fields_token_stream.extend(quote_mixed! {
-                                        #field_name: ::core::clone::Clone::clone(#self_ref),
-                                    });
-
-                                    // A packed field cannot be borrowed mutably either, so the cloned value is assigned back instead of being cloned in place.
-                                    clone_from_body_token_stream.extend(if is_packed {
-                                        quote_mixed!(self.#field_name = ::core::clone::Clone::clone(#source_ref);)
-                                    } else {
-                                        quote_mixed!( ::core::clone::Clone::clone_from(&mut self.#field_name, #source_ref); )
-                                    });
-                                }
-                            }
+                        if is_packed {
+                            copy_types.push(&field.ty);
                         }
 
-                        clone_token_stream.extend(quote_mixed! {
-                            Self {
-                                #fields_token_stream
-                            }
-                        });
+                        let self_ref = borrow_field(is_packed, &this, &field_name);
+                        let source_ref = borrow_field(is_packed, &source, &field_name);
 
-                        clone_from_token_stream.extend(clone_from_body_token_stream);
-                    },
-                    Fields::Unnamed(_) => {
-                        let mut fields_token_stream = proc_macro2::TokenStream::new();
-                        let mut clone_from_body_token_stream = proc_macro2::TokenStream::new();
+                        let value = if let Some(clone) = field_attribute.method.as_ref() {
+                            mark_fields.push((&field.ty, clone.clone()));
 
-                        if fields.is_empty() {
-                            clone_from_body_token_stream.extend(quote_mixed!(let _ = source;));
+                            clone_from_body_token_stream
+                                .extend(quote_mixed!(self.#field_name = #clone(#source_ref);));
+
+                            quote_mixed!(#clone(#self_ref))
                         } else {
-                            for (index, (field, field_attribute)) in fields.into_iter().enumerate()
-                            {
-                                let field_name = Index::from(index);
+                            clone_types.push(&field.ty);
 
-                                if is_packed {
-                                    copy_types.push(&field.ty);
-                                }
+                            // A packed field cannot be borrowed mutably either, so the cloned value is assigned back instead of being cloned in place.
+                            clone_from_body_token_stream.extend(if is_packed {
+                                quote_mixed!(self.#field_name = ::core::clone::Clone::clone(#source_ref);)
+                            } else {
+                                quote_mixed!( ::core::clone::Clone::clone_from(&mut self.#field_name, #source_ref); )
+                            });
 
-                                let self_ref = borrow_field(is_packed, &this, &field_name);
-                                let source_ref = borrow_field(is_packed, &source, &field_name);
+                            quote_mixed!(::core::clone::Clone::clone(#self_ref))
+                        };
 
-                                if let Some(clone) = field_attribute.method.as_ref() {
-                                    mark_fields.push((&field.ty, clone.clone()));
-
-                                    fields_token_stream.extend(quote_mixed!(#clone(#self_ref),));
-
-                                    clone_from_body_token_stream.extend(
-                                        quote_mixed!(self.#field_name = #clone(#source_ref);),
-                                    );
-                                } else {
-                                    clone_types.push(&field.ty);
-
-                                    fields_token_stream.extend(
-                                        quote_mixed! ( ::core::clone::Clone::clone(#self_ref), ),
-                                    );
-
-                                    // A packed field cannot be borrowed mutably either, so the cloned value is assigned back instead of being cloned in place.
-                                    clone_from_body_token_stream.extend(if is_packed {
-                                        quote_mixed!(self.#field_name = ::core::clone::Clone::clone(#source_ref);)
-                                    } else {
-                                        quote_mixed!( ::core::clone::Clone::clone_from(&mut self.#field_name, #source_ref); )
-                                    });
-                                }
-                            }
-                        }
-
-                        clone_token_stream.extend(quote_mixed!(Self ( #fields_token_stream )));
-                        clone_from_token_stream.extend(clone_from_body_token_stream);
-                    },
+                        fields_token_stream.extend(field_name.to_field(&value));
+                    }
                 }
+
+                clone_token_stream.extend(match &data.fields {
+                    Fields::Unit => quote_mixed!(Self),
+                    Fields::Named(_) => quote_mixed!(Self { #fields_token_stream }),
+                    Fields::Unnamed(_) => quote_mixed!(Self ( #fields_token_stream )),
+                });
+
+                clone_from_token_stream.extend(clone_from_body_token_stream);
             }
 
             let packed_copy_predicates = if is_packed {
