@@ -1,3 +1,4 @@
+use quote::ToTokens;
 use syn::{Data, DeriveInput, Fields, Meta, Type};
 
 use super::{
@@ -63,7 +64,9 @@ impl TraitHandler for DebugStructHandler {
         let mut mark_fields = Vec::new();
         let mut has_fields = false;
 
-        if type_attribute.named_field {
+        let named_field = type_attribute.named_field;
+
+        if named_field {
             builder_token_stream.extend(if let Some(name) = name {
                 quote_mixed!(let mut builder = f.debug_struct(stringify!(#name));)
             } else {
@@ -76,75 +79,6 @@ impl TraitHandler for DebugStructHandler {
                     #map_builder
                 }
             });
-
-            if let Data::Struct(data) = &ast.data {
-                for (index, field) in data.fields.iter().enumerate() {
-                    let field_attribute = FieldAttributeBuilder {
-                        enable_name:   true,
-                        enable_ignore: true,
-                        enable_method: true,
-                        name:          FieldName::Default,
-                    }
-                    .build_from_attributes(&field.attrs, traits)?;
-
-                    if field_attribute.ignore {
-                        continue;
-                    }
-
-                    // The displayed field name is a plain string, so a tuple field can be shown with its real name `0`, which is not a valid ident.
-                    let (key, field_name) = match field_attribute.name {
-                        FieldName::Custom(name) => (
-                            name.to_string(),
-                            IdentOrIndex::from_ident_with_index(field.ident.as_ref(), index),
-                        ),
-                        FieldName::Default => {
-                            if let Some(ident) = field.ident.as_ref() {
-                                (ident.to_string(), IdentOrIndex::from(ident))
-                            } else {
-                                (index.to_string(), IdentOrIndex::from(index))
-                            }
-                        },
-                    };
-
-                    let key = syn::LitStr::new(&key, proc_macro2::Span::call_site());
-
-                    let ty = &field.ty;
-
-                    if is_packed {
-                        copy_types.push(ty);
-                    }
-
-                    let field_ref = borrow_field(is_packed, &this, &field_name);
-
-                    if let Some(method) = field_attribute.method {
-                        let arg = super::common::create_format_arg(
-                            &helper_types.field,
-                            ty,
-                            &method,
-                            field_ref,
-                        );
-
-                        builder_token_stream.extend(arg);
-                        mark_fields.push((ty, method));
-
-                        builder_token_stream.extend(if name.is_some() {
-                            quote_mixed! (builder.field(#key, &arg);)
-                        } else {
-                            quote_mixed! (builder.entry(&#raw_string_ident(#key), &arg);)
-                        });
-                    } else {
-                        debug_types.push(ty);
-
-                        builder_token_stream.extend(if name.is_some() {
-                            quote_mixed! (builder.field(#key, &#field_ref);)
-                        } else {
-                            quote_mixed! (builder.entry(&#raw_string_ident(#key), &#field_ref);)
-                        });
-                    }
-
-                    has_fields = true;
-                }
-            }
         } else {
             // A struct without a name is formatted like a plain tuple, which the standard builder spells with an empty name.
             let name_string = syn::LitStr::new(
@@ -154,52 +88,71 @@ impl TraitHandler for DebugStructHandler {
 
             builder_token_stream
                 .extend(quote_mixed!(let mut builder = f.debug_tuple(#name_string);));
+        }
 
-            if let Data::Struct(data) = &ast.data {
-                for (index, field) in data.fields.iter().enumerate() {
-                    let field_attribute = FieldAttributeBuilder {
-                        enable_name:   false,
-                        enable_ignore: true,
-                        enable_method: true,
-                        name:          FieldName::Default,
-                    }
-                    .build_from_attributes(&field.attrs, traits)?;
-
-                    if field_attribute.ignore {
-                        continue;
-                    }
-
-                    let field_name =
-                        IdentOrIndex::from_ident_with_index(field.ident.as_ref(), index);
-
-                    let ty = &field.ty;
-
-                    if is_packed {
-                        copy_types.push(ty);
-                    }
-
-                    let field_ref = borrow_field(is_packed, &this, &field_name);
-
-                    if let Some(method) = field_attribute.method {
-                        let arg = super::common::create_format_arg(
-                            &helper_types.field,
-                            ty,
-                            &method,
-                            field_ref,
-                        );
-
-                        builder_token_stream.extend(arg);
-                        mark_fields.push((ty, method));
-
-                        builder_token_stream.extend(quote_mixed! (builder.field(&arg);));
-                    } else {
-                        debug_types.push(ty);
-
-                        builder_token_stream.extend(quote_mixed! (builder.field(&#field_ref);));
-                    }
-
-                    has_fields = true;
+        if let Data::Struct(data) = &ast.data {
+            for (index, field) in data.fields.iter().enumerate() {
+                let field_attribute = FieldAttributeBuilder {
+                    enable_name:   named_field,
+                    enable_ignore: true,
+                    enable_method: true,
+                    name:          FieldName::Default,
                 }
+                .build_from_attributes(&field.attrs, traits)?;
+
+                if field_attribute.ignore {
+                    continue;
+                }
+
+                let field_name = IdentOrIndex::from_ident_with_index(field.ident.as_ref(), index);
+
+                // The displayed field name is a plain string, so a tuple field can be shown with its real name `0`, which is not a valid ident.
+                let key = if named_field {
+                    let key = match field_attribute.name {
+                        FieldName::Custom(name) => name.to_string(),
+                        FieldName::Default => field_name.to_token_stream().to_string(),
+                    };
+
+                    Some(syn::LitStr::new(&key, proc_macro2::Span::call_site()))
+                } else {
+                    None
+                };
+
+                let ty = &field.ty;
+
+                if is_packed {
+                    copy_types.push(ty);
+                }
+
+                let field_ref = borrow_field(is_packed, &this, &field_name);
+
+                let value = if let Some(method) = field_attribute.method {
+                    let arg = super::common::create_format_arg(
+                        &helper_types.field,
+                        ty,
+                        &method,
+                        field_ref,
+                    );
+
+                    builder_token_stream.extend(arg);
+                    mark_fields.push((ty, method));
+
+                    quote_mixed!(&arg)
+                } else {
+                    debug_types.push(ty);
+
+                    quote_mixed!(&#field_ref)
+                };
+
+                builder_token_stream.extend(match (&key, name.is_some()) {
+                    (Some(key), true) => quote_mixed!(builder.field(#key, #value);),
+                    (Some(key), false) => {
+                        quote_mixed!(builder.entry(&#raw_string_ident(#key), #value);)
+                    },
+                    (None, _) => quote_mixed!(builder.field(#value);),
+                });
+
+                has_fields = true;
             }
         }
 

@@ -31,6 +31,8 @@ pub(crate) mod expr;
 pub(crate) mod ident_bool;
 #[cfg(any(
     feature = "Debug",
+    feature = "Clone",
+    feature = "Default",
     feature = "PartialEq",
     feature = "PartialOrd",
     feature = "Ord",

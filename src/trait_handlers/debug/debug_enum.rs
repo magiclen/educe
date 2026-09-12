@@ -1,9 +1,11 @@
-use quote::{ToTokens, format_ident};
+use quote::ToTokens;
 use syn::{Data, DeriveInput, Fields, Meta, Type};
 
 use super::models::{FieldAttributeBuilder, FieldName, TypeAttributeBuilder, TypeName};
 use crate::{
-    common::{bound::BOUND_EXCEPTIONS_DEBUG, path::path_to_string, quote_mixed},
+    common::{
+        bound::BOUND_EXCEPTIONS_DEBUG, ident_index::IdentOrIndex, path::path_to_string, quote_mixed,
+    },
     supported_traits::Trait,
     trait_handlers::{TraitHandler, TraitHandlerContext},
 };
@@ -79,303 +81,117 @@ impl TraitHandler for DebugEnumHandler {
                     variant_name.map(|variant_name| variant_name.into_token_stream().to_string())
                 };
 
-                match &variant.fields {
-                    Fields::Unit => {
-                        if name_string.is_none() {
-                            return Err(super::panic::unit_variant_need_name(variant));
-                        }
+                if let Fields::Unit = &variant.fields {
+                    if name_string.is_none() {
+                        return Err(super::panic::unit_variant_need_name(variant));
+                    }
 
-                        arms_token_stream.extend(
-                            quote_mixed!( Self::#variant_ident => f.write_str(#name_string), ),
-                        );
-                    },
-                    Fields::Named(fields) => {
-                        let mut has_fields = false;
+                    arms_token_stream
+                        .extend(quote_mixed!( Self::#variant_ident => f.write_str(#name_string), ));
 
-                        let mut pattern_token_stream = proc_macro2::TokenStream::new();
-                        let mut block_token_stream = proc_macro2::TokenStream::new();
-
-                        if named_field {
-                            uses_raw_string |= name_string.is_none();
-
-                            block_token_stream
-                                .extend(create_named_field_builder(name_string.as_deref()));
-
-                            for field in fields.named.iter() {
-                                let field_attribute = FieldAttributeBuilder {
-                                    enable_name:   true,
-                                    enable_ignore: true,
-                                    enable_method: true,
-                                    name:          FieldName::Default,
-                                }
-                                .build_from_attributes(&field.attrs, traits)?;
-
-                                let field_name_real = field.ident.as_ref().unwrap();
-                                let field_name_var = format_ident!(
-                                    "_{}",
-                                    field_name_real,
-                                    span = proc_macro2::Span::mixed_site()
-                                );
-
-                                if field_attribute.ignore {
-                                    pattern_token_stream.extend(quote_mixed!(#field_name_real: _,));
-
-                                    continue;
-                                }
-
-                                // The displayed field name is a plain string, matching the tuple-variant handling below.
-                                let key = match field_attribute.name {
-                                    FieldName::Custom(name) => name.to_string(),
-                                    FieldName::Default => field_name_real.to_string(),
-                                };
-
-                                let key = syn::LitStr::new(&key, proc_macro2::Span::call_site());
-
-                                pattern_token_stream
-                                    .extend(quote_mixed!(#field_name_real: #field_name_var,));
-
-                                let ty = &field.ty;
-
-                                if let Some(method) = field_attribute.method {
-                                    let arg = super::common::create_format_arg(
-                                        &helper_types.field,
-                                        ty,
-                                        &method,
-                                        quote_mixed!(#field_name_var),
-                                    );
-
-                                    block_token_stream.extend(arg);
-                                    mark_fields.push((ty, method));
-
-                                    block_token_stream.extend(if name_string.is_some() {
-                                        quote_mixed! (builder.field(#key, &arg);)
-                                    } else {
-                                        quote_mixed! (builder.entry(&#raw_string_ident(#key), &arg);)
-                                    });
-                                } else {
-                                    debug_types.push(ty);
-
-                                    block_token_stream.extend(if name_string.is_some() {
-                                        quote_mixed! (builder.field(#key, #field_name_var);)
-                                    } else {
-                                        quote_mixed! (builder.entry(&#raw_string_ident(#key), #field_name_var);)
-                                    });
-                                }
-
-                                has_fields = true;
-                            }
-                        } else {
-                            // A variant without a name is formatted like a nameless tuple struct, which the standard builder spells with an empty name.
-                            let name_string = name_string.as_deref().unwrap_or("");
-
-                            block_token_stream.extend(
-                                quote_mixed!(let mut builder = f.debug_tuple(#name_string);),
-                            );
-
-                            for field in fields.named.iter() {
-                                let field_attribute = FieldAttributeBuilder {
-                                    enable_name:   false,
-                                    enable_ignore: true,
-                                    enable_method: true,
-                                    name:          FieldName::Default,
-                                }
-                                .build_from_attributes(&field.attrs, traits)?;
-
-                                let field_name_real = field.ident.as_ref().unwrap();
-                                let field_name_var = format_ident!(
-                                    "_{}",
-                                    field_name_real,
-                                    span = proc_macro2::Span::mixed_site()
-                                );
-
-                                if field_attribute.ignore {
-                                    pattern_token_stream.extend(quote_mixed!(#field_name_real: _,));
-
-                                    continue;
-                                }
-
-                                pattern_token_stream
-                                    .extend(quote_mixed!(#field_name_real: #field_name_var,));
-
-                                let ty = &field.ty;
-
-                                if let Some(method) = field_attribute.method {
-                                    let arg = super::common::create_format_arg(
-                                        &helper_types.field,
-                                        ty,
-                                        &method,
-                                        quote_mixed!(#field_name_var),
-                                    );
-
-                                    block_token_stream.extend(arg);
-                                    mark_fields.push((ty, method));
-
-                                    block_token_stream.extend(quote_mixed! (builder.field(&arg);));
-                                } else {
-                                    debug_types.push(ty);
-
-                                    block_token_stream
-                                        .extend(quote_mixed! (builder.field(#field_name_var);));
-                                }
-
-                                has_fields = true;
-                            }
-                        }
-
-                        if !has_fields && name_string.is_none() {
-                            return Err(super::panic::unit_struct_need_name(variant_ident));
-                        }
-
-                        arms_token_stream.extend(quote_mixed! {
-                            Self::#variant_ident { #pattern_token_stream } => {
-                                #block_token_stream
-
-                                builder.finish()
-                            },
-                        });
-                    },
-                    Fields::Unnamed(fields) => {
-                        let mut has_fields = false;
-
-                        let mut pattern_token_stream = proc_macro2::TokenStream::new();
-                        let mut block_token_stream = proc_macro2::TokenStream::new();
-
-                        if named_field {
-                            uses_raw_string |= name_string.is_none();
-
-                            block_token_stream
-                                .extend(create_named_field_builder(name_string.as_deref()));
-
-                            for (index, field) in fields.unnamed.iter().enumerate() {
-                                let field_attribute = FieldAttributeBuilder {
-                                    enable_name:   true,
-                                    enable_ignore: true,
-                                    enable_method: true,
-                                    name:          FieldName::Default,
-                                }
-                                .build_from_attributes(&field.attrs, traits)?;
-
-                                if field_attribute.ignore {
-                                    pattern_token_stream.extend(quote_mixed!(_,));
-
-                                    continue;
-                                }
-
-                                let field_name_var = format_ident!(
-                                    "_{}",
-                                    index,
-                                    span = proc_macro2::Span::mixed_site()
-                                );
-
-                                // The displayed field name is a plain string, so a tuple field can be shown with its real name `0`, which is not a valid ident.
-                                let key = match field_attribute.name {
-                                    FieldName::Custom(name) => name.to_string(),
-                                    FieldName::Default => index.to_string(),
-                                };
-
-                                let key = syn::LitStr::new(&key, proc_macro2::Span::call_site());
-
-                                pattern_token_stream.extend(quote_mixed!(#field_name_var,));
-
-                                let ty = &field.ty;
-
-                                if let Some(method) = field_attribute.method {
-                                    let arg = super::common::create_format_arg(
-                                        &helper_types.field,
-                                        ty,
-                                        &method,
-                                        quote_mixed!(#field_name_var),
-                                    );
-
-                                    block_token_stream.extend(arg);
-                                    mark_fields.push((ty, method));
-
-                                    block_token_stream.extend(if name_string.is_some() {
-                                        quote_mixed! (builder.field(#key, &arg);)
-                                    } else {
-                                        quote_mixed! (builder.entry(&#raw_string_ident(#key), &arg);)
-                                    });
-                                } else {
-                                    debug_types.push(ty);
-
-                                    block_token_stream.extend(if name_string.is_some() {
-                                        quote_mixed! (builder.field(#key, #field_name_var);)
-                                    } else {
-                                        quote_mixed! (builder.entry(&#raw_string_ident(#key), #field_name_var);)
-                                    });
-                                }
-
-                                has_fields = true;
-                            }
-                        } else {
-                            // A variant without a name is formatted like a nameless tuple struct, which the standard builder spells with an empty name.
-                            let name_string = name_string.as_deref().unwrap_or("");
-
-                            block_token_stream.extend(
-                                quote_mixed!(let mut builder = f.debug_tuple(#name_string);),
-                            );
-
-                            for (index, field) in fields.unnamed.iter().enumerate() {
-                                let field_attribute = FieldAttributeBuilder {
-                                    enable_name:   false,
-                                    enable_ignore: true,
-                                    enable_method: true,
-                                    name:          FieldName::Default,
-                                }
-                                .build_from_attributes(&field.attrs, traits)?;
-
-                                if field_attribute.ignore {
-                                    pattern_token_stream.extend(quote_mixed!(_,));
-
-                                    continue;
-                                }
-
-                                let field_name_var = format_ident!(
-                                    "_{}",
-                                    index,
-                                    span = proc_macro2::Span::mixed_site()
-                                );
-
-                                pattern_token_stream.extend(quote_mixed!(#field_name_var,));
-
-                                let ty = &field.ty;
-
-                                if let Some(method) = field_attribute.method {
-                                    let arg = super::common::create_format_arg(
-                                        &helper_types.field,
-                                        ty,
-                                        &method,
-                                        quote_mixed!(#field_name_var),
-                                    );
-
-                                    block_token_stream.extend(arg);
-                                    mark_fields.push((ty, method));
-
-                                    block_token_stream.extend(quote_mixed! (builder.field(&arg);));
-                                } else {
-                                    debug_types.push(ty);
-
-                                    block_token_stream
-                                        .extend(quote_mixed! (builder.field(#field_name_var);));
-                                }
-
-                                has_fields = true;
-                            }
-                        }
-
-                        if !has_fields && name_string.is_none() {
-                            return Err(super::panic::unit_struct_need_name(variant_ident));
-                        }
-
-                        arms_token_stream.extend(quote_mixed! {
-                            Self::#variant_ident ( #pattern_token_stream ) => {
-                                #block_token_stream
-
-                                builder.finish()
-                            },
-                        });
-                    },
+                    continue;
                 }
+
+                let mut has_fields = false;
+
+                let mut pattern_token_stream = proc_macro2::TokenStream::new();
+                let mut block_token_stream = proc_macro2::TokenStream::new();
+
+                if named_field {
+                    uses_raw_string |= name_string.is_none();
+
+                    block_token_stream.extend(create_named_field_builder(name_string.as_deref()));
+                } else {
+                    // A variant without a name is formatted like a nameless tuple struct, which the standard builder spells with an empty name.
+                    let tuple_name = name_string.as_deref().unwrap_or("");
+
+                    block_token_stream
+                        .extend(quote_mixed!(let mut builder = f.debug_tuple(#tuple_name);));
+                }
+
+                for (index, field) in variant.fields.iter().enumerate() {
+                    let field_attribute = FieldAttributeBuilder {
+                        enable_name:   named_field,
+                        enable_ignore: true,
+                        enable_method: true,
+                        name:          FieldName::Default,
+                    }
+                    .build_from_attributes(&field.attrs, traits)?;
+
+                    let field_name =
+                        IdentOrIndex::from_ident_with_index(field.ident.as_ref(), index);
+
+                    if field_attribute.ignore {
+                        pattern_token_stream.extend(field_name.to_field(&quote_mixed!(_)));
+
+                        continue;
+                    }
+
+                    let field_name_var = field_name.to_binding("_");
+
+                    pattern_token_stream
+                        .extend(field_name.to_field(&quote_mixed!(#field_name_var)));
+
+                    // The displayed field name is a plain string, so a tuple field can be shown with its real name `0`, which is not a valid ident.
+                    let key = if named_field {
+                        let key = match field_attribute.name {
+                            FieldName::Custom(name) => name.to_string(),
+                            FieldName::Default => field_name.to_token_stream().to_string(),
+                        };
+
+                        Some(syn::LitStr::new(&key, proc_macro2::Span::call_site()))
+                    } else {
+                        None
+                    };
+
+                    let ty = &field.ty;
+
+                    let value = if let Some(method) = field_attribute.method {
+                        let arg = super::common::create_format_arg(
+                            &helper_types.field,
+                            ty,
+                            &method,
+                            quote_mixed!(#field_name_var),
+                        );
+
+                        block_token_stream.extend(arg);
+                        mark_fields.push((ty, method));
+
+                        quote_mixed!(&arg)
+                    } else {
+                        debug_types.push(ty);
+
+                        quote_mixed!(#field_name_var)
+                    };
+
+                    block_token_stream.extend(match (&key, name_string.is_some()) {
+                        (Some(key), true) => quote_mixed!(builder.field(#key, #value);),
+                        (Some(key), false) => {
+                            quote_mixed!(builder.entry(&#raw_string_ident(#key), #value);)
+                        },
+                        (None, _) => quote_mixed!(builder.field(#value);),
+                    });
+
+                    has_fields = true;
+                }
+
+                if !has_fields && name_string.is_none() {
+                    return Err(super::panic::unit_struct_need_name(variant_ident));
+                }
+
+                let pattern = if let Fields::Named(_) = &variant.fields {
+                    quote_mixed!(Self::#variant_ident { #pattern_token_stream })
+                } else {
+                    quote_mixed!(Self::#variant_ident ( #pattern_token_stream ))
+                };
+
+                arms_token_stream.extend(quote_mixed! {
+                    #pattern => {
+                        #block_token_stream
+
+                        builder.finish()
+                    },
+                });
             }
         }
 
