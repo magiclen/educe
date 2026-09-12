@@ -4,7 +4,7 @@ use proc_macro2::{Ident, Span, TokenStream, TokenTree};
 use quote::ToTokens;
 use syn::{DeriveInput, ExprPath, LitStr, Type, ext::IdentExt};
 
-use crate::common::quote_mixed;
+use crate::common::{marker::MethodMarker, quote_mixed};
 
 pub(crate) struct HelperTypes {
     pub(crate) field:      Ident,
@@ -111,26 +111,17 @@ pub(crate) fn create_mark_method_used(
     field_ty: &Type,
     method: &ExprPath,
 ) -> proc_macro2::TokenStream {
-    use syn::visit_mut::VisitMut;
-    let lint_attributes = crate::common::attributes::generated_lint_attributes(&ast.attrs);
-    let mut replace_self = crate::common::generics::ReplaceSelf::new(ast);
-    let mut generics = generics.clone();
-    let mut field_ty = field_ty.clone();
-    let mut method = method.clone();
-    replace_self.visit_generics_mut(&mut generics);
-    replace_self.visit_type_mut(&mut field_ty);
-    replace_self.visit_expr_path_mut(&mut method);
-    let (impl_generics, _, where_clause) = generics.split_for_impl();
-    quote_mixed!(
-        #lint_attributes
-        const _: () = {
-            #[allow(dead_code, clippy::all)]
-            fn __educe_debug_method_used #impl_generics (
-                educe__value: &#field_ty,
-                educe__f: &mut ::core::fmt::Formatter<'_>,
-            ) -> ::core::fmt::Result #where_clause {
-                #method(educe__value, educe__f)
-            }
-        };
-    )
+    let marker = MethodMarker::new(ast, generics, field_ty, method);
+    let (impl_generics, _, where_clause) = marker.generics.split_for_impl();
+    let field_ty = &marker.field_ty;
+    let method = &marker.method;
+
+    marker.wrap(quote_mixed!(
+        fn __educe_debug_method_used #impl_generics (
+            educe__value: &#field_ty,
+            educe__f: &mut ::core::fmt::Formatter<'_>,
+        ) -> ::core::fmt::Result #where_clause {
+            #method(educe__value, educe__f)
+        }
+    ))
 }

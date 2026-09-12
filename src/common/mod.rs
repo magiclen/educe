@@ -12,6 +12,10 @@ pub(crate) mod r#type;
 #[allow(dead_code)]
 pub(crate) mod where_predicates_bool;
 
+#[cfg(any(feature = "Clone", feature = "Debug"))]
+#[allow(dead_code)]
+pub(crate) mod marker;
+
 #[cfg(feature = "Default")]
 #[allow(dead_code)]
 pub(crate) mod expr;

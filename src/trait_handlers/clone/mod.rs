@@ -4,10 +4,13 @@ mod clone_struct;
 mod clone_union;
 mod models;
 
-use syn::{Data, DeriveInput, ExprPath, Generics, Meta, Type, visit_mut::VisitMut};
+use syn::{Data, DeriveInput, ExprPath, Generics, Meta, Type};
 
 use super::TraitHandler;
-use crate::{Trait, common::quote_mixed};
+use crate::{
+    Trait,
+    common::{marker::MethodMarker, quote_mixed},
+};
 
 /// Uses a whole-value copy only when it does not add requirements to `Clone`.
 fn can_use_bitwise_copy(
@@ -47,36 +50,24 @@ fn can_use_bitwise_copy(
 }
 
 /// Builds a module-level marker that references a field's custom clone method so it stays counted as used.
-///
-/// The generated `Clone` impl is marked `#[automatically_derived]`, and `Clone` carries `#[rustc_trivial_field_reads]`, so the compiler skips its body during dead-code analysis. A custom clone method used only inside that body would therefore be wrongly reported as unused. This marker calls the method from an ordinary item that is still analyzed, and it takes the same generics and where clause as the impl so it compiles under exactly the same conditions.
 pub(crate) fn create_mark_method_used(
     ast: &DeriveInput,
     generics: &Generics,
     field_ty: &Type,
     method: &ExprPath,
 ) -> proc_macro2::TokenStream {
-    let lint_attributes = crate::common::attributes::generated_lint_attributes(&ast.attrs);
-    let mut replace_self = crate::common::generics::ReplaceSelf::new(ast);
-    let mut generics = generics.clone();
-    let mut field_ty = field_ty.clone();
-    let mut method = method.clone();
-    replace_self.visit_generics_mut(&mut generics);
-    replace_self.visit_type_mut(&mut field_ty);
-    replace_self.visit_expr_path_mut(&mut method);
-    let (impl_generics, _ty_generics, where_clause) = generics.split_for_impl();
+    let marker = MethodMarker::new(ast, generics, field_ty, method);
+    let (impl_generics, _ty_generics, where_clause) = marker.generics.split_for_impl();
+    let field_ty = &marker.field_ty;
+    let method = &marker.method;
 
-    // This function is generated glue whose only purpose is to reference the custom method, so its signature can look problematic in isolation (e.g. `&Vec<T>` would normally suggest `clippy::ptr_arg`, or an unused generic would trigger `clippy::extra_unused_type_parameters`). Lints like these already do not fire on code coming from an external proc-macro, but the `clippy::all` allow is kept here as a low-cost safeguard in case that exemption ever narrows.
-    quote_mixed!(
-        #lint_attributes
-        const _: () = {
-            #[allow(dead_code, clippy::all)]
-            fn __educe_clone_method_used #impl_generics (
-                educe__value: &#field_ty,
-            ) -> #field_ty #where_clause {
-                #method(educe__value)
-            }
-        };
-    )
+    marker.wrap(quote_mixed!(
+        fn __educe_clone_method_used #impl_generics (
+            educe__value: &#field_ty,
+        ) -> #field_ty #where_clause {
+            #method(educe__value)
+        }
+    ))
 }
 
 /// Dispatches the `Clone` derive to the specialized handler for the shape of the input (struct, enum, or union).
