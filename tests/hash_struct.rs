@@ -406,3 +406,26 @@ fn bound_3() {
 
     assert_eq!(struct_hash, tuple_hash);
 }
+
+#[test]
+fn explicit_bounds() {
+    // `bound(*)` adds a predicate for every type parameter, and `bound(false)` adds none, so the impl relies on what the type itself declares.
+    #[derive(Educe)]
+    #[educe(Hash(bound(*)))]
+    struct All<T>(T, u8);
+
+    #[derive(Educe)]
+    #[educe(Hash(bound(false)))]
+    struct Disabled<T: Hash>(T);
+
+    fn hash<T: Hash>(value: &T) -> u64 {
+        let mut hasher = DefaultHasher::new();
+
+        value.hash(&mut hasher);
+
+        hasher.finish()
+    }
+
+    assert_eq!(hash(&All(1u8, 2u8)), hash(&All(1u8, 2u8)));
+    assert_eq!(hash(&Disabled(1u8)), hash(&Disabled(1u8)));
+}

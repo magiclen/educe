@@ -75,3 +75,23 @@ fn bound() {
         f1: 0u8
     }));
 }
+
+#[allow(dead_code)]
+#[test]
+fn bound_all() {
+    #[derive(Educe)]
+    #[educe(PartialEq(unsafe), Eq, Hash(unsafe, bound(*)))]
+    union Union<T: Copy + Hash> {
+        f1: T,
+    }
+
+    let mut set = HashSet::new();
+
+    set.insert(Union {
+        f1: 0u8
+    });
+
+    assert!(set.contains(&Union {
+        f1: 0u8
+    }));
+}

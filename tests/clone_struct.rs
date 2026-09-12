@@ -305,3 +305,19 @@ fn bound_7() {
 
     assert_eq!(1, s.clone().f1.0);
 }
+
+#[test]
+fn bound_disabled() {
+    // `bound(false)` adds no predicate, so the impl relies on what the type itself declares.
+    #[derive(Educe)]
+    #[educe(Clone(bound(false)))]
+    struct Struct<T: Clone> {
+        f1: T,
+    }
+
+    let v = Struct {
+        f1: 1u8
+    };
+
+    assert_eq!(1, v.clone().f1);
+}

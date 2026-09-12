@@ -162,3 +162,20 @@ fn bound() {
         })
     );
 }
+
+#[allow(dead_code)]
+#[test]
+fn bound_all() {
+    #[derive(Educe)]
+    #[educe(Debug(unsafe, bound(*)))]
+    union Union<T: Copy> {
+        f1: T,
+    }
+
+    assert_eq!(
+        "Union([1])",
+        format!("{:?}", Union {
+            f1: 1u8
+        })
+    );
+}

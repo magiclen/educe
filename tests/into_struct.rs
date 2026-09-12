@@ -356,3 +356,19 @@ fn source_self_bounds_and_qualified_method() {
     assert_eq!(7, u16::from(Struct(7u8)));
     assert_eq!(8u16, Into::<u16>::into(Direct(8u8)));
 }
+
+#[allow(dead_code)]
+#[test]
+fn explicit_bounds() {
+    // `bound(*)` adds a predicate for every type parameter, and `bound(false)` adds none, so the impl relies on what the type itself declares.
+    #[derive(Educe)]
+    #[educe(Into(u8, bound(*)))]
+    struct All<T>(T);
+
+    #[derive(Educe)]
+    #[educe(Into(u8, bound(false)))]
+    struct Disabled<T: Into<u8>>(T);
+
+    assert_eq!(1u8, All(1u8).into());
+    assert_eq!(1u8, Disabled(1u8).into());
+}

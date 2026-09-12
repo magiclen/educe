@@ -332,3 +332,18 @@ fn bound_3() {
     assert!(Tuple(1) == Tuple(1));
     assert!(Tuple(1) != Tuple(2));
 }
+
+#[test]
+fn explicit_bounds() {
+    // `bound(*)` adds a predicate for every type parameter, and `bound(false)` adds none, so the impl relies on what the type itself declares.
+    #[derive(Educe)]
+    #[educe(PartialEq(bound(*)))]
+    struct All<T>(T, u8);
+
+    #[derive(Educe)]
+    #[educe(PartialEq(bound(false)))]
+    struct Disabled<T: PartialEq>(T);
+
+    assert!(All(1u8, 2u8) == All(1u8, 2u8));
+    assert!(Disabled(1u8) != Disabled(2u8));
+}

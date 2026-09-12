@@ -601,3 +601,18 @@ fn bound_inheritance() {
         core::cmp::Ordering::Less
     ));
 }
+
+#[test]
+fn explicit_bounds() {
+    // `bound(*)` adds a predicate for every type parameter, and `bound(false)` adds none, so the impl relies on what the type itself declares.
+    #[derive(PartialEq, Eq, PartialOrd, Educe)]
+    #[educe(Ord(bound(*)))]
+    struct All<T: Ord>(T, u8);
+
+    #[derive(PartialEq, Eq, PartialOrd, Educe)]
+    #[educe(Ord(bound(false)))]
+    struct Disabled<T: Ord>(T);
+
+    assert_eq!(Ordering::Less, All(1u8, 2u8).cmp(&All(2u8, 2u8)));
+    assert_eq!(Ordering::Less, Disabled(1u8).cmp(&Disabled(2u8)));
+}

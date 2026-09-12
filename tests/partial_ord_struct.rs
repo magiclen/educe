@@ -598,3 +598,13 @@ fn use_ord_attr_method() {
     assert!(a > b);
     assert!(matches!(a.cmp(&b), Ordering::Greater));
 }
+
+#[test]
+fn bound_disabled() {
+    // `bound(false)` adds no predicate, so the impl relies on what the type itself declares.
+    #[derive(PartialEq, Educe)]
+    #[educe(PartialOrd(bound(false)))]
+    struct Struct<T: PartialOrd>(T);
+
+    assert_eq!(Some(Ordering::Less), Struct(1u8).partial_cmp(&Struct(2u8)));
+}

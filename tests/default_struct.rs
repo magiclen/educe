@@ -423,3 +423,18 @@ fn const_generic_bound() {
     assert_eq!([0; 4], Array::<4>::default().0);
     assert_eq!([0; 4], Wrapper::<4>::default().0.0);
 }
+
+#[test]
+fn explicit_bounds() {
+    // `bound(*)` adds a predicate for every type parameter, and `bound(false)` adds none, so the impl relies on what the type itself declares.
+    #[derive(Educe)]
+    #[educe(Default(bound(*)))]
+    struct All<T>(T, #[allow(dead_code)] u8);
+
+    #[derive(Educe)]
+    #[educe(Default(bound(false)))]
+    struct Disabled<T: Default>(T);
+
+    assert_eq!(0, All::<u8>::default().0);
+    assert_eq!(0, Disabled::<u8>::default().0);
+}

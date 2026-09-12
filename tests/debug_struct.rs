@@ -568,3 +568,18 @@ fn dynamically_sized_fields() {
     assert_eq!("Tuple([1, 2])", format!("{tuple:?}"));
     assert_eq!("{field: [1, 2]}", format!("{map:?}"));
 }
+
+#[test]
+fn explicit_bounds() {
+    // `bound(*)` adds a predicate for every type parameter, and `bound(false)` adds none, so the impl relies on what the type itself declares.
+    #[derive(Educe)]
+    #[educe(Debug(bound(*)))]
+    struct All<T>(T, u8);
+
+    #[derive(Educe)]
+    #[educe(Debug(bound(false)))]
+    struct Disabled<T: core::fmt::Debug>(T);
+
+    assert_eq!("All(1, 2)", format!("{:?}", All(1u8, 2u8)));
+    assert_eq!("Disabled(1)", format!("{:?}", Disabled(1u8)));
+}

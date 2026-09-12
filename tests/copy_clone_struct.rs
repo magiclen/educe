@@ -184,3 +184,22 @@ fn generic_3() {
 
     assert_eq!(Some(1), s.clone().f1);
 }
+
+#[test]
+fn explicit_bounds() {
+    // `bound(*)` adds a predicate for every type parameter, and `bound(false)` adds none, so the impl relies on what the type itself declares.
+    #[derive(Educe)]
+    #[educe(Copy(bound(*)), Clone(bound(*)))]
+    struct All<T>(T, u8);
+
+    #[derive(Educe)]
+    #[educe(Copy(bound(false)), Clone(bound(false)))]
+    struct Disabled<T: Copy>(T);
+
+    fn assert_copy_impl<T: Copy>(v: T) -> T {
+        v
+    }
+
+    assert_copy_impl(All(1u8, 2u8));
+    assert_copy_impl(Disabled(1u8));
+}

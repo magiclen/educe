@@ -76,3 +76,21 @@ fn bound() {
         }
     );
 }
+
+#[allow(dead_code)]
+#[test]
+fn bound_all() {
+    #[derive(Educe)]
+    #[educe(PartialEq(unsafe, bound(*)))]
+    union Union<T: Copy> {
+        f1: T,
+    }
+
+    assert!(
+        Union {
+            f1: 1u8
+        } == Union {
+            f1: 1u8
+        }
+    );
+}
