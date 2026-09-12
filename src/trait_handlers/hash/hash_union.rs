@@ -1,8 +1,9 @@
+use proc_macro2::{Ident, Span};
 use syn::{Data, DeriveInput, Meta};
 
 use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
 use crate::{
-    common::quote_mixed,
+    common::{bound::BOUND_EXCEPTIONS_HASH, quote_mixed, union::union_bytes},
     supported_traits::Trait,
     trait_handlers::{TraitHandler, TraitHandlerContext},
 };
@@ -24,7 +25,7 @@ impl TraitHandler for HashUnionHandler {
 
         let type_attribute =
             TypeAttributeBuilder {
-                enable_flag: true, enable_unsafe: true, enable_bound: false
+                enable_flag: true, enable_unsafe: true, enable_bound: true
             }
             .build_from_hash_meta(meta)?;
 
@@ -44,20 +45,36 @@ impl TraitHandler for HashUnionHandler {
         let ident = &ast.ident;
         let hasher_ident = crate::common::generics::unused_ident(&ast.generics, "H");
 
-        let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
+        // Hashing the storage as bytes needs nothing from the field types, so the automatic bound stays empty and only an explicit one contributes predicates.
+        let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
+            &ast.generics.params,
+            &syn::parse2(quote_mixed!(::core::hash::Hash)).unwrap(),
+            &[],
+            &ast.ident,
+            &BOUND_EXCEPTIONS_HASH,
+        );
+
+        let mut generics = ast.generics.clone();
+
+        let where_clause = generics.make_where_clause();
+
+        for where_predicate in bound {
+            where_clause.predicates.push(where_predicate);
+        }
+
+        let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+        let data = Ident::new("data", Span::mixed_site());
+        let bytes = union_bytes(&data, &quote_mixed!(self));
 
         token_stream.extend(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::hash::Hash for #ident #ty_generics #where_clause {
                 #[inline]
                 fn hash<#hasher_ident: ::core::hash::Hasher>(&self, state: &mut #hasher_ident) {
-                    let size = ::core::mem::size_of::<Self>();
+                    #bytes
 
-                    // SAFETY: The live union reference provides a valid pointer and size; the unsafe derive contract requires every byte, including padding and bytes outside the active field, to be initialized and unchanged during this call.
-                    // The user must preserve this condition after every construction, write, move, and copy; reading uninitialized bytes is undefined behavior.
-                    let data = unsafe { ::core::slice::from_raw_parts(self as *const Self as *const ::core::primitive::u8, size) };
-
-                    ::core::hash::Hash::hash(data, state)
+                    ::core::hash::Hash::hash(#data, state)
                 }
             }
         });

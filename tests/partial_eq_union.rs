@@ -31,7 +31,7 @@ fn basic() {
 
 #[allow(dead_code)]
 #[test]
-fn bound() {
+fn generic() {
     #[derive(Educe)]
     #[educe(PartialEq(unsafe))]
     union Union<T: Copy> {
@@ -51,6 +51,28 @@ fn bound() {
             f1: 1
         } != Union {
             f1: 2
+        }
+    );
+}
+
+#[allow(dead_code)]
+#[test]
+fn bound() {
+    #[derive(Educe)]
+    #[educe(PartialEq(unsafe, bound(T: Copy + core::cmp::PartialEq)))]
+    union Union<T: Copy> {
+        f1: T,
+    }
+
+    fn assert_partial_eq_impl<T: PartialEq>() {}
+
+    assert_partial_eq_impl::<Union<u8>>();
+
+    assert!(
+        Union {
+            f1: 1
+        } == Union {
+            f1: 1
         }
     );
 }

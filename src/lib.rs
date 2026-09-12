@@ -72,6 +72,10 @@ Explicit bounds are still used as written.
 
 An explicit bound is used verbatim; if a prerequisite impl carries predicates that the explicit bound does not imply, the compiler reports an unsatisfied supertrait and the missing predicates have to be added by hand.
 
+###### Unions
+
+The `Debug`, `PartialEq`, `Eq`, and `Hash` implementations of a union read its whole storage as bytes instead of reading its fields, so their automatic bound is empty. `bound(*)` and custom predicates are still accepted and are used as written. `Clone` and `Copy` bound the field types as usual, because a union is cloned by copying it.
+
 ###### Packed Types
 
 A field of a `#[repr(packed)]` or `#[repr(packed(N))]` type cannot be borrowed where it lies, so the generated code copies each field it reads into a temporary first.

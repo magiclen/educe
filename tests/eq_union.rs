@@ -31,7 +31,7 @@ fn basic() {
 
 #[allow(dead_code)]
 #[test]
-fn bound() {
+fn generic() {
     #[derive(Educe)]
     #[educe(PartialEq(unsafe), Eq)]
     union Union<T: Copy> {

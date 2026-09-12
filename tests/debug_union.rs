@@ -127,12 +127,33 @@ fn unnamed_4() {
 
 #[allow(dead_code)]
 #[test]
-fn bound() {
+fn generic() {
     #[derive(Educe)]
     #[educe(Debug(unsafe))]
     union Union<T: Copy> {
         f1: T,
     }
+
+    assert_eq!(
+        "Union([1])",
+        format!("{:?}", Union {
+            f1: 1u8
+        })
+    );
+}
+
+#[allow(dead_code)]
+#[test]
+fn bound() {
+    #[derive(Educe)]
+    #[educe(Debug(unsafe, bound(T: Copy + core::fmt::Debug)))]
+    union Union<T: Copy> {
+        f1: T,
+    }
+
+    fn assert_debug_impl<T: core::fmt::Debug>() {}
+
+    assert_debug_impl::<Union<u8>>();
 
     assert_eq!(
         "Union([1])",

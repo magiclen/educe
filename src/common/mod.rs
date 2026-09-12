@@ -42,6 +42,9 @@ pub(crate) mod ident_index;
 pub(crate) mod int;
 #[cfg(any(feature = "Debug", feature = "PartialEq", feature = "Hash"))]
 #[allow(dead_code)]
+pub(crate) mod union;
+#[cfg(any(feature = "Debug", feature = "PartialEq", feature = "Hash"))]
+#[allow(dead_code)]
 pub(crate) mod unsafe_punctuated_meta;
 
 #[cfg(any(feature = "PartialOrd", feature = "Ord", feature = "Into"))]
