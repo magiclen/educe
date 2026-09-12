@@ -601,3 +601,48 @@ fn discriminant_layout() {
         Enum::B.partial_cmp(&Enum::A(NonZeroU8::new(255).unwrap()))
     );
 }
+
+#[cfg(feature = "Ord")]
+#[test]
+fn rank_with_ord() {
+    #[derive(PartialEq, Eq, Educe)]
+    #[educe(PartialOrd, Ord)]
+    enum Enum {
+        Struct {
+            #[educe(Ord(rank = 1))]
+            f1: u8,
+            #[educe(Ord(rank = 0))]
+            f2: u8,
+        },
+        Tuple(#[educe(Ord(rank = 1))] u8, #[educe(Ord(rank = 0))] u8),
+    }
+
+    // The `Ord` rank also applies to the generated `partial_cmp`, so both comparisons stay consistent.
+    assert!(
+        Enum::Struct {
+            f1: 2, f2: 1
+        } < Enum::Struct {
+            f1: 1, f2: 2
+        }
+    );
+    assert!(Enum::Tuple(2, 1) < Enum::Tuple(1, 2));
+    assert_eq!(Ordering::Less, Enum::Tuple(2, 1).cmp(&Enum::Tuple(1, 2)));
+}
+
+#[cfg(feature = "Ord")]
+#[test]
+fn use_ord_attr_method() {
+    fn cmp(a: &u8, b: &u8) -> Ordering {
+        b.cmp(a)
+    }
+
+    // A field without its own `PartialOrd` attribute follows its `Ord` attribute, so `partial_cmp` stays consistent with `cmp`.
+    #[derive(PartialEq, Eq, Educe)]
+    #[educe(PartialOrd, Ord)]
+    enum Enum {
+        Tuple(#[educe(Ord(method(cmp)))] u8),
+    }
+
+    assert!(Enum::Tuple(1) > Enum::Tuple(2));
+    assert_eq!(Ordering::Greater, Enum::Tuple(1).cmp(&Enum::Tuple(2)));
+}
