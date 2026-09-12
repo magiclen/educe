@@ -254,3 +254,192 @@ impl Bound {
         }
     }
 }
+
+/// Generates the type-level attribute model of a trait whose only parameter is `bound`.
+///
+/// The optional fallback names a trait whose attribute is reused when the derived trait has none of its own at the same position.
+#[allow(unused_macros)]
+macro_rules! bound_only_type_attribute {
+    ($trait:ident, $build:ident $(, $fallback:ident, $feature:literal)?) => {
+        #[doc = concat!("The parsed settings of a type-level (or variant-level) `", stringify!($trait), "` attribute.")]
+        pub(crate) struct TypeAttribute {
+            pub(crate) bound: crate::common::bound::Bound,
+        }
+
+        #[derive(Debug)]
+        #[doc = concat!("Parses `", stringify!($trait), "` metas; the `enable_*` switches describe which parameters are allowed at the current position.")]
+        pub(crate) struct TypeAttributeBuilder {
+            pub(crate) enable_flag:  bool,
+            pub(crate) enable_bound: bool,
+        }
+
+        impl TypeAttributeBuilder {
+            #[doc = concat!("Parses one `", stringify!($trait), "` meta into a `TypeAttribute`, rejecting parameters that are not enabled here.")]
+            pub(crate) fn $build(&self, meta: &syn::Meta) -> syn::Result<TypeAttribute> {
+                debug_assert!(
+                    meta.path().is_ident(stringify!($trait))
+                        $(|| meta.path().is_ident(stringify!($fallback)))?
+                );
+
+                let mut bound = crate::common::bound::Bound::Auto;
+
+                let correct_usage = {
+                    let mut usage = vec![];
+
+                    if self.enable_flag {
+                        usage.push(stringify!(#[educe($trait)]));
+                    }
+
+                    if self.enable_bound {
+                        usage.push(stringify!(#[educe($trait(bound(where_predicates)))]));
+                        usage.push(stringify!(#[educe($trait(bound = false))]));
+                    }
+
+                    usage
+                };
+
+                match meta {
+                    syn::Meta::Path(_) => {
+                        if !self.enable_flag {
+                            return Err(crate::panic::attribute_incorrect_format(
+                                meta.path().get_ident().unwrap(),
+                                &correct_usage,
+                            ));
+                        }
+                    },
+                    syn::Meta::NameValue(_) => {
+                        return Err(crate::panic::attribute_incorrect_format(
+                            meta.path().get_ident().unwrap(),
+                            &correct_usage,
+                        ));
+                    },
+                    syn::Meta::List(list) => {
+                        let result = list.parse_args_with(
+                            syn::punctuated::Punctuated::<syn::Meta, syn::Token![,]>::parse_terminated,
+                        )?;
+
+                        // An empty parameter list means the same as the bare attribute, so it is checked the same way.
+                        if result.is_empty() && !self.enable_flag {
+                            return Err(crate::panic::attribute_incorrect_format(
+                                meta.path().get_ident().unwrap(),
+                                &correct_usage,
+                            ));
+                        }
+
+                        let mut bound_is_set = false;
+
+                        let mut handler = |meta: syn::Meta| -> syn::Result<bool> {
+                            if let Some(ident) = meta.path().get_ident()
+                                && ident == "bound"
+                            {
+                                if !self.enable_bound {
+                                    return Ok(false);
+                                }
+
+                                let v = crate::common::bound::Bound::from_meta(&meta)?;
+
+                                if bound_is_set {
+                                    return Err(crate::panic::parameter_reset(ident));
+                                }
+
+                                bound_is_set = true;
+
+                                bound = v;
+
+                                return Ok(true);
+                            }
+
+                            Ok(false)
+                        };
+
+                        for p in result {
+                            if !handler(p)? {
+                                return Err(crate::panic::attribute_incorrect_format(
+                                    meta.path().get_ident().unwrap(),
+                                    &correct_usage,
+                                ));
+                            }
+                        }
+                    },
+                }
+
+                Ok(TypeAttribute {
+                    bound,
+                })
+            }
+
+            #[doc = concat!("Scans the `#[educe(...)]` attributes of an item (typically an enum variant) and parses its `", stringify!($trait), "` meta if present.")]
+            pub(crate) fn build_from_attributes(
+                &self,
+                attributes: &[syn::Attribute],
+                traits: &[crate::Trait],
+            ) -> syn::Result<TypeAttribute> {
+                let mut output = None;
+
+                $(
+                    // The fallback is kept apart from `output` so that an attribute appearing after the fallback one is not mistaken for a repeated trait.
+                    #[cfg(feature = $feature)]
+                    let mut fallback = None;
+                )?
+
+                for attribute in attributes.iter() {
+                    let path = attribute.path();
+
+                    if path.is_ident("educe")
+                        && let syn::Meta::List(list) = &attribute.meta
+                    {
+                        let result = list.parse_args_with(
+                            syn::punctuated::Punctuated::<syn::Meta, syn::Token![,]>::parse_terminated,
+                        )?;
+
+                        for meta in result {
+                            let path = meta.path();
+
+                            let t = match crate::Trait::from_path(path) {
+                                Some(t) => t,
+                                None => return Err(crate::panic::unsupported_trait(meta.path())),
+                            };
+
+                            if !traits.contains(&t) {
+                                return Err(crate::panic::trait_not_used(path.get_ident().unwrap()));
+                            }
+
+                            if t == crate::Trait::$trait {
+                                if output.is_some() {
+                                    return Err(crate::panic::reuse_a_trait(
+                                        path.get_ident().unwrap(),
+                                    ));
+                                }
+
+                                output = Some(self.$build(&meta)?);
+                            }
+
+                            $(
+                                // The fallback attribute is validated by its own handler, so a malformed one is simply skipped here.
+                                #[cfg(feature = $feature)]
+                                if t == crate::Trait::$fallback
+                                    && fallback.is_none()
+                                    && let Ok(type_attribute) = self.$build(&meta)
+                                {
+                                    fallback = Some(type_attribute);
+                                }
+                            )?
+                        }
+                    }
+                }
+
+                $(
+                    #[cfg(feature = $feature)]
+                    let output = output.or(fallback);
+                )?
+
+                Ok(output.unwrap_or(TypeAttribute {
+                    bound: crate::common::bound::Bound::Auto,
+                }))
+            }
+        }
+    };
+}
+
+#[allow(unused_imports)]
+pub(crate) use bound_only_type_attribute;
