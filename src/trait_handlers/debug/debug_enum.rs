@@ -413,13 +413,7 @@ impl TraitHandler for DebugEnumHandler {
             &BOUND_EXCEPTIONS_DEBUG,
         );
 
-        let mut generics = ast.generics.clone();
-
-        let where_clause = generics.make_where_clause();
-
-        for where_predicate in bound {
-            where_clause.predicates.push(where_predicate);
-        }
+        let generics = crate::common::generics::with_predicates(ast.generics.clone(), bound);
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 

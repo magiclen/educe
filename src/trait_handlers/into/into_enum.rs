@@ -215,11 +215,7 @@ impl TraitHandlerMultiple for IntoEnumHandler {
                         .visit_generics_mut(&mut generics);
                 }
 
-                let where_clause = generics.make_where_clause();
-
-                for where_predicate in bound {
-                    where_clause.predicates.push(where_predicate);
-                }
+                let generics = crate::common::generics::with_predicates(generics, bound);
 
                 let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 

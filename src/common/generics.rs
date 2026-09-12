@@ -1,6 +1,8 @@
 use quote::{format_ident, quote};
 use syn::{DeriveInput, GenericParam, Generics, Ident, Path, PathArguments, visit_mut::VisitMut};
 
+use super::where_predicates_bool::WherePredicates;
+
 pub(crate) fn unused_ident(generics: &Generics, name: &str) -> Ident {
     let mut ident = format_ident!("{name}");
     while generics.params.iter().any(|param| match param {
@@ -40,4 +42,15 @@ impl VisitMut for ReplaceSelf {
             *path = replacement;
         }
     }
+}
+
+/// Appends the predicates a generated impl needs to the generics the input declares.
+pub(crate) fn with_predicates(mut generics: Generics, predicates: WherePredicates) -> Generics {
+    let where_clause = generics.make_where_clause();
+
+    for predicate in predicates {
+        where_clause.predicates.push(predicate);
+    }
+
+    generics
 }

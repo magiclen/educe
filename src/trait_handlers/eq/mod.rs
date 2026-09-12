@@ -122,13 +122,7 @@ impl TraitHandler for EqHandler {
 
         ctx.record(Trait::Eq, &bound);
 
-        let mut generics = ast.generics.clone();
-
-        let where_clause = generics.make_where_clause();
-
-        for where_predicate in bound {
-            where_clause.predicates.push(where_predicate);
-        }
+        let generics = crate::common::generics::with_predicates(ast.generics.clone(), bound);
 
         if bound_is_auto && !field_types.is_empty() {
             let lint_attributes = crate::common::attributes::generated_lint_attributes(&ast.attrs);
