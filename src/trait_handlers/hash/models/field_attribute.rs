@@ -29,7 +29,7 @@ impl FieldAttributeBuilder {
         let mut ignore = false;
         let mut method = None;
 
-        let correct_usage_for_partial_eq_attribute = {
+        let correct_usage_for_hash_attribute = {
             let mut usage = vec![];
 
             if self.enable_ignore {
@@ -48,7 +48,7 @@ impl FieldAttributeBuilder {
             Meta::Path(_) => {
                 return Err(panic::attribute_incorrect_format(
                     meta.path().get_ident().unwrap(),
-                    &correct_usage_for_partial_eq_attribute,
+                    &correct_usage_for_hash_attribute,
                 ));
             },
             Meta::NameValue(name_value) => {
@@ -57,13 +57,21 @@ impl FieldAttributeBuilder {
                 } else {
                     return Err(panic::attribute_incorrect_format(
                         meta.path().get_ident().unwrap(),
-                        &correct_usage_for_partial_eq_attribute,
+                        &correct_usage_for_hash_attribute,
                     ));
                 }
             },
             Meta::List(list) => {
                 let result =
                     list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
+
+                // An empty parameter list means the same as the bare attribute, so it is checked the same way.
+                if result.is_empty() {
+                    return Err(panic::attribute_incorrect_format(
+                        meta.path().get_ident().unwrap(),
+                        &correct_usage_for_hash_attribute,
+                    ));
+                }
 
                 let mut ignore_is_set = false;
                 let mut method_is_set = false;
@@ -116,7 +124,7 @@ impl FieldAttributeBuilder {
                     if !handler(p)? {
                         return Err(panic::attribute_incorrect_format(
                             meta.path().get_ident().unwrap(),
-                            &correct_usage_for_partial_eq_attribute,
+                            &correct_usage_for_hash_attribute,
                         ));
                     }
                 }

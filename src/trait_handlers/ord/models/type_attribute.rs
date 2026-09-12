@@ -21,7 +21,7 @@ impl TypeAttributeBuilder {
 
         let mut bound = Bound::Auto;
 
-        let correct_usage_for_partial_eq_attribute = {
+        let correct_usage_for_ord_attribute = {
             let mut usage = vec![];
 
             if self.enable_flag {
@@ -41,19 +41,27 @@ impl TypeAttributeBuilder {
                 if !self.enable_flag {
                     return Err(panic::attribute_incorrect_format(
                         meta.path().get_ident().unwrap(),
-                        &correct_usage_for_partial_eq_attribute,
+                        &correct_usage_for_ord_attribute,
                     ));
                 }
             },
             Meta::NameValue(_) => {
                 return Err(panic::attribute_incorrect_format(
                     meta.path().get_ident().unwrap(),
-                    &correct_usage_for_partial_eq_attribute,
+                    &correct_usage_for_ord_attribute,
                 ));
             },
             Meta::List(list) => {
                 let result =
                     list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
+
+                // An empty parameter list means the same as the bare attribute, so it is checked the same way.
+                if result.is_empty() && !self.enable_flag {
+                    return Err(panic::attribute_incorrect_format(
+                        meta.path().get_ident().unwrap(),
+                        &correct_usage_for_ord_attribute,
+                    ));
+                }
 
                 let mut bound_is_set = false;
 
@@ -85,7 +93,7 @@ impl TypeAttributeBuilder {
                     if !handler(p)? {
                         return Err(panic::attribute_incorrect_format(
                             meta.path().get_ident().unwrap(),
-                            &correct_usage_for_partial_eq_attribute,
+                            &correct_usage_for_ord_attribute,
                         ));
                     }
                 }
@@ -104,6 +112,10 @@ impl TypeAttributeBuilder {
         traits: &[Trait],
     ) -> syn::Result<TypeAttribute> {
         let mut output = None;
+
+        // The fallback is kept apart from `output` so that an `Ord` attribute appearing after a `PartialOrd` one is not mistaken for a repeated `Ord`.
+        #[cfg(feature = "PartialOrd")]
+        let mut fallback = None;
 
         for attribute in attributes.iter() {
             let path = attribute.path();
@@ -134,17 +146,20 @@ impl TypeAttributeBuilder {
                         output = Some(self.build_from_ord_meta(&meta)?);
                     }
 
-                    // A variant-level `PartialOrd` attribute is validated by the `PartialOrd` handler itself, so it is only parsed here when there is no `Ord` attribute of its own.
+                    // A variant-level `PartialOrd` attribute is validated by the `PartialOrd` handler itself, so it is only parsed here as a fallback.
                     #[cfg(feature = "PartialOrd")]
                     if t == Trait::PartialOrd
-                        && output.is_none()
+                        && fallback.is_none()
                         && let Ok(type_attribute) = self.build_from_ord_meta(&meta)
                     {
-                        output = Some(type_attribute);
+                        fallback = Some(type_attribute);
                     }
                 }
             }
         }
+
+        #[cfg(feature = "PartialOrd")]
+        let output = output.or(fallback);
 
         Ok(output.unwrap_or(TypeAttribute {
             bound: Bound::Auto

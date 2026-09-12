@@ -2,6 +2,8 @@ use proc_macro2::{Ident, Span, TokenStream};
 use quote::{ToTokens, quote};
 use syn::{Data, DeriveInput, Meta, Token, punctuated::Punctuated};
 
+use crate::common::quote_mixed;
+
 #[derive(Debug)]
 /// The integer type that holds the discriminant values of an enum.
 ///
@@ -78,9 +80,10 @@ impl DiscriminantType {
         for attr in &ast.attrs {
             if attr.path().is_ident("repr")
                 && let Meta::List(list) = &attr.meta
+                && let Ok(items) =
+                    list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
             {
-                let items =
-                    list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
+                // A malformed `repr` is reported by the compiler on the user's own item, so a parse failure is simply skipped here.
                 for item in items {
                     if let Meta::Path(path) = item
                         && let Some(ident) = path.get_ident()
@@ -92,19 +95,19 @@ impl DiscriminantType {
             }
         }
         let mut values = Vec::with_capacity(data.variants.len());
-        let mut base = quote!(0);
+        let mut base = quote_mixed!(0);
         let mut offset = 0usize;
         for variant in &data.variants {
             if let Some((_, expression)) = &variant.discriminant {
-                base = quote!(#expression);
+                base = quote_mixed!(#expression);
                 offset = 0;
             }
             let value = if offset == 0 {
-                quote!(const { #base })
+                quote_mixed!(const { #base })
             } else {
                 let offset = proc_macro2::Literal::usize_unsuffixed(offset);
                 // A signed discriminant range can contain more variants than its positive maximum.
-                quote!(const {
+                quote_mixed!(const {
                     let base: #repr = #base;
                     base.wrapping_add(#offset as #repr)
                 })

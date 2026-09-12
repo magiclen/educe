@@ -88,7 +88,7 @@ pub(crate) fn meta_2_where_predicates(meta: &Meta) -> syn::Result<WherePredicate
             format!(
                 "expected `{path} = \"where_predicates\"`, `{path}(where_predicates)`, \
                  `{path}(*)`, `{path} = false`, or `{path}(false)`",
-                path = path.clone().into_token_stream()
+                path = path_to_string(path)
             ),
         )),
     }

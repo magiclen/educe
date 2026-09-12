@@ -83,6 +83,18 @@ impl TypeAttributeBuilder {
                 let result =
                     list.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)?;
 
+                // An empty parameter list means the same as the bare attribute, so it is checked the same way.
+                if result.is_empty() {
+                    if !self.enable_flag {
+                        return Err(panic::attribute_incorrect_format(
+                            meta.path().get_ident().unwrap(),
+                            &correct_usage_for_default_attribute,
+                        ));
+                    }
+
+                    flag = true;
+                }
+
                 let mut new_is_set = false;
                 let mut expression_is_set = false;
                 let mut bound_is_set = false;
