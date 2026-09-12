@@ -71,7 +71,7 @@ impl TraitHandler for CloneEnumHandler {
             }
 
             let use_bitwise_copy =
-                super::can_use_bitwise_copy(ast, traits, has_custom_clone_method)?;
+                super::can_use_bitwise_copy(ast, ctx, traits, has_custom_clone_method)?;
 
             let mut clone_types: Vec<&Type> = Vec::new();
 

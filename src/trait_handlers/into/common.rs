@@ -28,16 +28,41 @@ pub(crate) fn target_type(mut ty: Type) -> Type {
     ty
 }
 
-/// A returned mutable reference can also be coerced to a shared reference by Rust.
-pub(crate) fn field_matches_target(field: &Type, target: &Type) -> bool {
-    if to_hash_type(field) == to_hash_type(target) {
-        return true;
+/// One `Into` target prepared for matching, so that a field loop does not rebuild the target key for every field.
+pub(crate) struct TargetMatcher {
+    whole:   HashType,
+    /// The pointee of a shared reference target, which a mutable field reference can also be coerced to.
+    pointee: Option<HashType>,
+}
+
+impl TargetMatcher {
+    pub(crate) fn new(target: &Type) -> Self {
+        let pointee = match target {
+            Type::Reference(target) if target.mutability.is_none() => {
+                Some(to_hash_type(&target.elem))
+            },
+            _ => None,
+        };
+
+        Self {
+            whole: to_hash_type(target),
+            pointee,
+        }
     }
-    if let (Type::Reference(field), Type::Reference(target)) = (field, target)
-        && field.mutability.is_some()
-        && target.mutability.is_none()
-    {
-        return to_hash_type(&field.elem) == to_hash_type(&target.elem);
+
+    /// A returned mutable reference can also be coerced to a shared reference by Rust.
+    pub(crate) fn matches(&self, field: &Type) -> bool {
+        if to_hash_type(field) == self.whole {
+            return true;
+        }
+
+        if let Type::Reference(field) = field
+            && field.mutability.is_some()
+            && let Some(pointee) = &self.pointee
+        {
+            return to_hash_type(&field.elem) == *pointee;
+        }
+
+        false
     }
-    false
 }

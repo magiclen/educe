@@ -62,7 +62,8 @@ impl TraitHandler for CloneStructHandler {
             let has_custom_method =
                 fields.iter().any(|(_, field_attribute)| field_attribute.method.is_some());
 
-            let use_bitwise_copy = super::can_use_bitwise_copy(ast, traits, has_custom_method)?;
+            let use_bitwise_copy =
+                super::can_use_bitwise_copy(ast, ctx, traits, has_custom_method)?;
 
             let mut clone_types: Vec<&Type> = Vec::new();
 

@@ -1930,6 +1930,9 @@ fn derive_input_handler(ast: DeriveInput) -> syn::Result<proc_macro2::TokenStrea
 
     let mut ctx = TraitHandlerContext::default();
 
+    #[cfg(all(feature = "Clone", feature = "Copy"))]
+    ctx.set_copy_meta(trait_meta_map.get(&Trait::Copy).map(|meta| &meta[0]));
+
     #[cfg(feature = "Debug")]
     {
         if let Some(meta) = trait_meta_map.get(&Trait::Debug) {

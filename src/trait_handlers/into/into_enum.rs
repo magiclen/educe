@@ -62,6 +62,7 @@ impl TraitHandlerMultiple for IntoEnumHandler {
 
             for (target_key, target) in type_attribute.types {
                 let target_ty = &target.ty;
+                let target_matcher = super::common::TargetMatcher::new(target_ty);
                 // By default a `From` impl is generated because it provides `Into` for free; the `into` flag asks for a direct `Into` impl instead.
                 let generate_from = !target.force_into;
 
@@ -123,7 +124,7 @@ impl TraitHandlerMultiple for IntoEnumHandler {
                             if into_field.is_none() {
                                 // search the same type
                                 for (index, field) in fields.iter().enumerate() {
-                                    if super::common::field_matches_target(&field.ty, target_ty) {
+                                    if target_matcher.matches(&field.ty) {
                                         if into_field.is_some() {
                                             // multiple candidates
                                             into_field = None;
@@ -170,7 +171,7 @@ impl TraitHandlerMultiple for IntoEnumHandler {
                         crate::common::generics::ReplaceSelf::new(ast)
                             .visit_expr_path_mut(&mut method);
                         body_token_stream.extend(quote_mixed!( #method(#field_binding) ));
-                    } else if super::common::field_matches_target(ty, target_ty) {
+                    } else if target_matcher.matches(ty) {
                         body_token_stream.extend(quote_mixed!( #field_binding ));
                     } else {
                         into_types.push(ty);

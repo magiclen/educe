@@ -63,9 +63,24 @@ pub(crate) struct TraitHandlerContext {
         feature = "PartialOrd"
     ))]
     final_predicates: HashMap<Trait, WherePredicates>,
+    /// The `Copy` meta of the input, so that `Clone` can look at the `Copy` settings without scanning the attributes again.
+    #[cfg(all(feature = "Clone", feature = "Copy"))]
+    copy_meta:        Option<Meta>,
 }
 
 impl TraitHandlerContext {
+    /// Stores the `Copy` meta that the entry point has already collected.
+    #[cfg(all(feature = "Clone", feature = "Copy"))]
+    pub(crate) fn set_copy_meta(&mut self, meta: Option<&Meta>) {
+        self.copy_meta = meta.cloned();
+    }
+
+    /// Returns the `Copy` meta of the input, or `None` when `Copy` is not derived by Educe.
+    #[cfg(all(feature = "Clone", feature = "Copy"))]
+    pub(crate) fn copy_meta(&self) -> Option<&Meta> {
+        self.copy_meta.as_ref()
+    }
+
     /// Records the where predicates that a trait impl has emitted, so that traits handled later can inherit them.
     #[cfg(any(
         feature = "Clone",

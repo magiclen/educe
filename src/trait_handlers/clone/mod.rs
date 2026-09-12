@@ -12,6 +12,7 @@ use crate::{Trait, common::quote_mixed};
 /// Uses a whole-value copy only when it does not add requirements to `Clone`.
 fn can_use_bitwise_copy(
     ast: &DeriveInput,
+    ctx: &TraitHandlerContext,
     traits: &[Trait],
     has_custom_method: bool,
 ) -> syn::Result<bool> {
@@ -22,7 +23,7 @@ fn can_use_bitwise_copy(
         }
 
         // A custom `Copy` bound can limit lifetimes or unused const parameters even when the fields do not mention a type parameter.
-        if !ast.generics.params.is_empty() && super::copy::has_custom_bound(ast, traits)? {
+        if !ast.generics.params.is_empty() && super::copy::has_custom_bound(ctx)? {
             return Ok(false);
         }
 
@@ -40,7 +41,7 @@ fn can_use_bitwise_copy(
     }
     #[cfg(not(feature = "Copy"))]
     {
-        let _ = (ast, traits, has_custom_method);
+        let _ = (ast, ctx, traits, has_custom_method);
         Ok(false)
     }
 }

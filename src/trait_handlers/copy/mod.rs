@@ -24,11 +24,15 @@ pub(crate) fn prerequisites() -> &'static [Trait] {
 pub(crate) struct CopyHandler;
 
 #[cfg(feature = "Clone")]
-pub(crate) fn has_custom_bound(ast: &DeriveInput, traits: &[Trait]) -> syn::Result<bool> {
+pub(crate) fn has_custom_bound(ctx: &TraitHandlerContext) -> syn::Result<bool> {
+    let Some(meta) = ctx.copy_meta() else {
+        return Ok(false);
+    };
+
     let attribute = TypeAttributeBuilder {
         enable_flag: true, enable_bound: true
     }
-    .build_from_attributes(&ast.attrs, traits)?;
+    .build_from_copy_meta(meta)?;
 
     Ok(matches!(attribute.bound, Bound::Custom(predicates) if !predicates.is_empty()))
 }

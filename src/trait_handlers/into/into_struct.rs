@@ -56,6 +56,7 @@ impl TraitHandlerMultiple for IntoStructHandler {
 
             for (target_key, target) in type_attribute.types {
                 let target_ty = &target.ty;
+                let target_matcher = super::common::TargetMatcher::new(target_ty);
                 // By default a `From` impl is generated because it provides `Into` for free; the `into` flag asks for a direct `Into` impl instead.
                 let generate_from = !target.force_into;
 
@@ -104,7 +105,7 @@ impl TraitHandlerMultiple for IntoStructHandler {
                         if into_field.is_none() {
                             // search the same type
                             for (index, field) in fields.iter().enumerate() {
-                                if super::common::field_matches_target(&field.ty, target_ty) {
+                                if target_matcher.matches(&field.ty) {
                                     if into_field.is_some() {
                                         // multiple candidates
                                         into_field = None;
@@ -134,7 +135,7 @@ impl TraitHandlerMultiple for IntoStructHandler {
                 } else {
                     let ty = &field.ty;
 
-                    if super::common::field_matches_target(ty, target_ty) {
+                    if target_matcher.matches(ty) {
                         into_token_stream.extend(quote_mixed!( #source.#field_name ));
                     } else {
                         into_types.push(ty);
