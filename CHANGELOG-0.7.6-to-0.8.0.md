@@ -8,6 +8,7 @@ Several correctness fixes change generated bounds, conversion signatures, or met
 - Empty attribute parameter lists now follow the same validation rules as bare attributes.
   For example, a field-level `#[educe(Clone())]` that was previously accepted without effect is now rejected, just like `#[educe(Clone)]`.
   Remove such attributes or provide supported parameters; empty lists remain accepted where the bare attribute is allowed.
+  `Deref` and `DerefMut` are the exception: they take no parameters at all, so `#[educe(Deref())]` is rejected even though `#[educe(Deref)]` is accepted.
 
 - Associated types that share the source type's name now receive precise field-type bounds instead of being treated as recursive.
   For example, cloning a field `T::Value` inside `Value<T>` requires `T::Value: Clone` instead of `T: Clone`.
