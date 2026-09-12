@@ -1,18 +1,50 @@
-use quote::{format_ident, quote};
-use syn::{DeriveInput, GenericParam, Generics, Ident, Path, PathArguments, visit_mut::VisitMut};
+use std::collections::HashSet;
+
+use proc_macro2::{Span, TokenStream, TokenTree};
+use quote::{ToTokens, quote};
+use syn::{
+    DeriveInput, Generics, Ident, LitStr, Path, PathArguments, ext::IdentExt, visit_mut::VisitMut,
+};
 
 use super::where_predicates_bool::WherePredicates;
 
-pub(crate) fn unused_ident(generics: &Generics, name: &str) -> Ident {
-    let mut ident = format_ident!("{name}");
-    while generics.params.iter().any(|param| match param {
-        GenericParam::Type(param) => param.ident == ident,
-        GenericParam::Const(param) => param.ident == ident,
-        GenericParam::Lifetime(_) => false,
-    }) {
-        ident = format_ident!("_{ident}");
+/// Names in the input that generated identifiers must avoid.
+pub(crate) struct UsedIdents(HashSet<String>);
+
+impl UsedIdents {
+    pub(crate) fn new(ast: &DeriveInput) -> Self {
+        fn collect(tokens: TokenStream, used: &mut HashSet<String>) {
+            for token in tokens {
+                match token {
+                    TokenTree::Ident(ident) => {
+                        used.insert(ident.unraw().to_string());
+                    },
+                    TokenTree::Group(group) => collect(group.stream(), used),
+                    TokenTree::Literal(literal) => {
+                        // Method paths can also be written inside string literals.
+                        if let Ok(literal) = syn::parse2::<LitStr>(literal.into_token_stream())
+                            && let Ok(tokens) = literal.value().parse::<TokenStream>()
+                        {
+                            collect(tokens, used);
+                        }
+                    },
+                    TokenTree::Punct(_) => (),
+                }
+            }
+        }
+
+        let mut used = HashSet::new();
+        collect(ast.to_token_stream(), &mut used);
+        Self(used)
     }
-    ident
+
+    pub(crate) fn select(&mut self, name: &str) -> Ident {
+        let mut name = name.to_owned();
+        while !self.0.insert(name.clone()) {
+            name.insert(0, '_');
+        }
+        Ident::new(&name, Span::mixed_site())
+    }
 }
 
 /// Keeps `Self` tied to the source type when code moves into a helper or a `From` impl.

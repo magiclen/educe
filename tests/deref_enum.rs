@@ -39,3 +39,20 @@ fn basic() {
     assert_eq!(1, *t1);
     assert_eq!(2, *t2);
 }
+
+#[test]
+fn constant_name() {
+    #[allow(non_upper_case_globals)]
+    const value: u8 = 100;
+
+    #[derive(Educe)]
+    #[educe(Deref)]
+    enum Enum {
+        Named { value: u8 },
+    }
+
+    assert_eq!(7, *Enum::Named {
+        value: 7
+    });
+    assert_eq!(100, value);
+}

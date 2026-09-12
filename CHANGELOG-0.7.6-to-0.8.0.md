@@ -5,6 +5,14 @@ Several correctness fixes change generated bounds, conversion signatures, or met
 
 ## Breaking and Upgrade Notes
 
+- Empty attribute parameter lists now follow the same validation rules as bare attributes.
+  For example, a field-level `#[educe(Clone())]` that was previously accepted without effect is now rejected, just like `#[educe(Clone)]`.
+  Remove such attributes or provide supported parameters; empty lists remain accepted where the bare attribute is allowed.
+
+- Associated types that share the source type's name now receive precise field-type bounds instead of being treated as recursive.
+  For example, cloning a field `T::Value` inside `Value<T>` requires `T::Value: Clone` instead of `T: Clone`.
+  If a custom method relied on the old parameter bound, add it explicitly with `bound(...)`.
+
 - For structs and enums with any generic parameters, a nonempty custom `Copy(bound(...))` disables the whole-value `Clone` shortcut.
   `clone` and `clone_from` use the field-wise implementation, so `Clone` stays available even when the custom `Copy` conditions do not hold.
   This includes lifetime bounds and const parameters that do not appear in fields.
@@ -55,15 +63,21 @@ Implementation references: [`EqHandler`](src/trait_handlers/eq/mod.rs), [`IntoSt
 - Custom `Debug` methods now use the final implementation bounds and keep `Self` in the source type's scope.
   The `Debug` and `Clone` method markers also preserve source `Self` in field types, bounds, and qualified method paths.
 - Generated parameters, local variables, and enum pattern bindings use macro hygiene to avoid shadowing custom methods named `f`, `builder`, `arg`, `source`, `other`, `state`, or `value`.
-- Generated `Hash` methods avoid generic parameter names already used by the input type, including collisions with type or const parameters named `H`, `_H`, or `__H`.
+- Generated `Hash` methods avoid names in the input type and custom method paths, including paths written as strings and type or const parameters named `H`, `_H`, or `__H`.
 - Helper items for `Debug`, `Clone`, and automatic `Eq` inherit the input type's `allow`, `warn`, and `deny` attributes.
   An `expect` is copied as `allow` to avoid introducing an extra lint expectation.
   Method markers remain visible to dead-code analysis, so custom methods used only by a derive are still counted as used.
 
-Implementation references: [`meta_2_path`](src/common/path.rs), [`ReplaceSelf` and `unused_ident`](src/common/generics.rs), [`quote_mixed`](src/common/mod.rs), [`debug::common`](src/trait_handlers/debug/common.rs), and [`generated_lint_attributes`](src/common/attributes.rs).
+Implementation references: [`meta_2_path`](src/common/path.rs), [`ReplaceSelf` and `UsedIdents`](src/common/generics.rs), [`quote_mixed`](src/common/mod.rs), [`debug::common`](src/trait_handlers/debug/common.rs), and [`generated_lint_attributes`](src/common/attributes.rs).
 
 ## Trait Fixes
 
+- `Default()` now sets the same selection flag as bare `Default` where that flag is supported, including the default enum variant and union field.
+- Union `Debug`, `PartialEq`, and `Hash` now accept `bound(...)`, `bound(*)`, and `bound(false)`.
+  Automatic bounds still add no field requirements because these implementations read the union as bytes.
+  When `PartialEq` and `Eq` are derived together and `Eq` uses automatic bounds, it also inherits the explicit `PartialEq` predicates.
+- `Default` accepts primitive literal values with full `core::primitive` and `std::primitive` field type paths.
+- Enum `Deref` and `DerefMut` use separate field bindings so a field can share its name with a constant.
 - Union `Debug`, `PartialEq`, and `Hash` now use `::core::primitive::u8` for byte access.
   A user-defined alias or generic parameter named `u8` could previously change the slice element type while its length remained a byte count, causing out-of-bounds access even for a fully initialized union.
   The byte-reading algorithm and the user's initialization contract are otherwise unchanged.
@@ -83,7 +97,7 @@ Implementation references: [`meta_2_path`](src/common/path.rs), [`ReplaceSelf` a
   `Clone::clone_from` assigns the cloned value back instead of cloning in place, because a packed field cannot be borrowed mutably either.
   `Deref` and `DerefMut` are unchanged: they return a reference to a field, so they still require the target field to fit the packing.
 
-Implementation references: [`DebugStructHandler`](src/trait_handlers/debug/debug_struct.rs), [`field_matches_target`](src/trait_handlers/into/common.rs), [`DiscriminantType::from_ast`](src/common/tools/discriminant_type.rs), [`EqHandler`](src/trait_handlers/eq/mod.rs), and [`is_packed` and `borrow_field`](src/common/attributes.rs).
+Implementation references: [`DebugStructHandler`](src/trait_handlers/debug/debug_struct.rs), [`TargetMatcher::matches`](src/trait_handlers/into/common.rs), [`DiscriminantType::from_ast`](src/common/tools/discriminant_type.rs), [`EqHandler`](src/trait_handlers/eq/mod.rs), and [`is_packed` and `borrow_field`](src/common/attributes.rs).
 
 ## Documentation and Tests
 
@@ -95,8 +109,11 @@ Implementation references: [`DebugStructHandler`](src/trait_handlers/debug/debug
 - Restored the missing test attributes on the enum `Into` method tests and made the generic union test require `Eq`.
 - Added regression coverage for qualified method paths, name clashes, reference conversions, generic bounds, dynamically sized fields, discriminants, lint propagation, dead-code analysis, and packed types.
   Two compile-fail doctests verify that automatic `Eq` rejects ordinary non-`Eq` fields in structs and enums.
+- Removed the development dependency that always enabled `syn/full`, so default-feature tests now exercise the parser without that extra feature.
+  Added tests for default expressions that require the optional `full` feature, and added `--all-features` to the CI test matrices.
+- CI now checks that the README and crate documentation stay in sync.
 
-References: [`README.md`](README.md), [crate documentation](src/lib.rs), [`into_enum::method_1` and `method_2`](tests/into_enum.rs), [`eq_union::bound`](tests/eq_union.rs), and [regression tests](tests).
+References: [`README.md`](README.md), [crate documentation](src/lib.rs), [`into_enum::method_1` and `method_2`](tests/into_enum.rs), [`eq_union::generic`](tests/eq_union.rs), [regression tests](tests), [`default_full`](tests/default_full.rs), and [CI workflows](.github/workflows).
 
 ## Package Compatibility
 

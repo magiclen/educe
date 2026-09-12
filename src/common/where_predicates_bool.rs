@@ -189,7 +189,7 @@ pub(crate) fn create_where_predicates_from_field_types(
             return;
         }
 
-        if type_mentions_ident(ty, self_ident) {
+        if type_mentions_ident(ty, self_ident, params) {
             // Rule 4: degrade a self-referencing type to per-parameter bounds.
             let mut used = HashSet::new();
 

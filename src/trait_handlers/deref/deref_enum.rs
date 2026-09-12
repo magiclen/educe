@@ -34,6 +34,7 @@ impl TraitHandler for DerefEnumHandler {
 
         let mut target_token_stream = proc_macro2::TokenStream::new();
         let mut arms_token_stream = proc_macro2::TokenStream::new();
+        let field_binding = crate::common::generics::UsedIdents::new(ast).select("educe__target");
 
         if let Data::Enum(data) = &ast.data {
             type Variants<'a> = Vec<(&'a Ident, bool, usize, Ident, &'a Type)>;
@@ -120,16 +121,16 @@ impl TraitHandler for DerefEnumHandler {
                         pattern_token_stream.extend(quote_mixed!(_,));
                     }
 
-                    pattern_token_stream.extend(quote_mixed!( #field_name, .. ));
+                    pattern_token_stream.extend(quote_mixed!( #field_binding, .. ));
 
                     arms_token_stream.extend(
-                        quote_mixed!( Self::#variant_ident ( #pattern_token_stream ) => #field_name, ),
+                        quote_mixed!( Self::#variant_ident ( #pattern_token_stream ) => #field_binding, ),
                     );
                 } else {
-                    pattern_token_stream.extend(quote_mixed!( #field_name, .. ));
+                    pattern_token_stream.extend(quote_mixed!( #field_name: #field_binding, .. ));
 
                     arms_token_stream.extend(
-                        quote_mixed!( Self::#variant_ident { #pattern_token_stream } => #field_name, ),
+                        quote_mixed!( Self::#variant_ident { #pattern_token_stream } => #field_binding, ),
                     );
                 }
             }

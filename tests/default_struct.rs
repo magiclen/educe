@@ -438,3 +438,27 @@ fn explicit_bounds() {
     assert_eq!(0, All::<u8>::default().0);
     assert_eq!(0, Disabled::<u8>::default().0);
 }
+
+#[test]
+fn qualified_primitive_literals() {
+    extern crate std;
+
+    #[derive(Educe)]
+    #[educe(Default)]
+    struct Struct {
+        #[educe(Default = 7)]
+        integer:     ::core::primitive::u64,
+        #[educe(Default = 1.5)]
+        float:       core::primitive::f32,
+        #[educe(Default = 9)]
+        std_integer: std::primitive::u64,
+        #[educe(Default = 2.5)]
+        std_float:   std::primitive::f32,
+    }
+
+    let value = Struct::default();
+    assert_eq!(7, value.integer);
+    assert_eq_float!(1.5, value.float);
+    assert_eq!(9, value.std_integer);
+    assert_eq_float!(2.5, value.std_float);
+}

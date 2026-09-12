@@ -298,15 +298,34 @@ pub(crate) fn type_uses_generic_params(
 ) -> bool {
     use syn::visit::Visit;
 
+    if !params.iter().any(|param| matches!(param, GenericParam::Type(_) | GenericParam::Const(_))) {
+        return false;
+    }
+
     struct FindParam<'a> {
         params: &'a Punctuated<GenericParam, Comma>,
         found:  bool,
     }
 
     impl<'ast> Visit<'ast> for FindParam<'_> {
+        fn visit_type(&mut self, ty: &'ast Type) {
+            if !self.found {
+                syn::visit::visit_type(self, ty);
+            }
+        }
+
+        fn visit_expr(&mut self, expr: &'ast syn::Expr) {
+            if !self.found {
+                syn::visit::visit_expr(self, expr);
+            }
+        }
+
         fn visit_path(&mut self, path: &'ast Path) {
-            if !self.found
-                && path.leading_colon.is_none()
+            if self.found {
+                return;
+            }
+
+            if path.leading_colon.is_none()
                 && let Some(segment) = path.segments.first()
             {
                 self.found = self.params.iter().any(|param| match param {
@@ -316,7 +335,9 @@ pub(crate) fn type_uses_generic_params(
                 });
             }
 
-            syn::visit::visit_path(self, path);
+            if !self.found {
+                syn::visit::visit_path(self, path);
+            }
         }
     }
 
@@ -333,16 +354,28 @@ pub(crate) fn type_uses_generic_params(
 /// Returns true if a type mentions the derived type by name or through `Self`.
 ///
 /// This is used to detect field types that refer to the type currently being derived, e.g. `Box<List<T>>` inside `List<T>`, so that the bound engine can avoid generating a self-referencing predicate that would overflow the trait solver.
-pub(crate) fn type_mentions_ident(ty: &Type, ident: &Ident) -> bool {
-    fn path_mentions_ident(path: &Path, ident: &Ident) -> bool {
-        if path.leading_colon.is_none()
+pub(crate) fn type_mentions_ident(
+    ty: &Type,
+    ident: &Ident,
+    params: &Punctuated<GenericParam, Comma>,
+) -> bool {
+    fn path_mentions_ident(
+        path: &Path,
+        ident: &Ident,
+        params: &Punctuated<GenericParam, Comma>,
+        qualified: bool,
+    ) -> bool {
+        // Associated type names do not name the source type, but their type arguments can still contain it.
+        let check_names = !qualified && !path_starts_with_type_param(path, params);
+        if check_names
+            && path.leading_colon.is_none()
             && path.segments.first().is_some_and(|segment| segment.ident == "Self")
         {
             return true;
         }
 
         for segment in &path.segments {
-            if segment.ident == *ident {
+            if check_names && segment.ident == *ident {
                 return true;
             }
 
@@ -351,12 +384,12 @@ pub(crate) fn type_mentions_ident(ty: &Type, ident: &Ident) -> bool {
                     for arg in &args.args {
                         match arg {
                             GenericArgument::Type(ty) => {
-                                if type_mentions_ident(ty, ident) {
+                                if type_mentions_ident(ty, ident, params) {
                                     return true;
                                 }
                             },
                             GenericArgument::AssocType(ty)
-                                if type_mentions_ident(&ty.ty, ident) =>
+                                if type_mentions_ident(&ty.ty, ident, params) =>
                             {
                                 return true;
                             },
@@ -366,13 +399,13 @@ pub(crate) fn type_mentions_ident(ty: &Type, ident: &Ident) -> bool {
                 },
                 PathArguments::Parenthesized(args) => {
                     for arg in &args.inputs {
-                        if type_mentions_ident(&arg.ty, ident) {
+                        if type_mentions_ident(&arg.ty, ident, params) {
                             return true;
                         }
                     }
 
                     if let ReturnType::Type(_, ty) = &args.output
-                        && type_mentions_ident(ty, ident)
+                        && type_mentions_ident(ty, ident, params)
                     {
                         return true;
                     }
@@ -385,30 +418,30 @@ pub(crate) fn type_mentions_ident(ty: &Type, ident: &Ident) -> bool {
     }
 
     match ty {
-        Type::Array(ty) => type_mentions_ident(ty.elem.as_ref(), ident),
-        Type::Group(ty) => type_mentions_ident(ty.elem.as_ref(), ident),
-        Type::Paren(ty) => type_mentions_ident(ty.elem.as_ref(), ident),
-        Type::Slice(ty) => type_mentions_ident(ty.elem.as_ref(), ident),
-        Type::Ptr(ty) => type_mentions_ident(ty.elem.as_ref(), ident),
-        Type::Reference(ty) => type_mentions_ident(ty.elem.as_ref(), ident),
-        Type::Tuple(ty) => ty.elems.iter().any(|ty| type_mentions_ident(ty, ident)),
+        Type::Array(ty) => type_mentions_ident(ty.elem.as_ref(), ident, params),
+        Type::Group(ty) => type_mentions_ident(ty.elem.as_ref(), ident, params),
+        Type::Paren(ty) => type_mentions_ident(ty.elem.as_ref(), ident, params),
+        Type::Slice(ty) => type_mentions_ident(ty.elem.as_ref(), ident, params),
+        Type::Ptr(ty) => type_mentions_ident(ty.elem.as_ref(), ident, params),
+        Type::Reference(ty) => type_mentions_ident(ty.elem.as_ref(), ident, params),
+        Type::Tuple(ty) => ty.elems.iter().any(|ty| type_mentions_ident(ty, ident, params)),
         Type::FnPtr(ty) => {
-            ty.inputs.iter().any(|arg| type_mentions_ident(&arg.ty, ident))
-                || matches!(&ty.output, ReturnType::Type(_, ty) if type_mentions_ident(ty, ident))
+            ty.inputs.iter().any(|arg| type_mentions_ident(&arg.ty, ident, params))
+                || matches!(&ty.output, ReturnType::Type(_, ty) if type_mentions_ident(ty, ident, params))
         },
         Type::ImplTrait(ty) => ty
             .bounds
             .iter()
-            .any(|b| matches!(b, TypeParamBound::Trait(b) if path_mentions_ident(&b.path, ident))),
+            .any(|b| matches!(b, TypeParamBound::Trait(b) if path_mentions_ident(&b.path, ident, params, false))),
         Type::TraitObject(ty) => ty
             .bounds
             .iter()
-            .any(|b| matches!(b, TypeParamBound::Trait(b) if path_mentions_ident(&b.path, ident))),
+            .any(|b| matches!(b, TypeParamBound::Trait(b) if path_mentions_ident(&b.path, ident, params, false))),
         Type::Path(ty) => {
             (match &ty.qself {
-                Some(qself) => type_mentions_ident(qself.ty.as_ref(), ident),
+                Some(qself) => type_mentions_ident(qself.ty.as_ref(), ident, params),
                 None => false,
-            }) || path_mentions_ident(&ty.path, ident)
+            }) || path_mentions_ident(&ty.path, ident, params, ty.qself.is_some())
         },
         _ => false,
     }

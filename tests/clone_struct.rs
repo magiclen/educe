@@ -321,3 +321,34 @@ fn bound_disabled() {
 
     assert_eq!(1, v.clone().f1);
 }
+
+#[test]
+fn associated_type_with_source_name() {
+    trait Family {
+        type Value;
+    }
+
+    struct NotClone;
+
+    impl Family for NotClone {
+        type Value = u8;
+    }
+
+    #[derive(Educe)]
+    #[educe(Clone)]
+    struct Value<T: Family> {
+        short:     T::Value,
+        qualified: <T as Family>::Value,
+    }
+
+    let source = Value::<NotClone> {
+        short: 1, qualified: 2
+    };
+    let mut value = source.clone();
+    assert_eq!((1, 2), (value.short, value.qualified));
+
+    value.clone_from(&Value {
+        short: 3, qualified: 4
+    });
+    assert_eq!((3, 4), (value.short, value.qualified));
+}

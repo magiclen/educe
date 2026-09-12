@@ -80,3 +80,39 @@ fn generic_names() {
         })
     );
 }
+
+#[cfg(feature = "Hash")]
+#[test]
+fn method_type_names() {
+    use std::hash::{DefaultHasher, Hash, Hasher};
+
+    #[derive(Educe)]
+    #[educe(Hash)]
+    struct H(#[educe(Hash(method = H::custom_hash))] u8);
+
+    impl H {
+        fn custom_hash<S: Hasher>(value: &u8, state: &mut S) {
+            value.hash(state);
+        }
+    }
+
+    use H as _H;
+
+    #[derive(Educe)]
+    #[educe(Hash)]
+    enum Enum {
+        Value(
+            #[educe(Hash(method = "_H::custom_hash"))] u8,
+            #[educe(Hash(method = H::custom_hash))] u8,
+        ),
+    }
+
+    fn hash(value: impl Hash) -> u64 {
+        let mut state = DefaultHasher::new();
+        value.hash(&mut state);
+        state.finish()
+    }
+
+    assert_eq!(hash(7u8), hash(H(7)));
+    assert_eq!(hash((0usize, 7u8, 9u8)), hash(Enum::Value(7, 9)));
+}

@@ -1,5 +1,5 @@
 use quote::format_ident;
-use syn::{Data, DeriveInput, ExprPath, Field, Fields, Ident, Meta, Type, visit_mut::VisitMut};
+use syn::{Data, DeriveInput, ExprPath, Fields, Ident, Meta, Type, visit_mut::VisitMut};
 
 use super::{
     TraitHandlerMultiple,
@@ -88,62 +88,12 @@ impl TraitHandlerMultiple for IntoEnumHandler {
                         ));
                     }
 
-                    let (index, field, method) = {
-                        let fields = &variant.fields;
-
-                        if fields.len() == 1 {
-                            let field = fields.into_iter().next().unwrap();
-
-                            let method = if let Some(field_attribute) = field_attributes.first() {
-                                if let Some(method) = field_attribute.types.get(&target_key) {
-                                    method.as_ref()
-                                } else {
-                                    None
-                                }
-                            } else {
-                                None
-                            };
-
-                            (0usize, field, method)
-                        } else {
-                            let mut into_field: Option<(usize, &Field, Option<&ExprPath>)> = None;
-
-                            for (index, field) in fields.iter().enumerate() {
-                                if let Some(field_attribute) = field_attributes.get(index)
-                                    && let Some((key, method)) =
-                                        field_attribute.types.get_key_value(&target_key)
-                                {
-                                    if into_field.is_some() {
-                                        return Err(super::panic::multiple_into_fields(key));
-                                    }
-
-                                    into_field = Some((index, field, method.as_ref()));
-                                }
-                            }
-
-                            if into_field.is_none() {
-                                // search the same type
-                                for (index, field) in fields.iter().enumerate() {
-                                    if target_matcher.matches(&field.ty) {
-                                        if into_field.is_some() {
-                                            // multiple candidates
-                                            into_field = None;
-
-                                            break;
-                                        }
-
-                                        into_field = Some((index, field, None));
-                                    }
-                                }
-                            }
-
-                            if let Some(into_field) = into_field {
-                                into_field
-                            } else {
-                                return Err(super::panic::no_into_field(&target_key));
-                            }
-                        }
-                    };
+                    let (index, field, method) = super::common::select_field(
+                        &variant.fields,
+                        field_attributes,
+                        &target_key,
+                        &target_matcher,
+                    )?;
 
                     let (field_name, is_tuple): (Ident, bool) = match field.ident.as_ref() {
                         Some(ident) => (ident.clone(), false),

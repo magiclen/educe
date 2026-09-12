@@ -43,7 +43,7 @@ impl TraitHandler for HashUnionHandler {
         }
 
         let ident = &ast.ident;
-        let hasher_ident = crate::common::generics::unused_ident(&ast.generics, "H");
+        let hasher_ident = crate::common::generics::UsedIdents::new(ast).select("H");
 
         // Hashing the storage as bytes needs nothing from the field types, so the automatic bound stays empty and only an explicit one contributes predicates.
         let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(

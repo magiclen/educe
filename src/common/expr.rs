@@ -1,5 +1,5 @@
 use quote::{ToTokens, quote};
-use syn::{Expr, Lit, Meta, Type};
+use syn::{Expr, Lit, Meta, PathArguments, Type, TypePath};
 
 use super::path::path_to_string;
 
@@ -7,6 +7,21 @@ const INT_TYPES: [&str; 12] =
     ["u8", "u16", "u32", "u64", "u128", "usize", "i8", "i16", "i32", "i64", "i128", "isize"];
 
 const FLOAT_TYPES: [&str; 2] = ["f32", "f64"];
+
+fn primitive_type_name(ty: &TypePath) -> String {
+    let segments = &ty.path.segments;
+
+    if ty.qself.is_none()
+        && segments.len() == 3
+        && (segments[0].ident == "core" || segments[0].ident == "std")
+        && segments[1].ident == "primitive"
+        && segments.iter().all(|segment| matches!(segment.arguments, PathArguments::None))
+    {
+        segments[2].ident.to_string()
+    } else {
+        ty.to_token_stream().to_string()
+    }
+}
 
 #[inline]
 pub(crate) fn meta_2_expr(meta: &Meta) -> syn::Result<Expr> {
@@ -27,7 +42,7 @@ pub(crate) fn auto_adjust_expr(expr: Expr, ty: Option<&Type>) -> Expr {
             match &lit.lit {
                 Lit::Int(lit) => {
                     if let Some(Type::Path(ty)) = ty {
-                        let ty_string = ty.into_token_stream().to_string();
+                        let ty_string = primitive_type_name(ty);
 
                         if lit.suffix() == ty_string || INT_TYPES.contains(&ty_string.as_str()) {
                             // don't call into
@@ -37,7 +52,7 @@ pub(crate) fn auto_adjust_expr(expr: Expr, ty: Option<&Type>) -> Expr {
                 },
                 Lit::Float(lit) => {
                     if let Some(Type::Path(ty)) = ty {
-                        let ty_string = ty.into_token_stream().to_string();
+                        let ty_string = primitive_type_name(ty);
 
                         if lit.suffix() == ty_string || FLOAT_TYPES.contains(&ty_string.as_str()) {
                             // don't call into
@@ -46,8 +61,10 @@ pub(crate) fn auto_adjust_expr(expr: Expr, ty: Option<&Type>) -> Expr {
                     }
                 },
                 Lit::Str(_) => {
-                    if let Some(Type::Reference(ty)) = ty {
-                        let ty_string = ty.elem.clone().into_token_stream().to_string();
+                    if let Some(Type::Reference(ty)) = ty
+                        && let Type::Path(ty) = ty.elem.as_ref()
+                    {
+                        let ty_string = primitive_type_name(ty);
 
                         if ty_string == "str" {
                             // don't call into
@@ -57,7 +74,7 @@ pub(crate) fn auto_adjust_expr(expr: Expr, ty: Option<&Type>) -> Expr {
                 },
                 Lit::Bool(_) => {
                     if let Some(Type::Path(ty)) = ty {
-                        let ty_string = ty.into_token_stream().to_string();
+                        let ty_string = primitive_type_name(ty);
 
                         if ty_string == "bool" {
                             // don't call into
@@ -67,7 +84,7 @@ pub(crate) fn auto_adjust_expr(expr: Expr, ty: Option<&Type>) -> Expr {
                 },
                 Lit::Char(_) => {
                     if let Some(Type::Path(ty)) = ty {
-                        let ty_string = ty.into_token_stream().to_string();
+                        let ty_string = primitive_type_name(ty);
 
                         if ty_string == "char" {
                             // don't call into
@@ -77,7 +94,7 @@ pub(crate) fn auto_adjust_expr(expr: Expr, ty: Option<&Type>) -> Expr {
                 },
                 Lit::Byte(_) => {
                     if let Some(Type::Path(ty)) = ty {
-                        let ty_string = ty.into_token_stream().to_string();
+                        let ty_string = primitive_type_name(ty);
 
                         if ty_string == "u8" {
                             // don't call into
@@ -90,7 +107,7 @@ pub(crate) fn auto_adjust_expr(expr: Expr, ty: Option<&Type>) -> Expr {
                         && let Type::Array(ty) = ty.elem.as_ref()
                         && let Type::Path(ty) = ty.elem.as_ref()
                     {
-                        let ty_string = ty.into_token_stream().to_string();
+                        let ty_string = primitive_type_name(ty);
 
                         if ty_string == "u8" {
                             // don't call into

@@ -59,6 +59,9 @@ Table B — types that forward the trait to their type arguments:
 
 Both tables match type names syntactically (by the last path segment), except for declared generic type parameters and paths that start with them, such as `T::PhantomData`. These parameters and associated types use their own trait requirements. Other user-defined types that share a name with a std type are still treated like that std type; if the resulting bounds do not fit, set them explicitly with `bound(...)`.
 
+An associated type such as `T::Value` or `<T as Family>::Value` is not treated as recursive just because the source type is also named `Value`.
+It receives its own field-type predicate; any type arguments and qualified self type are still checked for actual recursion.
+
 ###### Bound Inheritance
 
 When related traits are derived together with automatic bounds, a trait inherits the final predicates of its prerequisite traits: `Eq` and `PartialOrd` inherit from `PartialEq`, `Ord` inherits from `Eq` and `PartialOrd`, and `Copy` inherits from `Clone`. This way, a custom bound like `#[educe(PartialEq(bound(T: MyTrait)), Eq)]` automatically carries `T: MyTrait` into the `Eq` impl.
@@ -97,7 +100,8 @@ Custom methods accept full paths, including qualified paths such as `<Type as Tr
 The `method = path`, `method(path)`, `method = "path"`, and `method("path")` forms are supported.
 In custom method paths, `Self` refers to the type being derived, including its generic arguments.
 For `Into`, this also applies when the generated implementation is `From` for the target type; use an explicit target type path to call a target method.
-Generated primitive types use `::core::primitive` paths, and the `Debug` helper type names avoid identifiers in the input, including method paths written as strings.
+Generated primitive types use `::core::primitive` paths.
+The `Debug` helper types and `Hash` method type parameters avoid identifiers in the input, including method paths written as strings.
 
 ## Traits
 

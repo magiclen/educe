@@ -1,8 +1,5 @@
-use std::collections::HashSet;
-
-use proc_macro2::{Ident, Span, TokenStream, TokenTree};
-use quote::ToTokens;
-use syn::{DeriveInput, ExprPath, LitStr, Type, ext::IdentExt};
+use proc_macro2::Ident;
+use syn::{DeriveInput, ExprPath, Type};
 
 use crate::common::{marker::MethodMarker, quote_mixed};
 
@@ -13,39 +10,10 @@ pub(crate) struct HelperTypes {
 
 impl HelperTypes {
     pub(crate) fn new(ast: &DeriveInput) -> Self {
-        fn collect(tokens: TokenStream, used: &mut HashSet<String>) {
-            for token in tokens {
-                match token {
-                    TokenTree::Ident(ident) => {
-                        used.insert(ident.unraw().to_string());
-                    },
-                    TokenTree::Group(group) => collect(group.stream(), used),
-                    TokenTree::Literal(literal) => {
-                        // Method paths can also be written inside string literals.
-                        if let Ok(literal) = syn::parse2::<LitStr>(literal.into_token_stream())
-                            && let Ok(tokens) = literal.value().parse::<TokenStream>()
-                        {
-                            collect(tokens, used);
-                        }
-                    },
-                    TokenTree::Punct(_) => (),
-                }
-            }
-        }
-
-        fn select(used: &mut HashSet<String>, name: &str) -> Ident {
-            let mut name = name.to_owned();
-            while !used.insert(name.clone()) {
-                name.insert(0, '_');
-            }
-            Ident::new(&name, Span::mixed_site())
-        }
-
-        let mut used = HashSet::new();
-        collect(ast.to_token_stream(), &mut used);
+        let mut used = crate::common::generics::UsedIdents::new(ast);
         Self {
-            field:      select(&mut used, "Educe__DebugField"),
-            raw_string: select(&mut used, "Educe__RawString"),
+            field:      used.select("Educe__DebugField"),
+            raw_string: used.select("Educe__RawString"),
         }
     }
 }

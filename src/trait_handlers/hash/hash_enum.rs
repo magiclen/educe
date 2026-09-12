@@ -118,7 +118,7 @@ impl TraitHandler for HashEnumHandler {
         }
 
         let ident = &ast.ident;
-        let hasher_ident = crate::common::generics::unused_ident(&ast.generics, "H");
+        let hasher_ident = crate::common::generics::UsedIdents::new(ast).select("H");
 
         let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
             &ast.generics.params,

@@ -1,6 +1,55 @@
-use syn::{Lifetime, Type};
+use syn::{ExprPath, Field, Fields, Lifetime, Type};
 
+use super::models::FieldAttribute;
 use crate::common::tools::HashType;
+
+/// Selects the only field, an explicitly marked field, or the only matching field, in that order.
+pub(crate) fn select_field<'a, 'b>(
+    fields: &'a Fields,
+    attributes: &'b [FieldAttribute],
+    target: &HashType,
+    matcher: &TargetMatcher,
+) -> syn::Result<(usize, &'a Field, Option<&'b ExprPath>)> {
+    if fields.len() == 1 {
+        let field = fields.iter().next().unwrap();
+        let method = attributes
+            .first()
+            .and_then(|attribute| attribute.types.get(target))
+            .and_then(Option::as_ref);
+
+        return Ok((0, field, method));
+    }
+
+    let mut selected = None;
+
+    for (index, field) in fields.iter().enumerate() {
+        if let Some(attribute) = attributes.get(index)
+            && let Some((key, method)) = attribute.types.get_key_value(target)
+        {
+            if selected.is_some() {
+                return Err(super::panic::multiple_into_fields(key));
+            }
+
+            selected = Some((index, field, method.as_ref()));
+        }
+    }
+
+    if let Some(selected) = selected {
+        return Ok(selected);
+    }
+
+    for (index, field) in fields.iter().enumerate() {
+        if matcher.matches(&field.ty) {
+            if selected.is_some() {
+                return Err(super::panic::no_into_field(target));
+            }
+
+            selected = Some((index, field, None));
+        }
+    }
+
+    selected.ok_or_else(|| super::panic::no_into_field(target))
+}
 
 #[inline]
 /// Normalizes a field type into the key used to match it against an `Into` target type.

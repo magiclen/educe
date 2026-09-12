@@ -84,7 +84,7 @@ impl TraitHandler for HashStructHandler {
         }
 
         let ident = &ast.ident;
-        let hasher_ident = crate::common::generics::unused_ident(&ast.generics, "H");
+        let hasher_ident = crate::common::generics::UsedIdents::new(ast).select("H");
 
         let packed_copy_predicates = if is_packed {
             type_attribute.bound.packed_copy_predicates(

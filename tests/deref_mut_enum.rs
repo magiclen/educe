@@ -45,3 +45,23 @@ fn basic() {
     assert_eq!(101, *t1);
     assert_eq!(102, *t2);
 }
+
+#[test]
+fn constant_name() {
+    #[allow(non_upper_case_globals)]
+    const value: u8 = 100;
+
+    #[derive(Educe)]
+    #[educe(Deref, DerefMut)]
+    enum Enum {
+        Named { value: u8 },
+    }
+
+    let mut item = Enum::Named {
+        value: 7
+    };
+    *item = 9;
+
+    assert_eq!(9, *item);
+    assert_eq!(100, value);
+}

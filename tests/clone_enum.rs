@@ -229,3 +229,35 @@ fn bound_3() {
         panic!();
     }
 }
+
+#[test]
+fn associated_type_with_source_name() {
+    trait Family {
+        type Value;
+    }
+
+    struct NotClone;
+
+    impl Family for NotClone {
+        type Value = u8;
+    }
+
+    #[derive(Educe)]
+    #[educe(Clone)]
+    enum Value<T: Family> {
+        Named { field: T::Value },
+        Tuple(<T as Family>::Value),
+    }
+
+    let mut value = Value::<NotClone>::Named {
+        field: 7
+    }
+    .clone();
+    assert!(matches!(value, Value::Named {
+        field: 7
+    }));
+
+    value.clone_from(&Value::Tuple(8));
+    value.clone_from(&Value::Tuple(9));
+    assert!(matches!(value, Value::Tuple(9)));
+}

@@ -1,4 +1,4 @@
-use syn::{Data, DeriveInput, ExprPath, Field, Meta, Type, visit_mut::VisitMut};
+use syn::{Data, DeriveInput, Meta, Type, visit_mut::VisitMut};
 
 use super::{
     TraitHandlerMultiple,
@@ -69,62 +69,12 @@ impl TraitHandlerMultiple for IntoStructHandler {
 
                 let mut into_token_stream = proc_macro2::TokenStream::new();
 
-                let (index, field, method) = {
-                    let fields = &data.fields;
-
-                    if fields.len() == 1 {
-                        let field = fields.into_iter().next().unwrap();
-
-                        let method = if let Some(field_attribute) = field_attributes.first() {
-                            if let Some(method) = field_attribute.types.get(&target_key) {
-                                method.as_ref()
-                            } else {
-                                None
-                            }
-                        } else {
-                            None
-                        };
-
-                        (0usize, field, method)
-                    } else {
-                        let mut into_field: Option<(usize, &Field, Option<&ExprPath>)> = None;
-
-                        for (index, field) in fields.iter().enumerate() {
-                            if let Some(field_attribute) = field_attributes.get(index)
-                                && let Some((key, method)) =
-                                    field_attribute.types.get_key_value(&target_key)
-                            {
-                                if into_field.is_some() {
-                                    return Err(super::panic::multiple_into_fields(key));
-                                }
-
-                                into_field = Some((index, field, method.as_ref()));
-                            }
-                        }
-
-                        if into_field.is_none() {
-                            // search the same type
-                            for (index, field) in fields.iter().enumerate() {
-                                if target_matcher.matches(&field.ty) {
-                                    if into_field.is_some() {
-                                        // multiple candidates
-                                        into_field = None;
-
-                                        break;
-                                    }
-
-                                    into_field = Some((index, field, None));
-                                }
-                            }
-                        }
-
-                        if let Some(into_field) = into_field {
-                            into_field
-                        } else {
-                            return Err(super::panic::no_into_field(&target_key));
-                        }
-                    }
-                };
+                let (index, field, method) = super::common::select_field(
+                    &data.fields,
+                    &field_attributes,
+                    &target_key,
+                    &target_matcher,
+                )?;
 
                 let field_name = IdentOrIndex::from_ident_with_index(field.ident.as_ref(), index);
 
