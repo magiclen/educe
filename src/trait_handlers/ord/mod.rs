@@ -2,7 +2,6 @@ use crate::trait_handlers::TraitHandlerContext;
 mod models;
 mod ord_enum;
 mod ord_struct;
-mod panic;
 
 use syn::{Data, DeriveInput, Meta};
 

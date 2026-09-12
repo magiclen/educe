@@ -104,7 +104,7 @@ impl TraitHandlerMultiple for IntoStructHandler {
                     &into_types,
                 );
 
-                // clone generics in order to not to affect other Into<T> implementations
+                // The generics are cloned so that this target does not affect the other `Into` implementations.
                 let mut generics = ast.generics.clone();
                 if generate_from {
                     crate::common::generics::ReplaceSelf::new(ast)

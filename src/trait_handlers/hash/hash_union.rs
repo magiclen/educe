@@ -30,7 +30,7 @@ impl TraitHandler for HashUnionHandler {
             .build_from_hash_meta(meta)?;
 
         if !type_attribute.has_unsafe {
-            return Err(super::panic::union_without_unsafe(meta));
+            return Err(crate::panic::union_without_unsafe(meta));
         }
 
         if let Data::Union(data) = &ast.data {

@@ -25,3 +25,14 @@ pub(crate) fn no_into_impl(ty: &HashType) -> syn::Error {
 pub(crate) fn multiple_into_fields(ty: &HashType) -> syn::Error {
     syn::Error::new(ty.span(), format!("multiple fields are set for `Into<{ty}>`"))
 }
+
+#[inline]
+pub(crate) fn ambiguous_into_field(ty: &HashType) -> syn::Error {
+    syn::Error::new(
+        ty.span(),
+        format!(
+            "multiple fields match `Into<{ty}>`, so the one to convert cannot be chosen \
+             automatically; mark it with `#[educe(Into({ty}))]`"
+        ),
+    )
+}

@@ -52,7 +52,7 @@ impl TraitHandler for PartialEqEnumHandler {
                     arms_token_stream.extend(quote_mixed! {
                         Self::#variant_ident => {
                             if let Self::#variant_ident = other {
-                                // same
+                                // The same unit variant on both sides, so there is nothing to compare.
                             } else {
                                 return false;
                             }

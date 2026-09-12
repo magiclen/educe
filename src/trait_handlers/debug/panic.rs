@@ -1,4 +1,4 @@
-use syn::{Ident, Meta, Variant};
+use syn::{Ident, Variant};
 
 #[inline]
 pub(crate) fn unit_struct_need_name(name: &Ident) -> syn::Error {
@@ -16,28 +16,4 @@ pub(crate) fn unit_variant_need_name(variant: &Variant) -> syn::Error {
 #[inline]
 pub(crate) fn unit_enum_need_name(name: &Ident) -> syn::Error {
     syn::Error::new_spanned(name, "a unit enum needs to have a name")
-}
-
-#[inline]
-pub(crate) fn union_without_unsafe(meta: &Meta) -> syn::Error {
-    let path = meta.path();
-    let suggestion = if let Meta::List(list) = meta
-        && !list.tokens.is_empty()
-    {
-        let arguments = &list.tokens;
-        quote::quote!(#[educe(#path(unsafe, #arguments))])
-    } else {
-        quote::quote!(#[educe(#path(unsafe))])
-    };
-    syn::Error::new_spanned(
-        meta,
-        format!(
-            "a union's `Debug` implementation reads its entire storage as bytes; reading \
-             uninitialized bytes is undefined behavior\n* Every byte must be initialized and \
-             readable during each call, including padding and bytes outside the active field.\n* \
-             The storage must not change during a call. Initialization must hold after \
-             construction, writes, moves, and copies.\n* Only if you can uphold this safety \
-             contract, use `{suggestion}`."
-        ),
-    )
 }

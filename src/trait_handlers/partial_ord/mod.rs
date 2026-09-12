@@ -1,6 +1,5 @@
 use crate::trait_handlers::TraitHandlerContext;
 mod models;
-mod panic;
 mod partial_ord_enum;
 mod partial_ord_struct;
 

@@ -3,7 +3,6 @@ mod hash_enum;
 mod hash_struct;
 mod hash_union;
 mod models;
-mod panic;
 
 use syn::{Data, DeriveInput, Meta};
 

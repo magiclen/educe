@@ -41,7 +41,7 @@ pub(crate) fn select_field<'a, 'b>(
     for (index, field) in fields.iter().enumerate() {
         if matcher.matches(&field.ty) {
             if selected.is_some() {
-                return Err(super::panic::no_into_field(target));
+                return Err(super::panic::ambiguous_into_field(target));
             }
 
             selected = Some((index, field, None));

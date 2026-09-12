@@ -97,7 +97,7 @@ impl TraitHandler for CloneEnumHandler {
                         clone_from_variants_token_stream.extend(quote_mixed! {
                             Self::#variant_ident => {
                                 if let Self::#variant_ident = source {
-                                    // same
+                                    // The source is already the same unit variant, so there is nothing to assign.
                                 } else {
                                     *self = ::core::clone::Clone::clone(source);
                                 }

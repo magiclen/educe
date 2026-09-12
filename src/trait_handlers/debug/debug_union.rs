@@ -37,7 +37,7 @@ impl TraitHandler for DebugUnionHandler {
         .build_from_debug_meta(meta)?;
 
         if !type_attribute.has_unsafe {
-            return Err(super::panic::union_without_unsafe(meta));
+            return Err(crate::panic::union_without_unsafe(meta));
         }
 
         let name = type_attribute.name.to_ident_by_ident(&ast.ident);

@@ -125,7 +125,7 @@ impl TraitHandler for PartialOrdEnumHandler {
                     let rank = field_attribute.rank;
 
                     if fields.contains_key(&rank) {
-                        return Err(super::panic::reuse_a_rank(
+                        return Err(crate::panic::reuse_a_rank(
                             field_attribute.rank_span.unwrap_or_else(|| field.span()),
                             rank,
                         ));
