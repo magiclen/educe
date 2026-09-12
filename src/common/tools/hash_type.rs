@@ -2,23 +2,37 @@ use std::{
     cmp::Ordering,
     fmt::{self, Display, Formatter},
     hash::{Hash, Hasher},
-    str::FromStr,
 };
 
-use proc_macro2::Span;
+use proc_macro2::{Span, TokenStream};
 use quote::ToTokens;
 use syn::{Path, Type, spanned::Spanned};
 
 #[derive(Debug, Clone)]
 /// A type made comparable and hashable by its canonical token string, so it can serve as an ordered map key.
 ///
-/// The span of the original tokens is kept for error reporting.
-pub(crate) struct HashType(String, Span);
+/// The original tokens are kept as well, so that writing the type back into generated code preserves its spans instead of parsing the string again.
+pub(crate) struct HashType {
+    key:    String,
+    tokens: TokenStream,
+    span:   Span,
+}
+
+impl HashType {
+    #[inline]
+    fn new(tokens: TokenStream, span: Span) -> Self {
+        Self {
+            key: tokens.to_string(),
+            tokens,
+            span,
+        }
+    }
+}
 
 impl PartialEq for HashType {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.0.eq(&other.0)
+        self.key.eq(&other.key)
     }
 }
 
@@ -34,21 +48,21 @@ impl PartialOrd for HashType {
 impl Ord for HashType {
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
-        self.0.cmp(&other.0)
+        self.key.cmp(&other.key)
     }
 }
 
 impl Hash for HashType {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
-        Hash::hash(&self.0, state);
+        Hash::hash(&self.key, state);
     }
 }
 
 impl Display for HashType {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        Display::fmt(&self.0.replace("& '", "&'"), f)
+        Display::fmt(&self.key.replace("& '", "&'"), f)
     }
 }
 
@@ -62,7 +76,7 @@ impl From<Type> for HashType {
 impl From<&Type> for HashType {
     #[inline]
     fn from(value: &Type) -> Self {
-        Self(value.into_token_stream().to_string(), value.span())
+        Self::new(value.to_token_stream(), value.span())
     }
 }
 
@@ -76,22 +90,20 @@ impl From<Path> for HashType {
 impl From<&Path> for HashType {
     #[inline]
     fn from(value: &Path) -> Self {
-        Self(value.into_token_stream().to_string(), value.span())
+        Self::new(value.to_token_stream(), value.span())
     }
 }
 
 impl HashType {
     #[inline]
     pub(crate) fn span(&self) -> Span {
-        self.1
+        self.span
     }
 }
 
 impl ToTokens for HashType {
     #[inline]
     fn to_tokens(&self, token_stream: &mut proc_macro2::TokenStream) {
-        let ty = proc_macro2::TokenStream::from_str(self.0.as_str()).unwrap();
-
-        token_stream.extend(ty);
+        token_stream.extend(self.tokens.clone());
     }
 }

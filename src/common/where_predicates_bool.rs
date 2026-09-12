@@ -98,6 +98,10 @@ pub(crate) fn meta_2_where_predicates(meta: &Meta) -> syn::Result<WherePredicate
 ///
 /// Predicates are compared by their token strings because `WherePredicate` implements neither `Eq` nor `Hash`.
 pub(crate) fn extend_where_predicates(own: &mut WherePredicates, extra: WherePredicates) {
+    if extra.is_empty() {
+        return;
+    }
+
     let mut seen: HashSet<String> =
         own.iter().map(|predicate| predicate.to_token_stream().to_string()).collect();
 

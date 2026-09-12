@@ -265,12 +265,6 @@ fn walk_path<'a>(
     }
 }
 
-/// Collects every ident in the type that could refer to a generic type parameter, without applying any exceptions.
-#[inline]
-pub(crate) fn find_all_idents_in_type<'a>(set: &mut HashSet<&'a Ident>, ty: &'a Type) {
-    walk_type(set, ty, None);
-}
-
 /// Collects the idents in the type that could refer to a generic type parameter, skipping positions that the exception table marks as unconditional.
 #[inline]
 pub(crate) fn find_idents_in_type<'a>(
@@ -295,51 +289,44 @@ pub(crate) fn find_bare_ident_in_type<'a>(set: &mut HashSet<&'a Ident>, ty: &'a 
     }
 }
 
-/// Returns true if the type syntactically uses any of the generic type parameters.
-#[inline]
-pub(crate) fn type_uses_type_params(ty: &Type, params: &Punctuated<GenericParam, Comma>) -> bool {
-    let mut set = HashSet::new();
-
-    find_all_idents_in_type(&mut set, ty);
-
-    params.iter().any(|param| {
-        if let GenericParam::Type(param) = param { set.contains(&param.ident) } else { false }
-    })
-}
-
-/// Constant parameters can also make a field's trait implementation conditional.
+/// Returns true if the type syntactically uses any of the generic type or const parameters.
+///
+/// Both kinds can make a field's trait implementation conditional, so a single walk looks for either. A parameter is recognized wherever a path can start with it, which also covers the length expression of an array.
 pub(crate) fn type_uses_generic_params(
     ty: &Type,
     params: &Punctuated<GenericParam, Comma>,
 ) -> bool {
     use syn::visit::Visit;
-    struct FindConst<'a> {
+
+    struct FindParam<'a> {
         params: &'a Punctuated<GenericParam, Comma>,
         found:  bool,
     }
-    impl<'ast> Visit<'ast> for FindConst<'_> {
+
+    impl<'ast> Visit<'ast> for FindParam<'_> {
         fn visit_path(&mut self, path: &'ast Path) {
-            if path.leading_colon.is_none()
+            if !self.found
+                && path.leading_colon.is_none()
                 && let Some(segment) = path.segments.first()
             {
-                self.found |= self.params.iter().any(|param| {
-                    matches!(param, GenericParam::Const(param) if param.ident == segment.ident)
+                self.found = self.params.iter().any(|param| match param {
+                    GenericParam::Type(param) => param.ident == segment.ident,
+                    GenericParam::Const(param) => param.ident == segment.ident,
+                    GenericParam::Lifetime(_) => false,
                 });
             }
+
             syn::visit::visit_path(self, path);
         }
     }
-    if type_uses_type_params(ty, params) {
-        return true;
-    }
-    if !params.iter().any(|param| matches!(param, GenericParam::Const(_))) {
-        return false;
-    }
-    let mut visitor = FindConst {
+
+    let mut visitor = FindParam {
         params,
         found: false,
     };
+
     visitor.visit_type(ty);
+
     visitor.found
 }
 
