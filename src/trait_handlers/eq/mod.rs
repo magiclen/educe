@@ -17,7 +17,7 @@
 mod models;
 
 use models::{FieldAttributeBuilder, TypeAttributeBuilder};
-use syn::{Data, DeriveInput, Meta, visit_mut::VisitMut};
+use syn::{Data, DeriveInput, Meta, Type, visit_mut::VisitMut};
 
 use super::TraitHandler;
 use crate::{
@@ -41,9 +41,9 @@ pub(crate) struct EqHandler;
 
 impl TraitHandler for EqHandler {
     #[inline]
-    fn trait_meta_handler(
-        ast: &DeriveInput,
-        ctx: &mut TraitHandlerContext,
+    fn trait_meta_handler<'a>(
+        ast: &'a DeriveInput,
+        ctx: &mut TraitHandlerContext<'a>,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
@@ -56,6 +56,12 @@ impl TraitHandler for EqHandler {
         }
         .build_from_eq_meta(meta)?;
 
+        // The `PartialEq` handler has already worked out which fields take part in the comparison, so its list is reused; without it every ordinary field is checked.
+        #[cfg(feature = "PartialEq")]
+        let compared_types = ctx.partial_eq_types().map(<[&Type]>::to_vec);
+        #[cfg(not(feature = "PartialEq"))]
+        let compared_types: Option<Vec<&Type>> = None;
+
         let mut field_types = Vec::new();
 
         match &ast.data {
@@ -63,18 +69,9 @@ impl TraitHandler for EqHandler {
                 for field in data.fields.iter() {
                     let _ = FieldAttributeBuilder.build_from_attributes(&field.attrs, traits)?;
 
-                    #[cfg(feature = "PartialEq")]
-                    if traits.contains(&Trait::PartialEq) && {
-                        let attribute = (super::partial_eq::models::FieldAttributeBuilder {
-                            enable_ignore: true,
-                            enable_method: true,
-                        })
-                        .build_from_attributes(&field.attrs, traits)?;
-                        attribute.ignore || attribute.method.is_some()
-                    } {
-                        continue;
+                    if compared_types.is_none() {
+                        field_types.push(&field.ty);
                     }
-                    field_types.push(&field.ty);
                 }
             },
             Data::Enum(data) => {
@@ -88,18 +85,9 @@ impl TraitHandler for EqHandler {
                         let _ =
                             FieldAttributeBuilder.build_from_attributes(&field.attrs, traits)?;
 
-                        #[cfg(feature = "PartialEq")]
-                        if traits.contains(&Trait::PartialEq) && {
-                            let attribute = (super::partial_eq::models::FieldAttributeBuilder {
-                                enable_ignore: true,
-                                enable_method: true,
-                            })
-                            .build_from_attributes(&field.attrs, traits)?;
-                            attribute.ignore || attribute.method.is_some()
-                        } {
-                            continue;
+                        if compared_types.is_none() {
+                            field_types.push(&field.ty);
                         }
-                        field_types.push(&field.ty);
                     }
                 }
             },
@@ -110,6 +98,9 @@ impl TraitHandler for EqHandler {
                 }
             },
         }
+
+        // A union records an empty list, so both sides agree that its bound carries no field predicates.
+        let field_types = compared_types.unwrap_or(field_types);
 
         let ident = &ast.ident;
 

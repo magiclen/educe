@@ -14,9 +14,9 @@ use crate::{
 pub(crate) struct DefaultStructHandler;
 
 impl TraitHandler for DefaultStructHandler {
-    fn trait_meta_handler(
-        ast: &DeriveInput,
-        _ctx: &mut TraitHandlerContext,
+    fn trait_meta_handler<'a>(
+        ast: &'a DeriveInput,
+        _ctx: &mut TraitHandlerContext<'a>,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,

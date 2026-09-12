@@ -8,7 +8,7 @@
 ))]
 use std::collections::HashMap;
 
-use syn::{DeriveInput, Meta};
+use syn::{DeriveInput, Meta, Type};
 
 use crate::Trait;
 #[cfg(any(
@@ -52,7 +52,7 @@ pub(crate) mod partial_ord;
 ///
 /// Its main job is to let a trait inherit the where predicates of its prerequisite traits, e.g. `Ord` inherits the predicates of `Eq` and `PartialOrd`.
 #[derive(Default)]
-pub(crate) struct TraitHandlerContext {
+pub(crate) struct TraitHandlerContext<'a> {
     /// The final where predicates that each handled trait has actually emitted, keyed by trait.
     #[cfg(any(
         feature = "Clone",
@@ -66,9 +66,14 @@ pub(crate) struct TraitHandlerContext {
     /// The `Copy` meta of the input, so that `Clone` can look at the `Copy` settings without scanning the attributes again.
     #[cfg(all(feature = "Clone", feature = "Copy"))]
     copy_meta:        Option<Meta>,
+    /// The field types that the `PartialEq` impl compares, so that `Eq` does not have to parse the field attributes again.
+    ///
+    /// Only `Eq` reads this, but the field stays declared whichever traits are enabled, so that the lifetime of the input is always part of the type.
+    #[allow(dead_code)]
+    partial_eq_types: Option<Vec<&'a Type>>,
 }
 
-impl TraitHandlerContext {
+impl<'a> TraitHandlerContext<'a> {
     /// Stores the `Copy` meta that the entry point has already collected.
     #[cfg(all(feature = "Clone", feature = "Copy"))]
     pub(crate) fn set_copy_meta(&mut self, meta: Option<&Meta>) {
@@ -79,6 +84,18 @@ impl TraitHandlerContext {
     #[cfg(all(feature = "Clone", feature = "Copy"))]
     pub(crate) fn copy_meta(&self) -> Option<&Meta> {
         self.copy_meta.as_ref()
+    }
+
+    /// Records the field types that the `PartialEq` impl compares, which are the fields that are neither ignored nor handled by a custom method.
+    #[cfg(all(feature = "Eq", feature = "PartialEq"))]
+    pub(crate) fn record_partial_eq_types(&mut self, types: &[&'a Type]) {
+        self.partial_eq_types = Some(types.to_vec());
+    }
+
+    /// Returns the field types recorded by the `PartialEq` handler, or `None` when `PartialEq` is not derived by Educe.
+    #[cfg(all(feature = "Eq", feature = "PartialEq"))]
+    pub(crate) fn partial_eq_types(&self) -> Option<&[&'a Type]> {
+        self.partial_eq_types.as_deref()
     }
 
     /// Records the where predicates that a trait impl has emitted, so that traits handled later can inherit them.
@@ -122,9 +139,9 @@ impl TraitHandlerContext {
     feature = "PartialOrd"
 ))]
 pub(crate) trait TraitHandler {
-    fn trait_meta_handler(
-        ast: &DeriveInput,
-        ctx: &mut TraitHandlerContext,
+    fn trait_meta_handler<'a>(
+        ast: &'a DeriveInput,
+        ctx: &mut TraitHandlerContext<'a>,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
@@ -133,9 +150,9 @@ pub(crate) trait TraitHandler {
 
 #[cfg(feature = "Into")]
 pub(crate) trait TraitHandlerMultiple {
-    fn trait_meta_handler(
-        ast: &DeriveInput,
-        ctx: &mut TraitHandlerContext,
+    fn trait_meta_handler<'a>(
+        ast: &'a DeriveInput,
+        ctx: &mut TraitHandlerContext<'a>,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &[Meta],

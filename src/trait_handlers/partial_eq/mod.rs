@@ -15,9 +15,9 @@ pub(crate) struct PartialEqHandler;
 
 impl TraitHandler for PartialEqHandler {
     #[inline]
-    fn trait_meta_handler(
-        ast: &DeriveInput,
-        ctx: &mut TraitHandlerContext,
+    fn trait_meta_handler<'a>(
+        ast: &'a DeriveInput,
+        ctx: &mut TraitHandlerContext<'a>,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,

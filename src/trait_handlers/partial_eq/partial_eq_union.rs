@@ -13,9 +13,9 @@ pub(crate) struct PartialEqUnionHandler;
 
 impl TraitHandler for PartialEqUnionHandler {
     #[inline]
-    fn trait_meta_handler(
-        ast: &DeriveInput,
-        ctx: &mut TraitHandlerContext,
+    fn trait_meta_handler<'a>(
+        ast: &'a DeriveInput,
+        ctx: &mut TraitHandlerContext<'a>,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
@@ -41,6 +41,10 @@ impl TraitHandler for PartialEqUnionHandler {
                 .build_from_attributes(&field.attrs, traits)?;
             }
         }
+
+        // A union is compared as bytes, so `Eq` has no field type to check either.
+        #[cfg(feature = "Eq")]
+        ctx.record_partial_eq_types(&[]);
 
         let ident = &ast.ident;
 
