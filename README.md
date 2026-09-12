@@ -79,9 +79,11 @@ Explicit bounds are still used as written.
 
 An explicit bound is used verbatim; if a prerequisite impl carries predicates that the explicit bound does not imply, the compiler reports an unsatisfied supertrait and the missing predicates have to be added by hand.
 
+`Deref` and `DerefMut` accept no `bound` parameter. They return a reference to a field instead of building a new value, so their impls add no predicates at all.
+
 ###### Unions
 
-The `Debug`, `PartialEq`, `Eq`, and `Hash` implementations of a union read its whole storage as bytes instead of reading its fields, so their automatic bound is empty. `bound(*)` and custom predicates are still accepted and are used as written. `Clone` and `Copy` bound the field types as usual, because a union is cloned by copying it.
+The `Debug`, `PartialEq`, `Eq`, and `Hash` implementations of a union read its whole storage as bytes instead of reading its fields, so their automatic bound is empty. `bound(*)` and custom predicates are still accepted and are used as written. `Clone` and `Copy` both add `FieldType: Copy` predicates, because a union can only be cloned by copying its whole storage.
 
 ###### Packed Types
 
@@ -95,6 +97,8 @@ Any packing level is treated the same way, because a field's alignment cannot be
 
 * Mutually recursive generic types (an `A<T>` containing `Vec<B<T>>` while `B<T>` contains `A<T>`) cannot be detected from a single type definition, so automatic bounds make the trait solver overflow (E0275) on them; use `bound(*)` or a custom bound for such types.
 * The precise predicates appear in the public where clause of the impl, so private field types become visible in documentation and error messages, and changing a private field type can change the public bounds of the impl.
+
+###### Custom Methods
 
 Custom methods accept full paths, including qualified paths such as `<Type as Trait>::method::<T>`.
 The `method = path`, `method(path)`, `method = "path"`, and `method("path")` forms are supported.
@@ -326,6 +330,8 @@ union Union {
 
 #### Clone
 
+Use `#[derive(Educe)]` and `#[educe(Clone)]` to implement the `Clone` trait for a struct, an enum, or a union. You can set a method to replace the `Clone` trait.
+
 When `Clone` and `Copy` are derived together, Educe can copy the whole value if no field uses a type or const parameter and no field has a custom clone method.
 For a struct or enum with any generic parameters, a nonempty custom `Copy(bound(...))` also disables this shortcut.
 In that case, `clone` and `clone_from` use the existing field-wise implementation, while the custom `Copy` conditions are not added to `Clone`.
@@ -333,9 +339,6 @@ For example, `Copy(bound('a: 'static))` on `S<'a>(&'a i32)` allows `Copy` only f
 This rule also covers const parameters that do not appear in the fields.
 Field clone methods can have visible side effects, and the performance difference has not been measured.
 The automatic, `bound(*)`, `bound(false)`, and empty custom `Copy` modes keep the original shortcut rules; unions keep their existing clone behavior.
-
-
-Use `#[derive(Educe)]` and `#[educe(Clone)]` to implement the `Clone` trait for a struct, an enum, or a union. You can set a method to replace the `Clone` trait.
 
 ###### Basic Usage
 
@@ -1371,7 +1374,7 @@ union Union {
 
 You may need to activate the `full` feature to enable support for advanced expressions.
 
-Note that the expression is pasted into the generated `default` method verbatim, so for a generic type it has to be valid for every possible instantiation; an expression producing a concrete type does not work for a generic field.
+Note that the expression is pasted into the generated `default` method as it is written, so for a generic type it has to be valid for every possible instantiation; an expression producing a concrete type does not work for a generic field. A bare literal is the one exception: it is wrapped in `Into::into`, so a literal of another type works as long as the conversion exists.
 
 ###### The Default Values for Specific Fields
 
@@ -1528,7 +1531,7 @@ Use `#[derive(Educe)]` and `#[educe(DerefMut)]` to implement the `DerefMut` trai
 
 ###### Basic Usage
 
-You must designate a field as the default for obtaining an mutable reference unless the number of fields is exactly one.
+You must designate a field as the default for obtaining a mutable reference unless the number of fields is exactly one.
 
 ```rust
 use educe::Educe;
@@ -1570,13 +1573,9 @@ Use `#[derive(Educe)]` and `#[educe(Into(type))]` to make a struct or enum conve
 
 Educe generates an `impl From<YourType> for type`, which automatically provides the corresponding `Into` through the standard library's blanket implementation. Use the bare `into` flag — `#[educe(Into(type, into))]` — to generate a direct `impl Into<type>` instead.
 
-###### The `into` Flag
-
-A `From` impl also lets callers write `Target::from(value)`, whereas a direct `Into` impl only supports `value.into()`. Use the `into` flag when you deliberately want the conversion to be one-directional, exposed only as `value.into()`.
-
 ###### Basic Usage
 
-You need to designate a field as the default for `Into<type>` conversion unless the number of fields is exactly one. If you don't, educe will automatically try to find a proper one.
+You need to designate a field as the default for `Into<type>` conversion unless the number of fields is exactly one. If you don't, Educe will automatically try to find a proper one.
 
 Reference targets preserve explicit lifetimes, `mut`, and each reference layer, so `Into(&'a mut T)` and `Into(&'a &'b T)` keep those types in the generated interface.
 An omitted lifetime on a target reference defaults to `'static`.
@@ -1609,6 +1608,10 @@ enum Enum {
     ),
 }
 ```
+
+###### The `into` Flag
+
+A `From` impl also lets callers write `Target::from(value)`, whereas a direct `Into` impl only supports `value.into()`. Use the `into` flag when you deliberately want the conversion to be one-directional, exposed only as `value.into()`.
 
 ###### Use Another Method to Perform Into Conversion
 
