@@ -83,7 +83,7 @@ impl TraitHandler for DebugStructHandler {
             // A struct without a name is formatted like a plain tuple, which the standard builder spells with an empty name.
             let name_string = syn::LitStr::new(
                 &name.map(|name| name.to_string()).unwrap_or_default(),
-                proc_macro2::Span::call_site(),
+                proc_macro2::Span::mixed_site(),
             );
 
             builder_token_stream
@@ -113,7 +113,7 @@ impl TraitHandler for DebugStructHandler {
                         FieldName::Default => field_name.to_token_stream().to_string(),
                     };
 
-                    Some(syn::LitStr::new(&key, proc_macro2::Span::call_site()))
+                    Some(syn::LitStr::new(&key, proc_macro2::Span::mixed_site()))
                 } else {
                     None
                 };

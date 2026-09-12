@@ -139,7 +139,7 @@ impl TraitHandler for DebugEnumHandler {
                             FieldName::Default => field_name.to_token_stream().to_string(),
                         };
 
-                        Some(syn::LitStr::new(&key, proc_macro2::Span::call_site()))
+                        Some(syn::LitStr::new(&key, proc_macro2::Span::mixed_site()))
                     } else {
                         None
                     };

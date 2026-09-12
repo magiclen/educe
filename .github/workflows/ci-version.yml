@@ -22,6 +22,7 @@ jobs:
           - nightly
         features:
           -
+          - --all-features
           - --no-default-features --features Debug
           - --no-default-features --features Clone
           - --no-default-features --features Copy
@@ -60,6 +61,7 @@ jobs:
           - "1.89"
         features:
           -
+          - --all-features
           - --no-default-features --features Debug
           - --no-default-features --features Clone
           - --no-default-features --features Copy

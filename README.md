@@ -40,6 +40,8 @@ Table A — types whose type arguments never need a bound:
 | `PartialOrd`, `Ord` | `NonNull` |
 | `Default` | `Option`, `Vec`, `VecDeque`, `LinkedList`, `HashMap`, `HashSet`, `BTreeMap`, `BTreeSet`, `Weak` |
 
+A few entries hold because the type never implements the trait at all rather than because it always does: `Arc`, `Rc`, `Weak`, and `Cow` are never `Copy`, and raw pointers and function pointers never implement `Default`. Leaving out the predicate there makes the compiler reject the derive directly, instead of accepting an implementation whose bound could never be satisfied.
+
 Table B — types that forward the trait to their type arguments:
 
 | Trait | Types |

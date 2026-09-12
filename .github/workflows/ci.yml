@@ -25,6 +25,16 @@ jobs:
           components: clippy
       - run: cargo clippy --all-targets --all-features -- -D warnings
 
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: The README and the crate documentation must describe the same thing
+        run: |
+          sed -n '/^\/\*!$/,/^\*\/$/p' src/lib.rs | sed '1d;$d' | grep -v '^# ' > /tmp/lib-doc.md
+          sed -e '1,4d' -e '/^## Crates.io$/,$d' README.md | grep -v '^# ' > /tmp/readme.md
+          diff /tmp/lib-doc.md /tmp/readme.md
+
   tests:
     strategy:
       fail-fast: false
@@ -38,6 +48,7 @@ jobs:
           - nightly
         features:
           -
+          - --all-features
           - --no-default-features --features Debug
           - --no-default-features --features Clone
           - --no-default-features --features Copy
@@ -76,6 +87,7 @@ jobs:
           - "1.89"
         features:
           -
+          - --all-features
           - --no-default-features --features Debug
           - --no-default-features --features Clone
           - --no-default-features --features Copy
