@@ -9,6 +9,23 @@ extern crate alloc;
 use educe::Educe;
 
 #[test]
+fn doc_comment_with_apostrophe() {
+    /// Stores the group's title.
+    #[derive(Educe)]
+    #[educe(Debug)]
+    struct Group {
+        title: &'static str,
+    }
+
+    assert_eq!(
+        "Group { title: \"Example\" }",
+        format!("{:?}", Group {
+            title: "Example"
+        })
+    );
+}
+
+#[test]
 fn empty() {
     #[derive(Educe)]
     #[educe(Debug)]

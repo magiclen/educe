@@ -21,11 +21,16 @@ impl UsedIdents {
                     },
                     TokenTree::Group(group) => collect(group.stream(), used),
                     TokenTree::Literal(literal) => {
-                        // Method paths can also be written inside string literals.
-                        if let Ok(literal) = syn::parse2::<LitStr>(literal.into_token_stream())
-                            && let Ok(tokens) = literal.value().parse::<TokenStream>()
-                        {
-                            collect(tokens, used);
+                        // Method paths can also be written inside string literals, so the words of a string are reserved as well.
+                        // The text is scanned instead of being parsed, because a doc comment is a string literal too and prose such as `the node's title` is not valid Rust.
+                        if let Ok(literal) = syn::parse2::<LitStr>(literal.into_token_stream()) {
+                            for word in literal
+                                .value()
+                                .split(|c: char| !c.is_alphanumeric() && c != '_')
+                                .filter(|word| !word.is_empty())
+                            {
+                                used.insert(word.to_owned());
+                            }
                         }
                     },
                     TokenTree::Punct(_) => (),
