@@ -405,3 +405,42 @@ fn bound_3() {
     assert_ne!(unit_hash, struct_hash);
     assert_ne!(struct_hash, tuple_hash);
 }
+
+#[test]
+fn recursive_1() {
+    #[derive(Educe)]
+    #[educe(Hash)]
+    enum Enum {
+        Unit,
+        Unit2,
+        Boxed(Box<Enum>),
+    }
+
+    let unit_hash = {
+        let mut hasher = DefaultHasher::new();
+
+        Enum::Unit.hash(&mut hasher);
+
+        hasher.finish()
+    };
+
+    let unit2_hash = {
+        let mut hasher = DefaultHasher::new();
+
+        Enum::Unit2.hash(&mut hasher);
+
+        hasher.finish()
+    };
+
+    let unit3_hash = {
+        let mut hasher = DefaultHasher::new();
+
+        Enum::Boxed(Box::new(Enum::Unit)).hash(&mut hasher);
+
+        hasher.finish()
+    };
+
+    assert_ne!(unit_hash, unit2_hash);
+    assert_ne!(unit_hash, unit3_hash);
+    assert_ne!(unit2_hash, unit3_hash);
+}
