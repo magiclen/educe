@@ -43,7 +43,7 @@ impl TraitHandler for CloneStructHandler {
         let is_packed = is_packed(&ast.attrs);
         let mut copy_types: Vec<&Type> = Vec::new();
         let this = quote_mixed!(self);
-        let source = quote_mixed!(source);
+        let mut bindings = ctx.value_bindings(ast);
 
         let mut clone_token_stream = proc_macro2::TokenStream::new();
         let mut clone_from_token_stream = proc_macro2::TokenStream::new();
@@ -72,11 +72,13 @@ impl TraitHandler for CloneStructHandler {
                 // A whole-value copy needs no field-wise body or field bounds.
                 clone_token_stream.extend(quote_mixed!(*self));
             } else {
+                let source = bindings.binding("source");
+                let source_receiver = quote_mixed!(#source);
                 let mut fields_token_stream = proc_macro2::TokenStream::new();
                 let mut clone_from_body_token_stream = proc_macro2::TokenStream::new();
 
                 if fields.is_empty() {
-                    clone_from_body_token_stream.extend(quote_mixed!(let _ = source;));
+                    clone_from_body_token_stream.extend(quote_mixed!(let _ = #source;));
                 } else {
                     for (index, (field, field_attribute)) in fields.into_iter().enumerate() {
                         let field_name =
@@ -87,7 +89,7 @@ impl TraitHandler for CloneStructHandler {
                         }
 
                         let self_ref = borrow_field(is_packed, &this, &field_name);
-                        let source_ref = borrow_field(is_packed, &source, &field_name);
+                        let source_ref = borrow_field(is_packed, &source_receiver, &field_name);
 
                         let value = if let Some(clone) = field_attribute.method.as_ref() {
                             mark_fields.push((&field.ty, clone.clone()));
@@ -123,22 +125,18 @@ impl TraitHandler for CloneStructHandler {
             }
 
             let packed_copy_predicates = if is_packed {
-                type_attribute.bound.packed_copy_predicates(
-                    &ast.generics.params,
-                    &copy_types,
-                    &ast.ident,
-                )
+                type_attribute.bound.packed_copy_predicates(&ast.generics, &copy_types, &ast.ident)
             } else {
                 WherePredicates::new()
             };
 
             // The bound trait is always `Clone`; the `Copy` impl is emitted by the `Copy` handler with its own bounds.
             bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
-                &ast.generics.params,
+                &ast.generics,
                 &syn::parse2(quote_mixed!(::core::clone::Clone)).unwrap(),
                 &clone_types,
                 &ast.ident,
-                &BOUND_EXCEPTIONS_CLONE,
+                &BOUND_EXCEPTIONS_CLONE.with_custom_fields(!mark_fields.is_empty()),
             );
 
             extend_where_predicates(&mut bound, packed_copy_predicates);
@@ -149,9 +147,10 @@ impl TraitHandler for CloneStructHandler {
         let clone_from_fn_token_stream = if clone_from_token_stream.is_empty() {
             None
         } else {
+            let source = bindings.binding("source");
             Some(quote_mixed! {
                 #[inline]
-                fn clone_from(&mut self, source: &Self) {
+                fn clone_from(&mut self, #source: &Self) {
                     #clone_from_token_stream
                 }
             })
@@ -163,7 +162,7 @@ impl TraitHandler for CloneStructHandler {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        token_stream.extend(quote_mixed! {
+        token_stream.extend(bindings.wrap(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::clone::Clone for #ident #ty_generics #where_clause {
                 #[inline]
@@ -173,10 +172,11 @@ impl TraitHandler for CloneStructHandler {
 
                 #clone_from_fn_token_stream
             }
-        });
+        }));
 
         for (field_ty, method) in &mark_fields {
-            token_stream.extend(super::create_mark_method_used(ast, &generics, field_ty, method));
+            token_stream
+                .extend(super::create_mark_method_used(ast, ctx, &generics, field_ty, method));
         }
 
         Ok(())

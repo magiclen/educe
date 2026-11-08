@@ -37,6 +37,7 @@ impl TraitHandler for CloneEnumHandler {
 
         // Custom clone methods are referenced only inside the derived impl body, which dead-code analysis skips, so each one is collected here and later re-referenced by a marker item.
         let mut mark_fields: Vec<(&Type, ExprPath)> = Vec::new();
+        let mut bindings = ctx.value_bindings(ast);
 
         let mut clone_token_stream = proc_macro2::TokenStream::new();
         let mut clone_from_token_stream = proc_macro2::TokenStream::new();
@@ -81,9 +82,11 @@ impl TraitHandler for CloneEnumHandler {
                 // A whole-value copy needs no field-wise body or field bounds.
                 clone_token_stream.extend(quote_mixed!(*self));
             } else if variants.is_empty() {
+                let source = bindings.binding("source");
                 clone_token_stream.extend(quote_mixed!(::core::unreachable!()));
-                clone_from_token_stream.extend(quote_mixed!(let _ = source;));
+                clone_from_token_stream.extend(quote_mixed!(let _ = #source;));
             } else {
+                let source = bindings.binding("source");
                 let mut clone_variants_token_stream = proc_macro2::TokenStream::new();
                 let mut clone_from_variants_token_stream = proc_macro2::TokenStream::new();
 
@@ -96,10 +99,10 @@ impl TraitHandler for CloneEnumHandler {
                         });
                         clone_from_variants_token_stream.extend(quote_mixed! {
                             Self::#variant_ident => {
-                                if let Self::#variant_ident = source {
+                                if let Self::#variant_ident = #source {
                                     // The source is already the same unit variant, so there is nothing to assign.
                                 } else {
-                                    *self = ::core::clone::Clone::clone(source);
+                                    *self = ::core::clone::Clone::clone(#source);
                                 }
                             },
                         });
@@ -117,8 +120,8 @@ impl TraitHandler for CloneEnumHandler {
                     {
                         let field_name =
                             IdentOrIndex::from_ident_with_index(field.ident.as_ref(), index);
-                        let field_name_src = field_name.to_binding("_s_");
-                        let field_name_dst = field_name.to_binding("_d_");
+                        let field_name_src = bindings.binding(&format!("src_{index}"));
+                        let field_name_dst = bindings.binding(&format!("dst_{index}"));
 
                         pattern_src_token_stream
                             .extend(field_name.to_field(&quote_mixed!(#field_name_src)));
@@ -166,10 +169,10 @@ impl TraitHandler for CloneEnumHandler {
 
                     clone_from_variants_token_stream.extend(quote_mixed! {
                         #pattern_dst => {
-                            if let #pattern_src = source {
+                            if let #pattern_src = #source {
                                 #body_token_stream
                             } else {
-                                *self = ::core::clone::Clone::clone(source);
+                                *self = ::core::clone::Clone::clone(#source);
                             }
                         },
                     });
@@ -190,11 +193,11 @@ impl TraitHandler for CloneEnumHandler {
 
             // The bound trait is always `Clone`; the `Copy` impl is emitted by the `Copy` handler with its own bounds.
             bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
-                &ast.generics.params,
+                &ast.generics,
                 &syn::parse2(quote_mixed!(::core::clone::Clone)).unwrap(),
                 &clone_types,
                 &ast.ident,
-                &BOUND_EXCEPTIONS_CLONE,
+                &BOUND_EXCEPTIONS_CLONE.with_custom_fields(!mark_fields.is_empty()),
             );
 
             ctx.record(Trait::Clone, &bound);
@@ -203,9 +206,10 @@ impl TraitHandler for CloneEnumHandler {
         let clone_from_fn_token_stream = if clone_from_token_stream.is_empty() {
             None
         } else {
+            let source = bindings.binding("source");
             Some(quote_mixed! {
                 #[inline]
-                fn clone_from(&mut self, source: &Self) {
+                fn clone_from(&mut self, #source: &Self) {
                     #clone_from_token_stream
                 }
             })
@@ -217,7 +221,7 @@ impl TraitHandler for CloneEnumHandler {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        token_stream.extend(quote_mixed! {
+        token_stream.extend(bindings.wrap(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::clone::Clone for #ident #ty_generics #where_clause {
                 #[inline]
@@ -227,10 +231,11 @@ impl TraitHandler for CloneEnumHandler {
 
                 #clone_from_fn_token_stream
             }
-        });
+        }));
 
         for (field_ty, method) in &mark_fields {
-            token_stream.extend(super::create_mark_method_used(ast, &generics, field_ty, method));
+            token_stream
+                .extend(super::create_mark_method_used(ast, ctx, &generics, field_ty, method));
         }
 
         Ok(())

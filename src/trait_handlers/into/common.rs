@@ -3,13 +3,20 @@ use syn::{ExprPath, Field, Fields, Lifetime, Type};
 use super::models::FieldAttribute;
 use crate::common::tools::HashType;
 
+/// How the selected field becomes the target value: through a custom method, as it is when its type already matches, or through `Into::into`.
+pub(crate) enum Conversion<'a> {
+    Method(&'a ExprPath),
+    Direct,
+    Into,
+}
+
 /// Selects the only field, an explicitly marked field, or the only matching field, in that order.
 pub(crate) fn select_field<'a, 'b>(
     fields: &'a Fields,
     attributes: &'b [FieldAttribute],
     target: &HashType,
     matcher: &TargetMatcher,
-) -> syn::Result<(usize, &'a Field, Option<&'b ExprPath>)> {
+) -> syn::Result<(usize, &'a Field, Conversion<'b>)> {
     if fields.len() == 1 {
         let field = fields.iter().next().unwrap();
         let method = attributes
@@ -17,7 +24,7 @@ pub(crate) fn select_field<'a, 'b>(
             .and_then(|attribute| attribute.types.get(target))
             .and_then(Option::as_ref);
 
-        return Ok((0, field, method));
+        return Ok((0, field, matcher.conversion(&field.ty, method)));
     }
 
     let mut selected = None;
@@ -34,17 +41,18 @@ pub(crate) fn select_field<'a, 'b>(
         }
     }
 
-    if let Some(selected) = selected {
-        return Ok(selected);
+    if let Some((index, field, method)) = selected {
+        return Ok((index, field, matcher.conversion(&field.ty, method)));
     }
 
+    let mut selected = None;
     for (index, field) in fields.iter().enumerate() {
         if matcher.matches(&field.ty) {
             if selected.is_some() {
                 return Err(super::panic::ambiguous_into_field(target));
             }
 
-            selected = Some((index, field, None));
+            selected = Some((index, field, Conversion::Direct));
         }
     }
 
@@ -99,8 +107,16 @@ impl TargetMatcher {
         }
     }
 
+    fn conversion<'a>(&self, field: &Type, method: Option<&'a ExprPath>) -> Conversion<'a> {
+        match method {
+            Some(method) => Conversion::Method(method),
+            None if self.matches(field) => Conversion::Direct,
+            None => Conversion::Into,
+        }
+    }
+
     /// A returned mutable reference can also be coerced to a shared reference by Rust.
-    pub(crate) fn matches(&self, field: &Type) -> bool {
+    fn matches(&self, field: &Type) -> bool {
         if to_hash_type(field) == self.whole {
             return true;
         }

@@ -17,13 +17,15 @@ impl TraitHandler for HashEnumHandler {
     #[inline]
     fn trait_meta_handler<'a>(
         ast: &'a DeriveInput,
-        _ctx: &mut TraitHandlerContext<'a>,
+        ctx: &mut TraitHandlerContext<'a>,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
     ) -> syn::Result<()> {
         let generated_impl_attributes =
             crate::common::attributes::generated_impl_attributes(&ast.attrs);
+        let mut bindings = ctx.value_bindings(ast);
+        let state = bindings.binding("state");
 
         let type_attribute =
             TypeAttributeBuilder {
@@ -54,7 +56,7 @@ impl TraitHandler for HashEnumHandler {
                 if let Fields::Unit = &variant.fields {
                     arms_token_stream.extend(quote_mixed! {
                         Self::#variant_ident => {
-                            ::core::hash::Hash::hash(&#variant_index, state);
+                            ::core::hash::Hash::hash(&#variant_index, #state);
                         }
                     });
 
@@ -80,7 +82,7 @@ impl TraitHandler for HashEnumHandler {
                         continue;
                     }
 
-                    let field_name_var = field_name.to_binding("_v_");
+                    let field_name_var = bindings.binding(&format!("field_{index}"));
 
                     pattern_token_stream
                         .extend(field_name.to_field(&quote_mixed!(#field_name_var)));
@@ -90,7 +92,7 @@ impl TraitHandler for HashEnumHandler {
                         &built_in_hash
                     });
 
-                    block_token_stream.extend(quote_mixed!( #hash(#field_name_var, state); ));
+                    block_token_stream.extend(quote_mixed!( #hash(#field_name_var, #state); ));
                 }
 
                 let pattern = if let Fields::Named(_) = &variant.fields {
@@ -101,7 +103,7 @@ impl TraitHandler for HashEnumHandler {
 
                 arms_token_stream.extend(quote_mixed! {
                     #pattern => {
-                        ::core::hash::Hash::hash(&#variant_index, state);
+                        ::core::hash::Hash::hash(&#variant_index, #state);
 
                         #block_token_stream
                     }
@@ -118,10 +120,10 @@ impl TraitHandler for HashEnumHandler {
         }
 
         let ident = &ast.ident;
-        let hasher_ident = crate::common::generics::UsedIdents::new(ast).select("H");
+        let hasher_ident = bindings.fresh("H");
 
         let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
-            &ast.generics.params,
+            &ast.generics,
             &syn::parse2(quote_mixed!(::core::hash::Hash)).unwrap(),
             &hash_types,
             &ast.ident,
@@ -132,15 +134,15 @@ impl TraitHandler for HashEnumHandler {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        token_stream.extend(quote_mixed! {
+        token_stream.extend(bindings.wrap(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::hash::Hash for #ident #ty_generics #where_clause {
                 #[inline]
-                fn hash<#hasher_ident: ::core::hash::Hasher>(&self, state: &mut #hasher_ident) {
+                fn hash<#hasher_ident: ::core::hash::Hasher>(&self, #state: &mut #hasher_ident) {
                     #hash_token_stream
                 }
             }
-        });
+        }));
 
         Ok(())
     }

@@ -32,6 +32,8 @@ impl TraitHandler for PartialOrdStructHandler {
     ) -> syn::Result<()> {
         let generated_impl_attributes =
             crate::common::attributes::generated_impl_attributes(&ast.attrs);
+        let mut bindings = ctx.value_bindings(ast);
+        let other = bindings.binding("other");
 
         let type_attribute = TypeAttributeBuilder {
             enable_flag: true, enable_bound: true
@@ -48,7 +50,7 @@ impl TraitHandler for PartialOrdStructHandler {
 
         if let Data::Struct(data) = &ast.data {
             let this = quote_mixed!(self);
-            let that = quote_mixed!(other);
+            let that = quote_mixed!(#other);
 
             // Fields are compared in ascending rank order, so they are collected into a map keyed by rank.
             // The default rank of a field is `isize::MIN` plus its ordinal position, which keeps the declaration order when no rank is given.
@@ -121,18 +123,14 @@ impl TraitHandler for PartialOrdStructHandler {
         let bound_is_auto = matches!(type_attribute.bound, Bound::Auto);
 
         let packed_copy_predicates = if is_packed {
-            type_attribute.bound.packed_copy_predicates(
-                &ast.generics.params,
-                &copy_types,
-                &ast.ident,
-            )
+            type_attribute.bound.packed_copy_predicates(&ast.generics, &copy_types, &ast.ident)
         } else {
             WherePredicates::new()
         };
 
         let mut bound =
             type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
-                &ast.generics.params,
+                &ast.generics,
                 &syn::parse2(quote_mixed!(::core::cmp::PartialOrd)).unwrap(),
                 &partial_ord_types,
                 &ast.ident,
@@ -151,20 +149,20 @@ impl TraitHandler for PartialOrdStructHandler {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        token_stream.extend(quote_mixed! {
+        token_stream.extend(bindings.wrap(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::cmp::PartialOrd for #ident #ty_generics #where_clause {
                 #[inline]
                 fn partial_cmp(
                     &self,
-                    other: &Self,
+                    #other: &Self,
                 ) -> ::core::option::Option<::core::cmp::Ordering> {
                     #partial_cmp_token_stream
 
                     ::core::option::Option::Some(::core::cmp::Ordering::Equal)
                 }
             }
-        });
+        }));
 
         Ok(())
     }

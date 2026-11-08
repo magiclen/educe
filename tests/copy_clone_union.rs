@@ -2,6 +2,8 @@
 #![no_std]
 #![allow(clippy::clone_on_copy)]
 
+use core::marker::PhantomData;
+
 use educe::Educe;
 
 #[test]
@@ -52,4 +54,29 @@ fn generic_union() {
     let v = u.clone();
 
     assert_eq!(1, unsafe { v.f1 });
+}
+
+#[test]
+fn explicit_copy_bounds() {
+    #[derive(Educe)]
+    #[educe(Copy(bound('a: 'static)), Clone)]
+    union Borrowed<'a> {
+        value: &'a str,
+    }
+
+    #[derive(Educe)]
+    #[educe(Copy(bound(*)), Clone)]
+    union Marker<T> {
+        marker: PhantomData<T>,
+    }
+
+    let value = Borrowed {
+        value: "value"
+    };
+    let marker = Marker {
+        marker: PhantomData::<u8>
+    };
+
+    assert_eq!("value", unsafe { value.clone().value });
+    assert_eq!(PhantomData::<u8>, unsafe { marker.clone().marker });
 }

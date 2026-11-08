@@ -2,11 +2,12 @@ use syn::{Data, DeriveInput, Meta, Type, visit_mut::VisitMut};
 
 use super::{
     TraitHandlerMultiple,
+    common::Conversion,
     models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder},
 };
 use crate::{
     Trait,
-    common::{ident_index::IdentOrIndex, quote_mixed},
+    common::{generics::ReplaceSelf, ident_index::IdentOrIndex, quote_mixed},
     trait_handlers::TraitHandlerContext,
 };
 
@@ -17,7 +18,7 @@ impl TraitHandlerMultiple for IntoStructHandler {
     #[inline]
     fn trait_meta_handler<'a>(
         ast: &'a DeriveInput,
-        _ctx: &mut TraitHandlerContext<'a>,
+        ctx: &mut TraitHandlerContext<'a>,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &[Meta],
@@ -54,22 +55,28 @@ impl TraitHandlerMultiple for IntoStructHandler {
                 field_attributes
             };
 
+            let mut replace_self = ReplaceSelf::new(ast);
             for (target_key, target) in type_attribute.types {
-                let target_ty = &target.ty;
-                let target_matcher = super::common::TargetMatcher::new(target_ty);
+                let mut target_ty = target.ty;
+                let target_matcher = super::common::TargetMatcher::new(&target_ty);
                 // By default a `From` impl is generated because it provides `Into` for free; the `into` flag asks for a direct `Into` impl instead.
                 let generate_from = !target.force_into;
+                if generate_from {
+                    replace_self.visit_type_mut(&mut target_ty);
+                }
 
-                // The conversion body takes the source value from `self` in an `Into` impl and from the `value` parameter in a `From` impl.
-                let source = if generate_from { quote_mixed!(value) } else { quote_mixed!(self) };
+                let mut bindings = ctx.value_bindings(ast);
+                let value = generate_from.then(|| bindings.binding("value"));
+                let source = match &value {
+                    Some(value) => quote_mixed!(#value),
+                    None => quote_mixed!(self),
+                };
 
                 let bound = target.bound;
 
                 let mut into_types: Vec<&Type> = Vec::new();
 
-                let mut into_token_stream = proc_macro2::TokenStream::new();
-
-                let (index, field, method) = super::common::select_field(
+                let (index, field, conversion) = super::common::select_field(
                     &data.fields,
                     &field_attributes,
                     &target_key,
@@ -78,23 +85,19 @@ impl TraitHandlerMultiple for IntoStructHandler {
 
                 let field_name = IdentOrIndex::from_ident_with_index(field.ident.as_ref(), index);
 
-                if let Some(method) = method {
-                    let mut method = method.clone();
-                    crate::common::generics::ReplaceSelf::new(ast).visit_expr_path_mut(&mut method);
-                    into_token_stream.extend(quote_mixed!( #method(#source.#field_name) ));
-                } else {
-                    let ty = &field.ty;
-
-                    if target_matcher.matches(ty) {
-                        into_token_stream.extend(quote_mixed!( #source.#field_name ));
-                    } else {
-                        into_types.push(ty);
-
-                        into_token_stream.extend(
-                            quote_mixed!( ::core::convert::Into::into(#source.#field_name) ),
-                        );
-                    }
-                }
+                let field_value = quote_mixed!(#source.#field_name);
+                let into_token_stream = match conversion {
+                    Conversion::Method(method) => {
+                        let mut method = method.clone();
+                        replace_self.visit_expr_path_mut(&mut method);
+                        quote_mixed!(#method(#field_value))
+                    },
+                    Conversion::Direct => field_value,
+                    Conversion::Into => {
+                        into_types.push(&field.ty);
+                        quote_mixed!(::core::convert::Into::into(#field_value))
+                    },
+                };
 
                 let ident = &ast.ident;
 
@@ -107,20 +110,19 @@ impl TraitHandlerMultiple for IntoStructHandler {
                 // The generics are cloned so that this target does not affect the other `Into` implementations.
                 let mut generics = ast.generics.clone();
                 if generate_from {
-                    crate::common::generics::ReplaceSelf::new(ast)
-                        .visit_generics_mut(&mut generics);
+                    replace_self.visit_generics_mut(&mut generics);
                 }
 
                 let generics = crate::common::generics::with_predicates(generics, bound);
 
                 let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-                token_stream.extend(if generate_from {
+                token_stream.extend(bindings.wrap(if let Some(value) = value {
                     quote_mixed! {
                         #generated_impl_attributes
                         impl #impl_generics ::core::convert::From<#ident #ty_generics> for #target_ty #where_clause {
                             #[inline]
-                            fn from(value: #ident #ty_generics) -> Self {
+                            fn from(#value: #ident #ty_generics) -> Self {
                                 #into_token_stream
                             }
                         }
@@ -135,7 +137,7 @@ impl TraitHandlerMultiple for IntoStructHandler {
                             }
                         }
                     }
-                });
+                }));
             }
         }
 

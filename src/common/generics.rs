@@ -1,54 +1,172 @@
-use std::collections::HashSet;
-
-use proc_macro2::{Span, TokenStream, TokenTree};
-use quote::{ToTokens, quote};
-use syn::{
-    DeriveInput, Generics, Ident, LitStr, Path, PathArguments, ext::IdentExt, visit_mut::VisitMut,
+use std::{
+    collections::{BTreeMap, HashSet},
+    hash::{DefaultHasher, Hash, Hasher},
+    rc::Rc,
 };
 
-use super::where_predicates_bool::WherePredicates;
+use proc_macro2::{Delimiter, Group, Span, TokenStream, TokenTree};
+use quote::{ToTokens, quote};
+use syn::{
+    DeriveInput, Expr, Generics, Ident, Lit, LitStr, MetaNameValue, Path, PathArguments,
+    ext::IdentExt, visit_mut::VisitMut,
+};
+
+use super::{quote_mixed, where_predicates_bool::WherePredicates};
 
 /// Names in the input that generated identifiers must avoid.
-pub(crate) struct UsedIdents(HashSet<String>);
+#[derive(Clone)]
+pub(crate) struct UsedIdents {
+    input:     Rc<HashSet<String>>,
+    selected:  HashSet<String>,
+    macro_key: Option<u64>,
+}
 
 impl UsedIdents {
     pub(crate) fn new(ast: &DeriveInput) -> Self {
-        fn collect(tokens: TokenStream, used: &mut HashSet<String>) {
+        fn collect(tokens: TokenStream, used: &mut HashSet<String>, may_expand: &mut bool) {
             for token in tokens {
                 match token {
                     TokenTree::Ident(ident) => {
                         used.insert(ident.unraw().to_string());
                     },
-                    TokenTree::Group(group) => collect(group.stream(), used),
-                    TokenTree::Literal(literal) => {
-                        // Method paths can also be written inside string literals, so the words of a string are reserved as well.
-                        // The text is scanned instead of being parsed, because a doc comment is a string literal too and prose such as `the node's title` is not valid Rust.
-                        if let Ok(literal) = syn::parse2::<LitStr>(literal.into_token_stream()) {
-                            for word in literal
-                                .value()
-                                .split(|c: char| !c.is_alphanumeric() && c != '_')
-                                .filter(|word| !word.is_empty())
-                            {
-                                used.insert(word.to_owned());
-                            }
+                    TokenTree::Group(group) => {
+                        // A doc comment is never expanded as code, so its words are reserved without treating a `!` in it as a macro call.
+                        if let Some(text) = doc_text(&group) {
+                            reserve_words(&text, used);
+                        } else {
+                            collect(group.stream(), used, may_expand);
                         }
                     },
-                    TokenTree::Punct(_) => (),
+                    TokenTree::Literal(literal) => {
+                        // Method paths can also be written inside string literals, so the words of a string are reserved as well.
+                        // The text is scanned instead of being parsed, because a string can hold prose such as `the node's title`, which is not valid Rust.
+                        if let Ok(literal) = syn::parse2::<LitStr>(literal.into_token_stream()) {
+                            let value = literal.value();
+                            *may_expand |= value.contains('!');
+                            reserve_words(&value, used);
+                        }
+                    },
+                    TokenTree::Punct(punct) => *may_expand |= punct.as_char() == '!',
                 }
             }
         }
 
+        /// Returns the text of a `#[doc = "..."]` attribute from its bracketed body.
+        fn doc_text(group: &Group) -> Option<String> {
+            if group.delimiter() != Delimiter::Bracket {
+                return None;
+            }
+
+            let attribute = syn::parse2::<MetaNameValue>(group.stream()).ok()?;
+
+            if attribute.path.is_ident("doc")
+                && let Expr::Lit(value) = &attribute.value
+                && let Lit::Str(text) = &value.lit
+            {
+                Some(text.value())
+            } else {
+                None
+            }
+        }
+
+        fn reserve_words(text: &str, used: &mut HashSet<String>) {
+            for word in text
+                .split(|c: char| !c.is_alphanumeric() && c != '_')
+                .filter(|word| !word.is_empty())
+            {
+                used.insert(word.to_owned());
+            }
+        }
+
         let mut used = HashSet::new();
-        collect(ast.to_token_stream(), &mut used);
-        Self(used)
+        let tokens = ast.to_token_stream();
+        let mut may_expand = false;
+        collect(tokens.clone(), &mut used, &mut may_expand);
+
+        // A macro can produce names we cannot see, so use an input-specific prefix for its scope.
+        let macro_key = may_expand.then(|| {
+            let mut hasher = DefaultHasher::new();
+            tokens.to_string().hash(&mut hasher);
+            hasher.finish()
+        });
+        Self {
+            input: Rc::new(used),
+            selected: HashSet::new(),
+            macro_key,
+        }
     }
 
     pub(crate) fn select(&mut self, name: &str) -> Ident {
         let mut name = name.to_owned();
-        while !self.0.insert(name.clone()) {
+        while self.input.contains(&name) || !self.selected.insert(name.clone()) {
             name.insert(0, '_');
         }
         Ident::new(&name, Span::mixed_site())
+    }
+}
+
+/// The names that one generated item introduces, chosen to avoid every identifier in the input.
+pub(crate) struct ValueBindings {
+    idents:  UsedIdents,
+    aliases: BTreeMap<String, Ident>,
+}
+
+impl ValueBindings {
+    pub(crate) fn new(idents: UsedIdents) -> Self {
+        Self {
+            idents,
+            aliases: BTreeMap::new(),
+        }
+    }
+
+    /// Picks a name for a generated type, function, or generic parameter.
+    pub(crate) fn fresh(&mut self, name: &str) -> Ident {
+        self.idents.select(name)
+    }
+
+    /// Picks the name of a local value, such as a parameter or a pattern binding, and records it for [`aliases`](Self::aliases).
+    pub(crate) fn binding(&mut self, name: &str) -> Ident {
+        if let Some(ident) = self.aliases.get(name) {
+            return ident.clone();
+        }
+
+        let name_in_scope = match self.idents.macro_key {
+            Some(key) => format!("educe__{key:x}_{name}"),
+            None => format!("educe__{name}"),
+        };
+        let ident = self.fresh(&name_in_scope);
+        self.aliases.insert(name.to_owned(), ident.clone());
+        ident
+    }
+
+    /// A function alias stops Rust from reading a binding as a constant pattern.
+    /// One anonymous constant uses every alias, because `allow(unused_imports)` would be rejected under a `forbid` in the user's crate.
+    pub(crate) fn aliases(&self) -> TokenStream {
+        if self.aliases.is_empty() {
+            return TokenStream::new();
+        }
+
+        let aliases = self.aliases.values();
+        let used = aliases.clone();
+        quote_mixed! {
+            use ::core::mem::{ #(drop as #aliases),* };
+            const _: &[fn(())] = &[#(#used::<()>),*];
+        }
+    }
+
+    /// Puts the aliases and the item into an anonymous constant, so that the aliases are only visible to the item.
+    pub(crate) fn wrap(&self, item: TokenStream) -> TokenStream {
+        if self.aliases.is_empty() {
+            return item;
+        }
+
+        let aliases = self.aliases();
+        quote_mixed! {
+            const _: () = {
+                #aliases
+                #item
+            };
+        }
     }
 }
 

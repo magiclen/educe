@@ -1,10 +1,11 @@
 use quote::quote;
 use syn::{
-    GenericParam, Ident, Meta, Path, Type, WherePredicate, punctuated::Punctuated, token::Comma,
+    GenericParam, Generics, Ident, Meta, Path, Type, WherePredicate, punctuated::Punctuated,
+    token::Comma,
 };
 
 use crate::common::{
-    r#type::BoundExceptions,
+    r#type::{BoundExceptions, PointerBounds},
     where_predicates_bool::{
         WherePredicates, WherePredicatesOrBool,
         create_where_predicates_from_all_generic_parameters,
@@ -15,6 +16,8 @@ use crate::common::{
 
 /// The exception table for `Clone`: `Arc`-like std types clone by duplicating a pointer or a marker, and the container types forward `Clone` to their type arguments.
 pub(crate) const BOUND_EXCEPTIONS_CLONE: BoundExceptions = BoundExceptions {
+    pointer_bounds:                    PointerBounds::Clone,
+    has_custom_fields:                 false,
     unconditional_types:               &["Arc", "Rc", "Weak", "NonNull", "Cow", "Discriminant"],
     forwarding_types:                  &[
         "Option",
@@ -38,6 +41,8 @@ pub(crate) const BOUND_EXCEPTIONS_CLONE: BoundExceptions = BoundExceptions {
 
 /// The exception table for `Copy`: only the by-value std wrappers forward `Copy` to their type arguments, because the heap-owning containers are never `Copy`.
 pub(crate) const BOUND_EXCEPTIONS_COPY: BoundExceptions = BoundExceptions {
+    pointer_bounds:                    PointerBounds::None,
+    has_custom_fields:                 false,
     unconditional_types:               &["Arc", "Rc", "Weak", "NonNull", "Cow", "Discriminant"],
     forwarding_types:                  &["Option", "Result", "Wrapping", "Reverse", "Saturating"],
     shared_reference_is_unconditional: true,
@@ -45,6 +50,8 @@ pub(crate) const BOUND_EXCEPTIONS_COPY: BoundExceptions = BoundExceptions {
 
 /// The exception table for `Debug`: some std types print an address or a fixed placeholder instead of formatting their type arguments, and the container types forward `Debug` to them.
 pub(crate) const BOUND_EXCEPTIONS_DEBUG: BoundExceptions = BoundExceptions {
+    pointer_bounds:                    PointerBounds::None,
+    has_custom_fields:                 false,
     unconditional_types:               &["Weak", "NonNull", "AtomicPtr", "Discriminant"],
     forwarding_types:                  &[
         "Option",
@@ -92,6 +99,8 @@ const FORWARDING_TYPES_COMPARISON: &[&str] = &[
 
 /// The exception table for `PartialEq` and `Eq`: `NonNull` and `Discriminant` compare by address or by an opaque token.
 pub(crate) const BOUND_EXCEPTIONS_EQUALITY: BoundExceptions = BoundExceptions {
+    pointer_bounds:                    PointerBounds::None,
+    has_custom_fields:                 false,
     unconditional_types:               &["NonNull", "Discriminant"],
     forwarding_types:                  FORWARDING_TYPES_COMPARISON,
     shared_reference_is_unconditional: false,
@@ -99,6 +108,8 @@ pub(crate) const BOUND_EXCEPTIONS_EQUALITY: BoundExceptions = BoundExceptions {
 
 /// The exception table for `Hash`: like the equality table, but `RefCell` has no `Hash` impl to forward.
 pub(crate) const BOUND_EXCEPTIONS_HASH: BoundExceptions = BoundExceptions {
+    pointer_bounds:                    PointerBounds::None,
+    has_custom_fields:                 false,
     unconditional_types:               &["NonNull", "Discriminant"],
     forwarding_types:                  &[
         "Option",
@@ -120,6 +131,8 @@ pub(crate) const BOUND_EXCEPTIONS_HASH: BoundExceptions = BoundExceptions {
 
 /// The exception table for `PartialOrd` and `Ord`: `NonNull` orders by address.
 pub(crate) const BOUND_EXCEPTIONS_ORDER: BoundExceptions = BoundExceptions {
+    pointer_bounds:                    PointerBounds::None,
+    has_custom_fields:                 false,
     unconditional_types:               &["NonNull"],
     forwarding_types:                  FORWARDING_TYPES_COMPARISON,
     shared_reference_is_unconditional: false,
@@ -127,6 +140,8 @@ pub(crate) const BOUND_EXCEPTIONS_ORDER: BoundExceptions = BoundExceptions {
 
 /// The exception table for `Default`: the std containers default to an empty value regardless of their type arguments, and the by-value wrappers forward `Default` to them.
 pub(crate) const BOUND_EXCEPTIONS_DEFAULT: BoundExceptions = BoundExceptions {
+    pointer_bounds:                    PointerBounds::Default,
+    has_custom_fields:                 false,
     unconditional_types:               &[
         "Option",
         "Vec",
@@ -193,7 +208,7 @@ impl Bound {
     #[inline]
     pub(crate) fn into_where_predicates_by_generic_parameters_check_types(
         self,
-        params: &Punctuated<GenericParam, Comma>,
+        generics: &Generics,
         bound_trait: &Path,
         types: &[&Type],
         self_ident: &Ident,
@@ -202,13 +217,15 @@ impl Bound {
         match self {
             Self::Disabled => Punctuated::new(),
             Self::Auto => create_where_predicates_from_field_types(
-                params,
+                generics,
                 bound_trait,
                 types,
                 self_ident,
                 exceptions,
             ),
-            Self::All => create_where_predicates_from_all_generic_parameters(params, bound_trait),
+            Self::All => {
+                create_where_predicates_from_all_generic_parameters(&generics.params, bound_trait)
+            },
             Self::Custom(where_predicates) => where_predicates,
         }
     }
@@ -219,7 +236,7 @@ impl Bound {
     #[inline]
     pub(crate) fn packed_copy_predicates(
         &self,
-        params: &Punctuated<GenericParam, Comma>,
+        generics: &Generics,
         types: &[&Type],
         self_ident: &Ident,
     ) -> WherePredicates {
@@ -227,13 +244,15 @@ impl Bound {
 
         match self {
             Self::Auto => create_where_predicates_from_field_types(
-                params,
+                generics,
                 &copy_trait,
                 types,
                 self_ident,
                 &BOUND_EXCEPTIONS_COPY,
             ),
-            Self::All => create_where_predicates_from_all_generic_parameters(params, &copy_trait),
+            Self::All => {
+                create_where_predicates_from_all_generic_parameters(&generics.params, &copy_trait)
+            },
             Self::Disabled | Self::Custom(_) => Punctuated::new(),
         }
     }

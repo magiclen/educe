@@ -16,7 +16,7 @@ pub(crate) struct DebugEnumHandler;
 impl TraitHandler for DebugEnumHandler {
     fn trait_meta_handler<'a>(
         ast: &'a DeriveInput,
-        _ctx: &mut TraitHandlerContext<'a>,
+        ctx: &mut TraitHandlerContext<'a>,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
@@ -36,7 +36,10 @@ impl TraitHandler for DebugEnumHandler {
         .build_from_debug_meta(meta)?;
 
         let name = type_attribute.name.to_ident_by_ident(&ast.ident);
-        let helper_types = super::common::HelperTypes::new(ast);
+        let mut bindings = ctx.value_bindings(ast);
+        let formatter = bindings.binding("formatter");
+        let builder = bindings.binding("builder");
+        let helper_types = super::common::HelperTypes::new(&mut bindings);
         let raw_string_ident = &helper_types.raw_string;
 
         let mut debug_types: Vec<&Type> = Vec::new();
@@ -86,8 +89,9 @@ impl TraitHandler for DebugEnumHandler {
                         return Err(super::panic::unit_variant_need_name(variant));
                     }
 
-                    arms_token_stream
-                        .extend(quote_mixed!( Self::#variant_ident => f.write_str(#name_string), ));
+                    arms_token_stream.extend(
+                        quote_mixed!(Self::#variant_ident => #formatter.write_str(#name_string),),
+                    );
 
                     continue;
                 }
@@ -100,13 +104,18 @@ impl TraitHandler for DebugEnumHandler {
                 if named_field {
                     uses_raw_string |= name_string.is_none();
 
-                    block_token_stream.extend(create_named_field_builder(name_string.as_deref()));
+                    block_token_stream.extend(create_named_field_builder(
+                        name_string.as_deref(),
+                        &formatter,
+                        &builder,
+                    ));
                 } else {
                     // A variant without a name is formatted like a nameless tuple struct, which the standard builder spells with an empty name.
                     let tuple_name = name_string.as_deref().unwrap_or("");
 
-                    block_token_stream
-                        .extend(quote_mixed!(let mut builder = f.debug_tuple(#tuple_name);));
+                    block_token_stream.extend(
+                        quote_mixed!(let mut #builder = #formatter.debug_tuple(#tuple_name);),
+                    );
                 }
 
                 for (index, field) in variant.fields.iter().enumerate() {
@@ -127,7 +136,7 @@ impl TraitHandler for DebugEnumHandler {
                         continue;
                     }
 
-                    let field_name_var = field_name.to_binding("_");
+                    let field_name_var = bindings.binding(&format!("field_{index}"));
 
                     pattern_token_stream
                         .extend(field_name.to_field(&quote_mixed!(#field_name_var)));
@@ -147,17 +156,19 @@ impl TraitHandler for DebugEnumHandler {
                     let ty = &field.ty;
 
                     let value = if let Some(method) = field_attribute.method {
-                        let arg = super::common::create_format_arg(
+                        let (arg, tokens) = super::common::create_format_arg(
+                            &mut bindings,
+                            &formatter,
                             &helper_types.field,
                             ty,
                             &method,
                             quote_mixed!(#field_name_var),
                         );
 
-                        block_token_stream.extend(arg);
+                        block_token_stream.extend(tokens);
                         mark_fields.push((ty, method));
 
-                        quote_mixed!(&arg)
+                        quote_mixed!(&#arg)
                     } else {
                         debug_types.push(ty);
 
@@ -165,11 +176,11 @@ impl TraitHandler for DebugEnumHandler {
                     };
 
                     block_token_stream.extend(match (&key, name_string.is_some()) {
-                        (Some(key), true) => quote_mixed!(builder.field(#key, #value);),
+                        (Some(key), true) => quote_mixed!(#builder.field(#key, #value);),
                         (Some(key), false) => {
-                            quote_mixed!(builder.entry(&#raw_string_ident(#key), #value);)
+                            quote_mixed!(#builder.entry(&#raw_string_ident(#key), #value);)
                         },
-                        (None, _) => quote_mixed!(builder.field(#value);),
+                        (None, _) => quote_mixed!(#builder.field(#value);),
                     });
 
                     has_fields = true;
@@ -189,7 +200,7 @@ impl TraitHandler for DebugEnumHandler {
                     #pattern => {
                         #block_token_stream
 
-                        builder.finish()
+                        #builder.finish()
                     },
                 });
             }
@@ -200,14 +211,14 @@ impl TraitHandler for DebugEnumHandler {
         if arms_token_stream.is_empty() {
             if let Some(ident) = name {
                 builder_token_stream.extend(quote_mixed! {
-                    f.write_str(stringify!(#ident))
+                    #formatter.write_str(::core::stringify!(#ident))
                 });
             } else {
                 return Err(super::panic::unit_enum_need_name(ident));
             }
         } else {
             let raw_string_type = if uses_raw_string {
-                Some(super::common::create_raw_string_type(raw_string_ident))
+                Some(super::common::create_raw_string_type(raw_string_ident, &formatter))
             } else {
                 None
             };
@@ -222,7 +233,7 @@ impl TraitHandler for DebugEnumHandler {
         }
 
         let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
-            &ast.generics.params,
+            &ast.generics,
             &syn::parse2(quote_mixed!(::core::fmt::Debug)).unwrap(),
             &debug_types,
             &ast.ident,
@@ -233,19 +244,20 @@ impl TraitHandler for DebugEnumHandler {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        token_stream.extend(quote_mixed! {
+        token_stream.extend(bindings.wrap(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
                 #[inline]
-                fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                fn fmt(&self, #formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
                     #builder_token_stream
                 }
             }
-        });
+        }));
 
         for (field_ty, method) in &mark_fields {
-            token_stream
-                .extend(super::common::create_mark_method_used(ast, &generics, field_ty, method));
+            token_stream.extend(super::common::create_mark_method_used(
+                ast, ctx, &generics, field_ty, method,
+            ));
         }
 
         Ok(())
@@ -253,10 +265,14 @@ impl TraitHandler for DebugEnumHandler {
 }
 
 #[inline]
-fn create_named_field_builder(name_string: Option<&str>) -> proc_macro2::TokenStream {
+fn create_named_field_builder(
+    name_string: Option<&str>,
+    formatter: &proc_macro2::Ident,
+    builder: &proc_macro2::Ident,
+) -> proc_macro2::TokenStream {
     if let Some(name_string) = name_string {
-        quote_mixed!(let mut builder = f.debug_struct(#name_string);)
+        quote_mixed!(let mut #builder = #formatter.debug_struct(#name_string);)
     } else {
-        super::common::create_debug_map_builder()
+        super::common::create_debug_map_builder(formatter, builder)
     }
 }

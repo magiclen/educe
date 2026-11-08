@@ -23,13 +23,15 @@ impl TraitHandler for HashStructHandler {
     #[inline]
     fn trait_meta_handler<'a>(
         ast: &'a DeriveInput,
-        _ctx: &mut TraitHandlerContext<'a>,
+        ctx: &mut TraitHandlerContext<'a>,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
     ) -> syn::Result<()> {
         let generated_impl_attributes =
             crate::common::attributes::generated_impl_attributes(&ast.attrs);
+        let mut bindings = ctx.value_bindings(ast);
+        let state = bindings.binding("state");
 
         let type_attribute =
             TypeAttributeBuilder {
@@ -79,26 +81,22 @@ impl TraitHandler for HashStructHandler {
 
                 let field_ref = borrow_field(is_packed, &this, &field_name);
 
-                hash_token_stream.extend(quote_mixed!( #hash(#field_ref, state); ));
+                hash_token_stream.extend(quote_mixed!( #hash(#field_ref, #state); ));
             }
         }
 
         let ident = &ast.ident;
-        let hasher_ident = crate::common::generics::UsedIdents::new(ast).select("H");
+        let hasher_ident = bindings.fresh("H");
 
         let packed_copy_predicates = if is_packed {
-            type_attribute.bound.packed_copy_predicates(
-                &ast.generics.params,
-                &copy_types,
-                &ast.ident,
-            )
+            type_attribute.bound.packed_copy_predicates(&ast.generics, &copy_types, &ast.ident)
         } else {
             WherePredicates::new()
         };
 
         let mut bound =
             type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
-                &ast.generics.params,
+                &ast.generics,
                 &syn::parse2(quote_mixed!(::core::hash::Hash)).unwrap(),
                 &hash_types,
                 &ast.ident,
@@ -111,15 +109,15 @@ impl TraitHandler for HashStructHandler {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        token_stream.extend(quote_mixed! {
+        token_stream.extend(bindings.wrap(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::hash::Hash for #ident #ty_generics #where_clause {
                 #[inline]
-                fn hash<#hasher_ident: ::core::hash::Hasher>(&self, state: &mut #hasher_ident) {
+                fn hash<#hasher_ident: ::core::hash::Hasher>(&self, #state: &mut #hasher_ident) {
                     #hash_token_stream
                 }
             }
-        });
+        }));
 
         Ok(())
     }

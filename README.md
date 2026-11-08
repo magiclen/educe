@@ -40,7 +40,7 @@ Table A — types whose type arguments never need a bound:
 | `PartialOrd`, `Ord` | `NonNull` |
 | `Default` | `Option`, `Vec`, `VecDeque`, `LinkedList`, `HashMap`, `HashSet`, `BTreeMap`, `BTreeSet`, `Weak` |
 
-A few entries hold because the type never implements the trait at all rather than because it always does: `Arc`, `Rc`, `Weak`, and `Cow` are never `Copy`, and raw pointers and function pointers never implement `Default`. Leaving out the predicate there makes the compiler reject the derive directly, instead of accepting an implementation whose bound could never be satisfied.
+A few entries hold because the type never implements the trait at all rather than because it always does: `Arc`, `Rc`, `Weak`, and `Cow` are never `Copy`, raw pointers and function pointers never implement `Default`, and neither does `Weak` of a slice or a trait object. Leaving out the predicate there makes the compiler reject the derive directly, instead of accepting an implementation whose bound could never be satisfied.
 
 Table B — types that forward the trait to their type arguments:
 
@@ -54,6 +54,13 @@ Table B — types that forward the trait to their type arguments:
 | `Default` | `Box`, `Arc`, `Rc`, `Cell`, `RefCell`, `Mutex`, `RwLock`, `Wrapping`, `Reverse`, `Saturating` |
 
 `HashMap` and `HashSet` with an explicit hasher type use a whole-type predicate instead of either table. This preserves the hasher requirements of each trait: `Default` needs a default hasher, while `Debug` does not require the hasher to implement `Debug`.
+
+`Box` with `Clone`, and `Box`, `Rc`, or `Arc` with `Default`, handle unsized pointees separately.
+`Box<[T]>` forwards `Clone` to `T`, and `Box<[T]>`, `Rc<[T]>`, and `Arc<[T]>` implement `Default` for every `T`, so they need no `Default` bound.
+A trait object, or a pointee parameter declared with `?Sized` on the parameter or in a `where` clause, uses the whole-type predicate instead.
+Ordinary sized parameters still use table B.
+If a field uses a custom clone method or default expression, a `?Sized` pointee parameter keeps the forwarded bound, such as `T: Clone`, so that the custom code can use it.
+For `Default`, `Weak<T>` is in table A unless `T` uses a parameter declared with `?Sized`; then it uses the whole-type predicate `Weak<T>: Default`, which requires a sized pointee but not `T: Default`.
 
 `HashMap` and `HashSet` are not in the comparison rows of table B because their comparison impls additionally require `K: Eq + Hash`; such fields get the precise whole-type predicate from rule 5 instead.
 
@@ -105,7 +112,7 @@ The `method = path`, `method(path)`, `method = "path"`, and `method("path")` for
 In custom method paths, `Self` refers to the type being derived, including its generic arguments.
 For `Into`, this also applies when the generated implementation is `From` for the target type; use an explicit target type path to call a target method.
 Generated primitive types use `::core::primitive` paths.
-The `Debug` helper types and `Hash` method type parameters avoid identifiers in the input, including method paths written as strings.
+Generated value bindings, `Debug` helper types, and `Hash` method type parameters avoid identifiers in the input, including method paths written as strings.
 
 ## Traits
 
@@ -322,10 +329,16 @@ use educe::Educe;
 
 #[derive(Educe)]
 #[educe(Debug(unsafe))]
+#[repr(C)]
 union Union {
-    f1: u8,
-    f2: i32,
+    f1: [u8; 4],
+    f2: [u8; 4],
 }
+
+let value = Union {
+    f1: [1, 2, 3, 4]
+};
+assert_eq!("Union([1, 2, 3, 4])", format!("{value:?}"));
 ```
 
 #### Clone
@@ -338,7 +351,8 @@ In that case, `clone` and `clone_from` use the existing field-wise implementatio
 For example, `Copy(bound('a: 'static))` on `S<'a>(&'a i32)` allows `Copy` only for `'static`, but `Clone` still works with shorter lifetimes.
 This rule also covers const parameters that do not appear in the fields.
 Field clone methods can have visible side effects, and the performance difference has not been measured.
-The automatic, `bound(*)`, `bound(false)`, and empty custom `Copy` modes keep the original shortcut rules; unions keep their existing clone behavior.
+The automatic, `bound(*)`, `bound(false)`, and empty custom `Copy` modes keep the original shortcut rules for structs and enums.
+For a union, automatic `Clone` also uses the predicates from `Copy(bound(*))` or `Copy(bound(...))` in the same derive.
 
 ###### Basic Usage
 
@@ -683,10 +697,19 @@ use educe::Educe;
 
 #[derive(Educe)]
 #[educe(PartialEq(unsafe))]
+#[repr(C)]
 union Union {
-    f1: u8,
-    f2: i32
+    f1: [u8; 4],
+    f2: [u8; 4],
 }
+
+let first = Union {
+    f1: [1, 2, 3, 4]
+};
+let second = Union {
+    f2: [1, 2, 3, 4]
+};
+assert!(first == second);
 ```
 
 #### Eq
@@ -783,10 +806,19 @@ use educe::Educe;
 
 #[derive(Educe)]
 #[educe(PartialEq(unsafe), Eq)]
+#[repr(C)]
 union Union {
-    f1: u8,
-    f2: i32
+    f1: [u8; 4],
+    f2: [u8; 4],
 }
+
+let first = Union {
+    f1: [1, 2, 3, 4]
+};
+let second = Union {
+    f2: [1, 2, 3, 4]
+};
+assert!(first == second);
 ```
 
 #### PartialOrd
@@ -1297,10 +1329,20 @@ use educe::Educe;
 
 #[derive(Educe)]
 #[educe(PartialEq(unsafe), Eq, Hash(unsafe))]
+#[repr(C)]
 union Union {
-    f1: u8,
-    f2: i32
+    f1: [u8; 4],
+    f2: [u8; 4],
 }
+
+let first = Union {
+    f1: [1, 2, 3, 4]
+};
+let second = Union {
+    f2: [1, 2, 3, 4]
+};
+let values = std::collections::HashSet::from([first]);
+assert!(values.contains(&second));
 ```
 
 #### Default
@@ -1583,7 +1625,7 @@ Automatic field matching ignores reference lifetimes, preserves reference depth,
 
 Original generic declarations and `where` clauses keep `Self` tied to the source type in a generated `From` impl.
 Custom `bound(...)` predicates are used verbatim: their `Self` means the target type in `From`, and the source type in a direct `Into` impl.
-Custom method paths always use the source type for `Self`.
+In target types and custom method paths, `Self` refers to the source type.
 
 ```rust
 use educe::Educe;

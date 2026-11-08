@@ -47,6 +47,20 @@ fn basic() {
 }
 
 #[test]
+fn target_variant() {
+    #[derive(Educe)]
+    #[educe(Deref, DerefMut)]
+    enum Enum {
+        Target(u8),
+    }
+
+    let mut value = Enum::Target(3);
+    assert_eq!(3, *value);
+    *value = 7;
+    assert_eq!(7, *value);
+}
+
+#[test]
 fn constant_name() {
     #[allow(non_upper_case_globals)]
     const value: u8 = 100;

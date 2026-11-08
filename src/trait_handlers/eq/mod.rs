@@ -109,7 +109,7 @@ impl TraitHandler for EqHandler {
         // The automatic bound uses the `Eq` trait itself (not `PartialEq`), matching the behavior of the built-in `#[derive(Eq)]`.
         let mut bound =
             type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
-                &ast.generics.params,
+                &ast.generics,
                 &syn::parse2(quote_mixed!(::core::cmp::Eq)).unwrap(),
                 &field_types,
                 &ast.ident,
@@ -145,7 +145,7 @@ impl TraitHandler for EqHandler {
                 const _: () = {
                     #[allow(dead_code, clippy::all)]
                     fn __educe_eq_fields #impl_generics () #where_clause {
-                        fn __educe_assert_eq<T: ?Sized + ::core::cmp::Eq>() {}
+                        fn __educe_assert_eq<T: ?::core::marker::Sized + ::core::cmp::Eq>() {}
                         #(__educe_assert_eq::<#field_types>();)*
                     }
                 };

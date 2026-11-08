@@ -107,10 +107,7 @@ impl DiscriminantType {
             } else {
                 let offset = proc_macro2::Literal::usize_unsuffixed(offset);
                 // A signed discriminant range can contain more variants than its positive maximum.
-                quote_mixed!(const {
-                    let base: #repr = #base;
-                    base.wrapping_add(#offset as #repr)
-                })
+                quote_mixed!(const { #repr::wrapping_add(#base, #offset as #repr) })
             };
             values.push(value);
             offset += 1;

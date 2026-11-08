@@ -46,8 +46,10 @@ pub struct NameClashesStructNoOrd {
     state:   i128,
 }
 
-// A module can shadow the prelude, so the generated code must not depend on `Option`, `Some`, and `None` resolving to the standard library items.
+// A module can shadow the prelude, so the generated code must not depend on `Option`, `Some`, `None`, and `Sized` resolving to the standard library items.
 mod shadowed_prelude {
+    use core::fmt::{self, Formatter};
+
     use educe::Educe;
 
     pub enum MyOption {
@@ -61,9 +63,16 @@ mod shadowed_prelude {
 
     pub type Option = u8;
 
+    pub trait Sized {}
+
+    fn format_f1(value: &i8, formatter: &mut Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(value, formatter)
+    }
+
     #[derive(Educe)]
     #[educe(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub struct Struct {
+        #[educe(Debug(method = format_f1))]
         f1: i8,
         f2: i16,
     }
@@ -83,6 +92,66 @@ pub union NameClashesUnion {
     f:       i8,
     builder: i16,
     other:   i64,
+}
+
+#[test]
+#[allow(non_upper_case_globals)]
+#[forbid(unused_imports, non_local_definitions)]
+fn value_bindings() {
+    use std::{
+        cmp::Ordering,
+        hash::{BuildHasher, RandomState},
+    };
+
+    const other: u8 = 1;
+    const _s_0: u8 = 2;
+    const educe__other: u8 = 3;
+    const educe__src_0: u8 = 4;
+    const educe__lhs_0: u8 = 5;
+    const educe__formatter: u8 = 6;
+    const educe__builder: u8 = 7;
+    const educe__field_0: u8 = 8;
+
+    #[derive(Educe)]
+    #[educe(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    enum Enum<const f: usize, const educe__state: usize> {
+        Tuple([u8; f], [u8; educe__state]),
+    }
+
+    let original = Enum::Tuple([other], [_s_0]);
+    let mut cloned = Enum::Tuple([0], [0]);
+    cloned.clone_from(&original);
+
+    assert_eq!("Tuple([1], [2])", format!("{cloned:?}"));
+    assert_eq!(original, original.clone());
+    assert_eq!(original, cloned);
+    assert_eq!(Ordering::Equal, original.cmp(&cloned));
+    assert_eq!(Some(Ordering::Equal), original.partial_cmp(&cloned));
+
+    let hasher = RandomState::new();
+    assert_eq!(hasher.hash_one(&original), hasher.hash_one(&cloned));
+}
+
+#[test]
+#[allow(non_upper_case_globals)]
+fn type_macro_scope() {
+    const educe__other: usize = 1;
+    macro_rules! array {
+        () => {
+            [u8; educe__other]
+        };
+    }
+
+    trait Array {}
+    impl Array for [u8; 1] {}
+
+    #[derive(Educe)]
+    #[educe(PartialEq)]
+    struct Struct(u8)
+    where
+        array!(): Array;
+
+    assert!(Struct(1) == Struct(1));
 }
 
 #[test]

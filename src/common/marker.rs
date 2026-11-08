@@ -1,7 +1,11 @@
 use proc_macro2::TokenStream;
 use syn::{DeriveInput, ExprPath, Generics, Type, visit_mut::VisitMut};
 
-use super::{attributes::generated_lint_attributes, generics::ReplaceSelf, quote_mixed};
+use super::{
+    attributes::generated_lint_attributes,
+    generics::{ReplaceSelf, ValueBindings},
+    quote_mixed,
+};
 
 /// The pieces a custom method marker is built from, with `Self` rewritten so that it still refers to the source type.
 ///
@@ -40,12 +44,14 @@ impl MethodMarker {
     /// Wraps the marker function in an anonymous constant.
     ///
     /// The function is generated glue whose only purpose is to reference the custom method, so its signature can look problematic in isolation (e.g. `&Vec<T>` would normally suggest `clippy::ptr_arg`, or an unused generic would trigger `clippy::extra_unused_type_parameters`). Lints like these already do not fire on code coming from an external proc-macro, but the `clippy::all` allow is kept here as a low-cost safeguard in case that exemption ever narrows.
-    pub(crate) fn wrap(&self, function: TokenStream) -> TokenStream {
+    pub(crate) fn wrap(&self, function: TokenStream, bindings: &ValueBindings) -> TokenStream {
         let lint_attributes = &self.lint_attributes;
+        let aliases = bindings.aliases();
 
         quote_mixed!(
             #lint_attributes
             const _: () = {
+                #aliases
                 #[allow(dead_code, clippy::all)]
                 #function
             };

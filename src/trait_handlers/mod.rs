@@ -13,6 +13,18 @@ use syn::{DeriveInput, Meta, Type};
 use crate::Trait;
 #[cfg(any(
     feature = "Clone",
+    feature = "Debug",
+    feature = "Deref",
+    feature = "DerefMut",
+    feature = "Hash",
+    feature = "Into",
+    feature = "Ord",
+    feature = "PartialEq",
+    feature = "PartialOrd"
+))]
+use crate::common::generics::{UsedIdents, ValueBindings};
+#[cfg(any(
+    feature = "Clone",
     feature = "Copy",
     feature = "Eq",
     feature = "Ord",
@@ -53,6 +65,19 @@ pub(crate) mod partial_ord;
 /// Its main job is to let a trait inherit the where predicates of its prerequisite traits, e.g. `Ord` inherits the predicates of `Eq` and `PartialOrd`.
 #[derive(Default)]
 pub(crate) struct TraitHandlerContext<'a> {
+    /// The identifiers of the input, collected once and shared by every handler that names generated code.
+    #[cfg(any(
+        feature = "Clone",
+        feature = "Debug",
+        feature = "Deref",
+        feature = "DerefMut",
+        feature = "Hash",
+        feature = "Into",
+        feature = "Ord",
+        feature = "PartialEq",
+        feature = "PartialOrd"
+    ))]
+    input_idents:     std::cell::OnceCell<UsedIdents>,
     /// The final where predicates that each handled trait has actually emitted, keyed by trait.
     #[cfg(any(
         feature = "Clone",
@@ -74,6 +99,22 @@ pub(crate) struct TraitHandlerContext<'a> {
 }
 
 impl<'a> TraitHandlerContext<'a> {
+    /// Starts a new set of generated names for one generated item, which avoid every identifier in the input.
+    #[cfg(any(
+        feature = "Clone",
+        feature = "Debug",
+        feature = "Deref",
+        feature = "DerefMut",
+        feature = "Hash",
+        feature = "Into",
+        feature = "Ord",
+        feature = "PartialEq",
+        feature = "PartialOrd"
+    ))]
+    pub(crate) fn value_bindings(&self, ast: &DeriveInput) -> ValueBindings {
+        ValueBindings::new(self.input_idents.get_or_init(|| UsedIdents::new(ast)).clone())
+    }
+
     /// Stores the `Copy` meta that the entry point has already collected.
     #[cfg(all(feature = "Clone", feature = "Copy"))]
     pub(crate) fn set_copy_meta(&mut self, meta: Option<&Meta>) {

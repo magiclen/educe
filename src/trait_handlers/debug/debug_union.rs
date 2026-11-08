@@ -1,4 +1,3 @@
-use proc_macro2::{Ident, Span};
 use syn::{Data, DeriveInput, Meta};
 
 use super::{
@@ -17,7 +16,7 @@ pub(crate) struct DebugUnionHandler;
 impl TraitHandler for DebugUnionHandler {
     fn trait_meta_handler<'a>(
         ast: &'a DeriveInput,
-        _ctx: &mut TraitHandlerContext<'a>,
+        ctx: &mut TraitHandlerContext<'a>,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
@@ -43,6 +42,8 @@ impl TraitHandler for DebugUnionHandler {
         let name = type_attribute.name.to_ident_by_ident(&ast.ident);
 
         let mut builder_token_stream = proc_macro2::TokenStream::new();
+        let mut bindings = ctx.value_bindings(ast);
+        let formatter = bindings.binding("formatter");
 
         if let Data::Union(data) = &ast.data {
             for field in data.fields.named.iter() {
@@ -55,24 +56,25 @@ impl TraitHandler for DebugUnionHandler {
                 .build_from_attributes(&field.attrs, traits)?;
             }
 
-            let data = Ident::new("data", Span::mixed_site());
+            let data = bindings.binding("data");
             let bytes = union_bytes(&data, &quote_mixed!(self));
 
             if let Some(name) = name {
+                let builder = bindings.binding("builder");
                 builder_token_stream.extend(quote_mixed!(
-                    let mut builder = f.debug_tuple(stringify!(#name));
+                    let mut #builder = #formatter.debug_tuple(::core::stringify!(#name));
 
                     #bytes
 
-                    builder.field(&#data);
+                    #builder.field(&#data);
 
-                    builder.finish()
+                    #builder.finish()
                 ));
             } else {
                 builder_token_stream.extend(quote_mixed!(
                     #bytes
 
-                    ::core::fmt::Debug::fmt(#data, f)
+                    ::core::fmt::Debug::fmt(#data, #formatter)
                 ));
             }
         }
@@ -81,7 +83,7 @@ impl TraitHandler for DebugUnionHandler {
 
         // Formatting the storage as bytes needs nothing from the field types, so the automatic bound stays empty and only an explicit one contributes predicates.
         let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
-            &ast.generics.params,
+            &ast.generics,
             &syn::parse2(quote_mixed!(::core::fmt::Debug)).unwrap(),
             &[],
             &ast.ident,
@@ -92,15 +94,15 @@ impl TraitHandler for DebugUnionHandler {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        token_stream.extend(quote_mixed! {
+        token_stream.extend(bindings.wrap(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
                 #[inline]
-                fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                fn fmt(&self, #formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
                     #builder_token_stream
                 }
             }
-        });
+        }));
 
         Ok(())
     }

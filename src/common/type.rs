@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
 use syn::{
-    GenericArgument, GenericParam, Ident, Meta, Path, PathArguments, ReturnType, Token, Type,
-    TypeParamBound,
+    GenericArgument, GenericParam, Generics, Ident, Meta, Path, PathArguments, PathSegment,
+    ReturnType, Token, Type, TypeParamBound, WherePredicate,
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
     token::Comma,
@@ -36,12 +36,24 @@ impl Parse for TypeWithPunctuatedMeta {
     }
 }
 
+/// The pointer implementations that need special handling for unsized pointees.
+#[derive(Clone, Copy)]
+pub(crate) enum PointerBounds {
+    None,
+    Clone,
+    Default,
+}
+
 /// Describes, for one trait, the places where the automatic bound engine can treat a field type specially instead of emitting a plain `FieldType: Trait` predicate.
 ///
 /// An unconditional field type produces no where predicate at all, because the predicate would always hold and would only be noise in the generated code.
 /// A forwarding field type produces the predicates of its type arguments instead, because the standard library guarantees that the arguments satisfying the trait is enough for the whole type.
 /// The unconditional table is also used when a self-referencing field type is degraded to per-parameter bounds, to avoid collecting parameters from unconditional positions.
 pub(crate) struct BoundExceptions {
+    /// `Box` cloning and pointer defaults have separate implementations for slices and other unsized pointees.
+    pub(crate) pointer_bounds:                    PointerBounds,
+    /// Custom fields may rely on the bounds forwarded to a type parameter.
+    pub(crate) has_custom_fields:                 bool,
     /// Type names, matched against the last path segment, whose implementation of the trait never depends on their type arguments, e.g. `Arc` for `Clone`.
     pub(crate) unconditional_types:               &'static [&'static str],
     /// Type names, matched against the last path segment, that implement the trait whenever their type arguments do, e.g. `Option` for `Copy` or `Vec` for `Clone`.
@@ -62,13 +74,91 @@ fn path_starts_with_type_param(path: &Path, params: &Punctuated<GenericParam, Co
         })
 }
 
+fn unparenthesized_type(ty: &Type) -> &Type {
+    match ty {
+        Type::Group(ty) => unparenthesized_type(&ty.elem),
+        Type::Paren(ty) => unparenthesized_type(&ty.elem),
+        _ => ty,
+    }
+}
+
+/// Returns the first type argument of a path segment, e.g. the pointee of `Box<T>`.
+fn first_type_argument(segment: &PathSegment) -> Option<&Type> {
+    let PathArguments::AngleBracketed(args) = &segment.arguments else {
+        return None;
+    };
+
+    args.args.iter().find_map(|arg| match arg {
+        GenericArgument::Type(ty) => Some(unparenthesized_type(ty)),
+        _ => None,
+    })
+}
+
+/// Recognizes a generic pointee whose implicit `Sized` bound was relaxed in either declaration form.
+fn has_relaxed_sized_bound(ty: &syn::TypePath, generics: &Generics) -> bool {
+    ty.qself.is_none() && ty.path.get_ident().is_some_and(|ident| is_maybe_unsized(ident, generics))
+}
+
+/// Returns true if the type uses a type parameter whose implicit `Sized` bound was relaxed.
+fn type_uses_maybe_unsized_params(ty: &Type, generics: &Generics) -> bool {
+    let params: Punctuated<GenericParam, Comma> = generics
+        .type_params()
+        .filter(|param| is_maybe_unsized(&param.ident, generics))
+        .map(|param| GenericParam::Type(param.clone()))
+        .collect();
+
+    type_uses_generic_params(ty, &params)
+}
+
+/// Checks the bounds of a type parameter, inline or in a `where` clause, for `?Sized`.
+fn is_maybe_unsized(ident: &Ident, generics: &Generics) -> bool {
+    let Some(param) = generics.type_params().find(|param| param.ident == *ident) else {
+        return false;
+    };
+
+    let where_bounds = generics
+        .where_clause
+        .iter()
+        .flat_map(|clause| &clause.predicates)
+        .filter_map(|predicate| {
+            let WherePredicate::Type(predicate) = predicate else {
+                return None;
+            };
+            let bounded_ty = unparenthesized_type(&predicate.bounded_ty);
+            matches!(bounded_ty, Type::Path(ty) if ty.qself.is_none() && ty.path.is_ident(ident))
+                .then_some(&predicate.bounds)
+        })
+        .flatten();
+    let mut maybe_unsized = false;
+
+    for bound in param.bounds.iter().chain(where_bounds) {
+        if let TypeParamBound::Trait(bound) = bound
+            && bound.path.segments.last().is_some_and(|segment| segment.ident == "Sized")
+        {
+            if bound.maybe.is_none() {
+                return false;
+            }
+            maybe_unsized = true;
+        }
+    }
+
+    maybe_unsized
+}
+
 impl BoundExceptions {
+    pub(crate) fn with_custom_fields(self, has_custom_fields: bool) -> Self {
+        Self {
+            has_custom_fields,
+            ..self
+        }
+    }
+
     /// Checks whether the last segment of the path names a type that implements the trait unconditionally.
     ///
     /// `PhantomData` implements every trait supported by Educe unconditionally, so it is always treated as an exception.
     #[inline]
-    fn path_is_unconditional(&self, path: &Path, params: &Punctuated<GenericParam, Comma>) -> bool {
-        if path_starts_with_type_param(path, params) {
+    fn path_is_unconditional(&self, path: &Path, generics: &Generics) -> bool {
+        if path_starts_with_type_param(path, &generics.params) {
             return false;
         }
 
@@ -86,6 +176,26 @@ impl BoundExceptions {
                     return false;
                 }
             }
+
+            if matches!(self.pointer_bounds, PointerBounds::Default) {
+                let pointee = first_type_argument(segment);
+
+                // `Box`, `Rc`, and `Arc` default to an empty slice whatever the element type is.
+                if (ident == "Box" || ident == "Rc" || ident == "Arc")
+                    && matches!(pointee, Some(Type::Slice(_)))
+                {
+                    return true;
+                }
+
+                // `Weak::default` only needs a sized pointee, so the predicate is kept only when the pointee uses a `?Sized` parameter.
+                if ident == "Weak"
+                    && pointee
+                        .is_some_and(|pointee| type_uses_maybe_unsized_params(pointee, generics))
+                {
+                    return false;
+                }
+            }
+
             self.unconditional_types.iter().any(|name| ident == name)
         } else {
             false
@@ -96,13 +206,9 @@ impl BoundExceptions {
     ///
     /// Raw pointers and bare function pointers are unconditional for every trait supported by Educe, because their implementations only look at the address value.
     #[inline]
-    pub(crate) fn type_is_unconditional(
-        &self,
-        ty: &Type,
-        params: &Punctuated<GenericParam, Comma>,
-    ) -> bool {
+    pub(crate) fn type_is_unconditional(&self, ty: &Type, generics: &Generics) -> bool {
         match ty {
-            Type::Path(ty) => ty.qself.is_none() && self.path_is_unconditional(&ty.path, params),
+            Type::Path(ty) => ty.qself.is_none() && self.path_is_unconditional(&ty.path, generics),
             Type::Ptr(_) | Type::FnPtr(_) => true,
             Type::Reference(ty) => {
                 ty.mutability.is_none() && self.shared_reference_is_unconditional
@@ -115,12 +221,12 @@ impl BoundExceptions {
     pub(crate) fn forwarding_type_arguments<'a>(
         &self,
         ty: &'a Type,
-        params: &Punctuated<GenericParam, Comma>,
+        generics: &Generics,
     ) -> Option<Vec<&'a Type>> {
         if let Type::Path(ty) = ty
             && ty.qself.is_none()
             && let Some(segment) = ty.path.segments.last()
-            && !path_starts_with_type_param(&ty.path, params)
+            && !path_starts_with_type_param(&ty.path, &generics.params)
             && self.forwarding_types.iter().any(|name| segment.ident == name)
             && let PathArguments::AngleBracketed(args) = &segment.arguments
         {
@@ -137,6 +243,31 @@ impl BoundExceptions {
             {
                 return None;
             }
+
+            let special_pointee = match self.pointer_bounds {
+                PointerBounds::Clone => segment.ident == "Box",
+                PointerBounds::Default => {
+                    segment.ident == "Box" || segment.ident == "Rc" || segment.ident == "Arc"
+                },
+                PointerBounds::None => false,
+            };
+
+            if special_pointee && let Some(pointee) = types.first_mut() {
+                match unparenthesized_type(pointee) {
+                    // `Box<[T]>` clones whenever `T` does.
+                    Type::Slice(slice) if matches!(self.pointer_bounds, PointerBounds::Clone) => {
+                        *pointee = slice.elem.as_ref();
+                    },
+                    Type::Slice(_) | Type::TraitObject(_) => return None,
+                    Type::Path(path)
+                        if !self.has_custom_fields && has_relaxed_sized_bound(path, generics) =>
+                    {
+                        return None;
+                    },
+                    _ => (),
+                }
+            }
+
             return Some(types);
         }
 
@@ -150,7 +281,7 @@ impl BoundExceptions {
 fn walk_type<'a>(
     set: &mut HashSet<&'a Ident>,
     ty: &'a Type,
-    exceptions: Option<(&BoundExceptions, &Punctuated<GenericParam, Comma>)>,
+    exceptions: Option<(&BoundExceptions, &Generics)>,
 ) {
     match ty {
         Type::Array(ty) => walk_type(set, ty.elem.as_ref(), exceptions),
@@ -224,10 +355,10 @@ fn walk_type<'a>(
 fn walk_path<'a>(
     set: &mut HashSet<&'a Ident>,
     path: &'a Path,
-    exceptions: Option<(&BoundExceptions, &Punctuated<GenericParam, Comma>)>,
+    exceptions: Option<(&BoundExceptions, &Generics)>,
 ) {
-    if let Some((exceptions, params)) = exceptions
-        && exceptions.path_is_unconditional(path, params)
+    if let Some((exceptions, generics)) = exceptions
+        && exceptions.path_is_unconditional(path, generics)
     {
         return;
     }
@@ -271,9 +402,9 @@ pub(crate) fn find_idents_in_type<'a>(
     set: &mut HashSet<&'a Ident>,
     ty: &'a Type,
     exceptions: &BoundExceptions,
-    params: &Punctuated<GenericParam, Comma>,
+    generics: &Generics,
 ) {
-    walk_type(set, ty, Some((exceptions, params)));
+    walk_type(set, ty, Some((exceptions, generics)));
 }
 
 /// Collects only a bare, single-segment type ident such as `T`, without descending into any structure.

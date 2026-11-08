@@ -447,13 +447,17 @@ fn qualified_primitive_literals() {
     #[educe(Default)]
     struct Struct {
         #[educe(Default = 7)]
-        integer:     ::core::primitive::u64,
+        integer:         ::core::primitive::u64,
         #[educe(Default = 1.5)]
-        float:       core::primitive::f32,
+        float:           core::primitive::f32,
         #[educe(Default = 9)]
-        std_integer: std::primitive::u64,
+        std_integer:     std::primitive::u64,
         #[educe(Default = 2.5)]
-        std_float:   std::primitive::f32,
+        std_float:       std::primitive::f32,
+        #[educe(Default = 11u8)]
+        widened_integer: core::primitive::u16,
+        #[educe(Default(expression = 3.5f32))]
+        widened_float:   std::primitive::f64,
     }
 
     let value = Struct::default();
@@ -461,4 +465,6 @@ fn qualified_primitive_literals() {
     assert_eq_float!(1.5, value.float);
     assert_eq!(9, value.std_integer);
     assert_eq_float!(2.5, value.std_float);
+    assert_eq!(11, value.widened_integer);
+    assert_eq_float!(3.5, value.widened_float);
 }

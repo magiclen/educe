@@ -24,6 +24,8 @@ impl TraitHandler for PartialEqEnumHandler {
     ) -> syn::Result<()> {
         let generated_impl_attributes =
             crate::common::attributes::generated_impl_attributes(&ast.attrs);
+        let mut bindings = ctx.value_bindings(ast);
+        let other = bindings.binding("other");
 
         let type_attribute =
             TypeAttributeBuilder {
@@ -51,7 +53,7 @@ impl TraitHandler for PartialEqEnumHandler {
                 if let Fields::Unit = &variant.fields {
                     arms_token_stream.extend(quote_mixed! {
                         Self::#variant_ident => {
-                            if let Self::#variant_ident = other {
+                            if let Self::#variant_ident = #other {
                                 // The same unit variant on both sides, so there is nothing to compare.
                             } else {
                                 return false;
@@ -85,8 +87,8 @@ impl TraitHandler for PartialEqEnumHandler {
                         continue;
                     }
 
-                    let field_name_var_self = field_name.to_binding("_s_");
-                    let field_name_var_other = field_name.to_binding("_o_");
+                    let field_name_var_self = bindings.binding(&format!("lhs_{index}"));
+                    let field_name_var_other = bindings.binding(&format!("rhs_{index}"));
 
                     pattern_self_token_stream
                         .extend(field_name.to_field(&quote_mixed!(#field_name_var_self)));
@@ -124,7 +126,7 @@ impl TraitHandler for PartialEqEnumHandler {
 
                 arms_token_stream.extend(quote_mixed! {
                     #pattern_self => {
-                        if let #pattern_other = other {
+                        if let #pattern_other = #other {
                             #block_token_stream
                         } else {
                             return false;
@@ -149,7 +151,7 @@ impl TraitHandler for PartialEqEnumHandler {
         let ident = &ast.ident;
 
         let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
-            &ast.generics.params,
+            &ast.generics,
             &syn::parse2(quote_mixed!(::core::cmp::PartialEq)).unwrap(),
             &partial_eq_types,
             &ast.ident,
@@ -162,17 +164,17 @@ impl TraitHandler for PartialEqEnumHandler {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        token_stream.extend(quote_mixed! {
+        token_stream.extend(bindings.wrap(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::cmp::PartialEq for #ident #ty_generics #where_clause {
                 #[inline]
-                fn eq(&self, other: &Self) -> ::core::primitive::bool {
+                fn eq(&self, #other: &Self) -> ::core::primitive::bool {
                     #eq_token_stream
 
                     true
                 }
             }
-        });
+        }));
 
         Ok(())
     }

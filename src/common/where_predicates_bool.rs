@@ -2,7 +2,8 @@ use std::collections::HashSet;
 
 use quote::{ToTokens, quote};
 use syn::{
-    Expr, GenericParam, Ident, Lit, Meta, MetaNameValue, Path, Token, Type, WherePredicate,
+    Expr, GenericParam, Generics, Ident, Lit, Meta, MetaNameValue, Path, Token, Type,
+    WherePredicate,
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
     token::Comma,
@@ -140,7 +141,7 @@ pub(crate) fn create_where_predicates_from_all_generic_parameters(
 /// 4. A type that mentions the type currently being derived (e.g. `Box<List<T>>` inside `List<T>`) is degraded to `Param: Trait` bounds for the parameters it uses, because a self-referencing predicate would overflow the trait solver (E0275).
 /// 5. Any other type produces the precise predicate `FieldType: Trait`, so the compiler verifies the real requirement even for types with unusual conditional impls.
 pub(crate) fn create_where_predicates_from_field_types(
-    params: &Punctuated<GenericParam, Comma>,
+    generics: &Generics,
     bound_trait: &Path,
     types: &[&Type],
     self_ident: &Ident,
@@ -148,13 +149,15 @@ pub(crate) fn create_where_predicates_from_field_types(
 ) -> WherePredicates {
     fn process_type(
         ty: &Type,
-        params: &Punctuated<GenericParam, Comma>,
+        generics: &Generics,
         bound_trait: &Path,
         self_ident: &Ident,
         exceptions: &BoundExceptions,
         where_predicates: &mut WherePredicates,
         seen: &mut HashSet<String>,
     ) {
+        let params = &generics.params;
+
         // Identical predicates can be produced by different fields, so deduplicate them by their token strings.
         let mut push = |where_predicates: &mut WherePredicates, predicate: WherePredicate| {
             if seen.insert(predicate.to_token_stream().to_string()) {
@@ -163,7 +166,7 @@ pub(crate) fn create_where_predicates_from_field_types(
         };
 
         // Rule 1: the trait is implemented for this type no matter what the type arguments are.
-        if exceptions.type_is_unconditional(ty, params) {
+        if exceptions.type_is_unconditional(ty, generics) {
             return;
         }
 
@@ -173,11 +176,11 @@ pub(crate) fn create_where_predicates_from_field_types(
         }
 
         // Rule 3: a forwarding type is replaced by its type arguments, processed recursively.
-        if let Some(argument_types) = exceptions.forwarding_type_arguments(ty, params) {
+        if let Some(argument_types) = exceptions.forwarding_type_arguments(ty, generics) {
             for ty in argument_types {
                 process_type(
                     ty,
-                    params,
+                    generics,
                     bound_trait,
                     self_ident,
                     exceptions,
@@ -193,7 +196,7 @@ pub(crate) fn create_where_predicates_from_field_types(
             // Rule 4: degrade a self-referencing type to per-parameter bounds.
             let mut used = HashSet::new();
 
-            find_idents_in_type(&mut used, ty, exceptions, params);
+            find_idents_in_type(&mut used, ty, exceptions, generics);
 
             for param in params {
                 if let GenericParam::Type(param) = param
@@ -217,7 +220,7 @@ pub(crate) fn create_where_predicates_from_field_types(
     for ty in types {
         process_type(
             ty,
-            params,
+            generics,
             bound_trait,
             self_ident,
             exceptions,

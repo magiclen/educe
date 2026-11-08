@@ -1,11 +1,16 @@
-use quote::format_ident;
-use syn::{Data, DeriveInput, ExprPath, Fields, Ident, Meta, Type, visit_mut::VisitMut};
+use syn::{Data, DeriveInput, Fields, Meta, Type, visit_mut::VisitMut};
 
 use super::{
     TraitHandlerMultiple,
+    common::Conversion,
     models::{FieldAttribute, FieldAttributeBuilder, TypeAttributeBuilder},
 };
-use crate::{Trait, common::quote_mixed, panic, trait_handlers::TraitHandlerContext};
+use crate::{
+    Trait,
+    common::{generics::ReplaceSelf, quote_mixed},
+    panic,
+    trait_handlers::TraitHandlerContext,
+};
 
 /// Generates the `Into` implementation for an enum.
 pub(crate) struct IntoEnumHandler;
@@ -14,7 +19,7 @@ impl TraitHandlerMultiple for IntoEnumHandler {
     #[inline]
     fn trait_meta_handler<'a>(
         ast: &'a DeriveInput,
-        _ctx: &mut TraitHandlerContext<'a>,
+        ctx: &mut TraitHandlerContext<'a>,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &[Meta],
@@ -60,11 +65,15 @@ impl TraitHandlerMultiple for IntoEnumHandler {
                 variant_attributes
             };
 
+            let mut replace_self = ReplaceSelf::new(ast);
             for (target_key, target) in type_attribute.types {
-                let target_ty = &target.ty;
-                let target_matcher = super::common::TargetMatcher::new(target_ty);
+                let mut target_ty = target.ty;
+                let target_matcher = super::common::TargetMatcher::new(&target_ty);
                 // By default a `From` impl is generated because it provides `Into` for free; the `into` flag asks for a direct `Into` impl instead.
                 let generate_from = !target.force_into;
+                if generate_from {
+                    replace_self.visit_type_mut(&mut target_ty);
+                }
 
                 let bound = target.bound;
 
@@ -73,11 +82,8 @@ impl TraitHandlerMultiple for IntoEnumHandler {
                 let mut arms_token_stream = proc_macro2::TokenStream::new();
 
                 let enum_ident = &ast.ident;
-
-                type Variants<'a> =
-                    Vec<(&'a Ident, bool, usize, Ident, &'a Type, Option<&'a ExprPath>)>;
-
-                let mut variants: Variants = Vec::new();
+                let mut bindings = ctx.value_bindings(ast);
+                let field_binding = bindings.binding("field");
 
                 for (variant, field_attributes) in data.variants.iter().zip(field_attributes.iter())
                 {
@@ -88,66 +94,42 @@ impl TraitHandlerMultiple for IntoEnumHandler {
                         ));
                     }
 
-                    let (index, field, method) = super::common::select_field(
+                    let (index, field, conversion) = super::common::select_field(
                         &variant.fields,
                         field_attributes,
                         &target_key,
                         &target_matcher,
                     )?;
 
-                    let (field_name, is_tuple): (Ident, bool) = match field.ident.as_ref() {
-                        Some(ident) => (ident.clone(), false),
-                        None => (
-                            format_ident!("_{}", index, span = proc_macro2::Span::mixed_site()),
-                            true,
-                        ),
+                    let variant_ident = &variant.ident;
+                    let body = match conversion {
+                        Conversion::Method(method) => {
+                            let mut method = method.clone();
+                            replace_self.visit_expr_path_mut(&mut method);
+                            quote_mixed!(#method(#field_binding))
+                        },
+                        Conversion::Direct => quote_mixed!(#field_binding),
+                        Conversion::Into => {
+                            into_types.push(&field.ty);
+                            quote_mixed!(::core::convert::Into::into(#field_binding))
+                        },
                     };
 
-                    variants.push((&variant.ident, is_tuple, index, field_name, &field.ty, method));
-                }
-
-                if variants.is_empty() {
-                    return Err(super::panic::no_into_field(&target_key));
-                }
-
-                for (variant_ident, is_tuple, index, field_name, ty, method) in variants {
-                    let field_binding =
-                        format_ident!("_{}", index, span = proc_macro2::Span::mixed_site());
-                    let mut pattern_token_stream = proc_macro2::TokenStream::new();
-                    let mut body_token_stream = proc_macro2::TokenStream::new();
-
-                    if let Some(method) = method {
-                        let mut method = method.clone();
-                        crate::common::generics::ReplaceSelf::new(ast)
-                            .visit_expr_path_mut(&mut method);
-                        body_token_stream.extend(quote_mixed!( #method(#field_binding) ));
-                    } else if target_matcher.matches(ty) {
-                        body_token_stream.extend(quote_mixed!( #field_binding ));
+                    let pattern = if let Some(field_name) = &field.ident {
+                        quote_mixed!(#enum_ident::#variant_ident { #field_name: #field_binding, .. })
                     } else {
-                        into_types.push(ty);
-
-                        body_token_stream
-                            .extend(quote_mixed!( ::core::convert::Into::into(#field_binding) ));
-                    }
-
-                    if is_tuple {
+                        let mut skipped = proc_macro2::TokenStream::new();
                         for _ in 0..index {
-                            pattern_token_stream.extend(quote_mixed!(_,));
+                            skipped.extend(quote_mixed!(_,));
                         }
 
-                        pattern_token_stream.extend(quote_mixed!( #field_binding, .. ));
+                        quote_mixed!(#enum_ident::#variant_ident(#skipped #field_binding, ..))
+                    };
+                    arms_token_stream.extend(quote_mixed!(#pattern => #body,));
+                }
 
-                        arms_token_stream.extend(
-                            quote_mixed!( #enum_ident::#variant_ident ( #pattern_token_stream ) => #body_token_stream, ),
-                        );
-                    } else {
-                        pattern_token_stream
-                            .extend(quote_mixed!( #field_name: #field_binding, .. ));
-
-                        arms_token_stream.extend(
-                            quote_mixed!( #enum_ident::#variant_ident { #pattern_token_stream } => #body_token_stream, ),
-                        );
-                    }
+                if arms_token_stream.is_empty() {
+                    return Err(super::panic::no_into_field(&target_key));
                 }
 
                 let ident = &ast.ident;
@@ -161,21 +143,21 @@ impl TraitHandlerMultiple for IntoEnumHandler {
                 // The generics are cloned so that this target does not affect the other `Into` implementations.
                 let mut generics = ast.generics.clone();
                 if generate_from {
-                    crate::common::generics::ReplaceSelf::new(ast)
-                        .visit_generics_mut(&mut generics);
+                    replace_self.visit_generics_mut(&mut generics);
                 }
 
                 let generics = crate::common::generics::with_predicates(generics, bound);
 
                 let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-                token_stream.extend(if generate_from {
+                let implementation = if generate_from {
+                    let value = bindings.binding("value");
                     quote_mixed! {
                         #generated_impl_attributes
                         impl #impl_generics ::core::convert::From<#ident #ty_generics> for #target_ty #where_clause {
                             #[inline]
-                            fn from(value: #ident #ty_generics) -> Self {
-                                match value {
+                            fn from(#value: #ident #ty_generics) -> Self {
+                                match #value {
                                     #arms_token_stream
                                 }
                             }
@@ -193,7 +175,8 @@ impl TraitHandlerMultiple for IntoEnumHandler {
                             }
                         }
                     }
-                });
+                };
+                token_stream.extend(bindings.wrap(implementation));
             }
         }
 

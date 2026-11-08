@@ -1,4 +1,3 @@
-use proc_macro2::{Ident, Span};
 use syn::{Data, DeriveInput, Meta};
 
 use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
@@ -50,7 +49,7 @@ impl TraitHandler for PartialEqUnionHandler {
 
         // Comparing the storage as bytes needs nothing from the field types, so the automatic bound stays empty and only an explicit one contributes predicates.
         let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
-            &ast.generics.params,
+            &ast.generics,
             &syn::parse2(quote_mixed!(::core::cmp::PartialEq)).unwrap(),
             &[],
             &ast.ident,
@@ -63,16 +62,18 @@ impl TraitHandler for PartialEqUnionHandler {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        let self_data = Ident::new("self_data", Span::mixed_site());
-        let other_data = Ident::new("other_data", Span::mixed_site());
+        let mut bindings = ctx.value_bindings(ast);
+        let other = bindings.binding("other");
+        let self_data = bindings.binding("self_data");
+        let other_data = bindings.binding("other_data");
         let self_bytes = union_bytes(&self_data, &quote_mixed!(self));
-        let other_bytes = union_bytes(&other_data, &quote_mixed!(other));
+        let other_bytes = union_bytes(&other_data, &quote_mixed!(#other));
 
-        token_stream.extend(quote_mixed! {
+        token_stream.extend(bindings.wrap(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::cmp::PartialEq for #ident #ty_generics #where_clause {
                 #[inline]
-                fn eq(&self, other: &Self) -> ::core::primitive::bool {
+                fn eq(&self, #other: &Self) -> ::core::primitive::bool {
                     #self_bytes
 
                     #other_bytes
@@ -80,7 +81,7 @@ impl TraitHandler for PartialEqUnionHandler {
                     ::core::cmp::PartialEq::eq(#self_data, #other_data)
                 }
             }
-        });
+        }));
 
         Ok(())
     }

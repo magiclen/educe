@@ -324,6 +324,23 @@ fn reference_targets() {
 }
 
 #[test]
+fn source_self_target() {
+    trait Family {
+        type Item;
+    }
+
+    #[derive(Educe)]
+    #[educe(Into(<Self as Family>::Item))]
+    struct Struct<T>(T);
+
+    impl<T> Family for Struct<T> {
+        type Item = u16;
+    }
+
+    assert_eq!(7, u16::from(Struct(7u8)));
+}
+
+#[test]
 fn source_self_bounds_and_qualified_method() {
     trait Convert<T> {
         fn convert(value: T) -> u16;

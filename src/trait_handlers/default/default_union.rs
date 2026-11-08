@@ -120,7 +120,7 @@ impl TraitHandler for DefaultUnionHandler {
         let ident = &ast.ident;
 
         let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
-            &ast.generics.params,
+            &ast.generics,
             &syn::parse2(quote_mixed!(::core::default::Default)).unwrap(),
             &default_types,
             &ast.ident,

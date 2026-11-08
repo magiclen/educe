@@ -33,6 +33,7 @@ impl TraitHandler for DefaultEnumHandler {
         .build_from_default_meta(meta)?;
 
         let mut default_types: Vec<&Type> = Vec::new();
+        let mut has_custom_fields = false;
 
         let mut default_token_stream = proc_macro2::TokenStream::new();
 
@@ -115,6 +116,7 @@ impl TraitHandler for DefaultEnumHandler {
                         IdentOrIndex::from_ident_with_index(field.ident.as_ref(), index);
 
                     let value = if let Some(expression) = field_attribute.expression {
+                        has_custom_fields = true;
                         quote_mixed!(#expression)
                     } else {
                         let ty = &field.ty;
@@ -140,11 +142,11 @@ impl TraitHandler for DefaultEnumHandler {
         let ident = &ast.ident;
 
         let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
-            &ast.generics.params,
+            &ast.generics,
             &syn::parse2(quote_mixed!(::core::default::Default)).unwrap(),
             &default_types,
             &ast.ident,
-            &BOUND_EXCEPTIONS_DEFAULT,
+            &BOUND_EXCEPTIONS_DEFAULT.with_custom_fields(has_custom_fields),
         );
 
         let generics = crate::common::generics::with_predicates(ast.generics.clone(), bound);

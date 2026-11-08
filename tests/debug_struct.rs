@@ -26,6 +26,29 @@ fn doc_comment_with_apostrophe() {
 }
 
 #[test]
+fn local_stringify_macro() {
+    macro_rules! stringify {
+        ($($token:tt)*) => {
+            "local"
+        };
+    }
+
+    #[derive(Educe)]
+    #[educe(Debug)]
+    struct Struct {
+        field: u8,
+    }
+
+    assert_eq!("local", stringify!(Struct));
+    assert_eq!(
+        "Struct { field: 1 }",
+        format!("{:?}", Struct {
+            field: 1
+        })
+    );
+}
+
+#[test]
 fn empty() {
     #[derive(Educe)]
     #[educe(Debug)]

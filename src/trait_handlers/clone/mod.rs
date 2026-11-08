@@ -52,6 +52,7 @@ fn can_use_bitwise_copy(
 /// Builds a module-level marker that references a field's custom clone method so it stays counted as used.
 pub(crate) fn create_mark_method_used(
     ast: &DeriveInput,
+    ctx: &TraitHandlerContext,
     generics: &Generics,
     field_ty: &Type,
     method: &ExprPath,
@@ -60,14 +61,20 @@ pub(crate) fn create_mark_method_used(
     let (impl_generics, _ty_generics, where_clause) = marker.generics.split_for_impl();
     let field_ty = &marker.field_ty;
     let method = &marker.method;
+    let mut bindings = ctx.value_bindings(ast);
+    let marker_name = bindings.fresh("__educe_clone_method_used");
+    let value = bindings.binding("value");
 
-    marker.wrap(quote_mixed!(
-        fn __educe_clone_method_used #impl_generics (
-            educe__value: &#field_ty,
-        ) -> #field_ty #where_clause {
-            #method(educe__value)
-        }
-    ))
+    marker.wrap(
+        quote_mixed!(
+            fn #marker_name #impl_generics (
+                #value: &#field_ty,
+            ) -> #field_ty #where_clause {
+                #method(#value)
+            }
+        ),
+        &bindings,
+    )
 }
 
 /// Dispatches the `Clone` derive to the specialized handler for the shape of the input (struct, enum, or union).

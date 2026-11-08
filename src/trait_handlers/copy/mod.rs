@@ -24,17 +24,19 @@ pub(crate) fn prerequisites() -> &'static [Trait] {
 pub(crate) struct CopyHandler;
 
 #[cfg(feature = "Clone")]
-pub(crate) fn has_custom_bound(ctx: &TraitHandlerContext) -> syn::Result<bool> {
-    let Some(meta) = ctx.copy_meta() else {
-        return Ok(false);
+pub(crate) fn configured_bound(ctx: &TraitHandlerContext) -> syn::Result<Option<Bound>> {
+    let builder = TypeAttributeBuilder {
+        enable_flag: true, enable_bound: true
     };
 
-    let attribute = TypeAttributeBuilder {
-        enable_flag: true, enable_bound: true
-    }
-    .build_from_copy_meta(meta)?;
+    ctx.copy_meta()
+        .map(|meta| builder.build_from_copy_meta(meta).map(|attribute| attribute.bound))
+        .transpose()
+}
 
-    Ok(matches!(attribute.bound, Bound::Custom(predicates) if !predicates.is_empty()))
+#[cfg(feature = "Clone")]
+pub(crate) fn has_custom_bound(ctx: &TraitHandlerContext) -> syn::Result<bool> {
+    Ok(matches!(configured_bound(ctx)?, Some(Bound::Custom(predicates)) if !predicates.is_empty()))
 }
 
 impl TraitHandler for CopyHandler {
@@ -94,7 +96,7 @@ impl TraitHandler for CopyHandler {
 
         let mut bound =
             type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
-                &ast.generics.params,
+                &ast.generics,
                 &syn::parse2(quote_mixed!(::core::marker::Copy)).unwrap(),
                 &field_types,
                 &ast.ident,

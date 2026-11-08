@@ -30,6 +30,8 @@ impl TraitHandler for PartialEqStructHandler {
     ) -> syn::Result<()> {
         let generated_impl_attributes =
             crate::common::attributes::generated_impl_attributes(&ast.attrs);
+        let mut bindings = ctx.value_bindings(ast);
+        let other = bindings.binding("other");
 
         let type_attribute =
             TypeAttributeBuilder {
@@ -47,7 +49,7 @@ impl TraitHandler for PartialEqStructHandler {
 
         if let Data::Struct(data) = &ast.data {
             let this = quote_mixed!(self);
-            let that = quote_mixed!(other);
+            let that = quote_mixed!(#other);
 
             for (index, field) in data.fields.iter().enumerate() {
                 let field_attribute = FieldAttributeBuilder {
@@ -96,18 +98,14 @@ impl TraitHandler for PartialEqStructHandler {
         let ident = &ast.ident;
 
         let packed_copy_predicates = if is_packed {
-            type_attribute.bound.packed_copy_predicates(
-                &ast.generics.params,
-                &copy_types,
-                &ast.ident,
-            )
+            type_attribute.bound.packed_copy_predicates(&ast.generics, &copy_types, &ast.ident)
         } else {
             WherePredicates::new()
         };
 
         let mut bound =
             type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
-                &ast.generics.params,
+                &ast.generics,
                 &syn::parse2(quote_mixed!(::core::cmp::PartialEq)).unwrap(),
                 &partial_eq_types,
                 &ast.ident,
@@ -122,17 +120,17 @@ impl TraitHandler for PartialEqStructHandler {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        token_stream.extend(quote_mixed! {
+        token_stream.extend(bindings.wrap(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::cmp::PartialEq for #ident #ty_generics #where_clause {
                 #[inline]
-                fn eq(&self, other: &Self) -> ::core::primitive::bool {
+                fn eq(&self, #other: &Self) -> ::core::primitive::bool {
                     #eq_token_stream
 
                     true
                 }
             }
-        });
+        }));
 
         Ok(())
     }

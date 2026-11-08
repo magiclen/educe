@@ -44,7 +44,9 @@ pub(crate) fn auto_adjust_expr(expr: Expr, ty: Option<&Type>) -> Expr {
                     if let Some(Type::Path(ty)) = ty {
                         let ty_string = primitive_type_name(ty);
 
-                        if lit.suffix() == ty_string || INT_TYPES.contains(&ty_string.as_str()) {
+                        if lit.suffix() == ty_string
+                            || (lit.suffix().is_empty() && INT_TYPES.contains(&ty_string.as_str()))
+                        {
                             // don't call into
                             return expr;
                         }
@@ -54,7 +56,10 @@ pub(crate) fn auto_adjust_expr(expr: Expr, ty: Option<&Type>) -> Expr {
                     if let Some(Type::Path(ty)) = ty {
                         let ty_string = primitive_type_name(ty);
 
-                        if lit.suffix() == ty_string || FLOAT_TYPES.contains(&ty_string.as_str()) {
+                        if lit.suffix() == ty_string
+                            || (lit.suffix().is_empty()
+                                && FLOAT_TYPES.contains(&ty_string.as_str()))
+                        {
                             // don't call into
                             return expr;
                         }

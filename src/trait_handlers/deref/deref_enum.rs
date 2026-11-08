@@ -1,5 +1,4 @@
-use quote::format_ident;
-use syn::{Data, DeriveInput, Field, Fields, Ident, Meta, Type};
+use syn::{Data, DeriveInput, Field, Fields, Meta};
 
 use super::{
     TraitHandler,
@@ -19,7 +18,7 @@ impl TraitHandler for DerefEnumHandler {
     #[inline]
     fn trait_meta_handler<'a>(
         ast: &'a DeriveInput,
-        _ctx: &mut TraitHandlerContext<'a>,
+        ctx: &mut TraitHandlerContext<'a>,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
@@ -34,13 +33,10 @@ impl TraitHandler for DerefEnumHandler {
 
         let mut target_token_stream = proc_macro2::TokenStream::new();
         let mut arms_token_stream = proc_macro2::TokenStream::new();
-        let field_binding = crate::common::generics::UsedIdents::new(ast).select("educe__target");
+        let mut bindings = ctx.value_bindings(ast);
+        let field_binding = bindings.binding("target");
 
         if let Data::Enum(data) = &ast.data {
-            type Variants<'a> = Vec<(&'a Ident, bool, usize, Ident, &'a Type)>;
-
-            let mut variants: Variants = Vec::new();
-
             for variant in data.variants.iter() {
                 let _ = TypeAttributeBuilder {
                     enable_flag: false
@@ -94,51 +90,36 @@ impl TraitHandler for DerefEnumHandler {
                     }
                 };
 
-                let (field_name, is_tuple): (Ident, bool) = match field.ident.as_ref() {
-                    Some(ident) => (ident.clone(), false),
-                    None => {
-                        (format_ident!("_{}", index, span = proc_macro2::Span::mixed_site()), true)
-                    },
-                };
+                // The first variant decides the target type, so a variant with another type fails to compile in the match below.
+                if target_token_stream.is_empty() {
+                    let dereference_ty = dereference(&field.ty);
 
-                variants.push((&variant.ident, is_tuple, index, field_name, &field.ty));
-            }
+                    target_token_stream.extend(quote_mixed!(#dereference_ty));
+                }
 
-            if variants.is_empty() {
-                return Err(super::panic::no_deref_field(meta));
-            }
-
-            let ty = variants[0].4;
-            let dereference_ty = dereference(ty);
-
-            target_token_stream.extend(quote_mixed!(#dereference_ty));
-
-            for (variant_ident, is_tuple, index, field_name, _) in variants {
-                let mut pattern_token_stream = proc_macro2::TokenStream::new();
-
-                if is_tuple {
+                let variant_ident = &variant.ident;
+                let pattern = if let Some(field_name) = &field.ident {
+                    quote_mixed!(Self::#variant_ident { #field_name: #field_binding, .. })
+                } else {
+                    let mut skipped = proc_macro2::TokenStream::new();
                     for _ in 0..index {
-                        pattern_token_stream.extend(quote_mixed!(_,));
+                        skipped.extend(quote_mixed!(_,));
                     }
 
-                    pattern_token_stream.extend(quote_mixed!( #field_binding, .. ));
+                    quote_mixed!(Self::#variant_ident(#skipped #field_binding, ..))
+                };
+                arms_token_stream.extend(quote_mixed!(#pattern => #field_binding,));
+            }
 
-                    arms_token_stream.extend(
-                        quote_mixed!( Self::#variant_ident ( #pattern_token_stream ) => #field_binding, ),
-                    );
-                } else {
-                    pattern_token_stream.extend(quote_mixed!( #field_name: #field_binding, .. ));
-
-                    arms_token_stream.extend(
-                        quote_mixed!( Self::#variant_ident { #pattern_token_stream } => #field_binding, ),
-                    );
-                }
+            if arms_token_stream.is_empty() {
+                return Err(super::panic::no_deref_field(meta));
             }
         }
 
         let ident = &ast.ident;
 
         let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
+        let aliases = bindings.aliases();
 
         token_stream.extend(quote_mixed! {
             #generated_impl_attributes
@@ -146,7 +127,8 @@ impl TraitHandler for DerefEnumHandler {
                 type Target = #target_token_stream;
 
                 #[inline]
-                fn deref(&self) -> &Self::Target {
+                fn deref(&self) -> &<Self as ::core::ops::Deref>::Target {
+                    #aliases
                     match self {
                         #arms_token_stream
                     }

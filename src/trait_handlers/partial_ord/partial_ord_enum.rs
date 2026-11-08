@@ -31,6 +31,8 @@ impl TraitHandler for PartialOrdEnumHandler {
     ) -> syn::Result<()> {
         let generated_impl_attributes =
             crate::common::attributes::generated_impl_attributes(&ast.attrs);
+        let mut bindings = ctx.value_bindings(ast);
+        let other = bindings.binding("other");
 
         let type_attribute = TypeAttributeBuilder {
             enable_flag: true, enable_bound: true
@@ -114,8 +116,8 @@ impl TraitHandler for PartialOrdEnumHandler {
                         continue;
                     }
 
-                    let field_name_var_self = field_name.to_binding("_s_");
-                    let field_name_var_other = field_name.to_binding("_o_");
+                    let field_name_var_self = bindings.binding(&format!("lhs_{index}"));
+                    let field_name_var_other = bindings.binding(&format!("rhs_{index}"));
 
                     pattern_self_token_stream
                         .extend(field_name.to_field(&quote_mixed!(#field_name_var_self)));
@@ -177,7 +179,7 @@ impl TraitHandler for PartialOrdEnumHandler {
 
                 arms_token_stream.extend(quote_mixed! {
                     #pattern_self => {
-                        if let #pattern_other = other {
+                        if let #pattern_other = #other {
                             #block_token_stream
                         }
                     }
@@ -190,9 +192,11 @@ impl TraitHandler for PartialOrdEnumHandler {
                 .extend(quote_mixed!(::core::option::Option::Some(::core::cmp::Ordering::Equal)));
         } else {
             // Order variants by their discriminant, which is evaluated by the compiler so that no unsafe assumption about the in-memory layout of the enum is needed; this reproduces the ordering of the standard `PartialOrd` derive.
-            let discriminant = quote_mixed! {
-                let discriminant = |this: &Self| -> #discriminant_type {
-                    match this {
+            let discriminant = bindings.binding("discriminant");
+            let this = bindings.binding("this");
+            let get_discriminant = quote_mixed! {
+                let #discriminant = |#this: &Self| -> #discriminant_type {
+                    match #this {
                         #key_arms_token_stream
                     }
                 };
@@ -200,15 +204,15 @@ impl TraitHandler for PartialOrdEnumHandler {
 
             partial_cmp_token_stream.extend(if all_unit {
                 quote_mixed! {
-                    #discriminant
+                    #get_discriminant
 
-                    ::core::option::Option::Some(::core::cmp::Ord::cmp(&discriminant(self), &discriminant(other)))
+                    ::core::option::Option::Some(::core::cmp::Ord::cmp(&#discriminant(self), &#discriminant(#other)))
                 }
             } else {
                 quote_mixed! {
-                    #discriminant
+                    #get_discriminant
 
-                    match ::core::cmp::Ord::cmp(&discriminant(self), &discriminant(other)) {
+                    match ::core::cmp::Ord::cmp(&#discriminant(self), &#discriminant(#other)) {
                         ::core::cmp::Ordering::Equal => {
                             match self {
                                 #arms_token_stream
@@ -233,7 +237,7 @@ impl TraitHandler for PartialOrdEnumHandler {
 
         let mut bound =
             type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
-                &ast.generics.params,
+                &ast.generics,
                 &syn::parse2(quote_mixed!(::core::cmp::PartialOrd)).unwrap(),
                 &partial_ord_types,
                 &ast.ident,
@@ -250,18 +254,18 @@ impl TraitHandler for PartialOrdEnumHandler {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        token_stream.extend(quote_mixed! {
+        token_stream.extend(bindings.wrap(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::cmp::PartialOrd for #ident #ty_generics #where_clause {
                 #[inline]
                 fn partial_cmp(
                     &self,
-                    other: &Self,
+                    #other: &Self,
                 ) -> ::core::option::Option<::core::cmp::Ordering> {
                     #partial_cmp_token_stream
                 }
             }
-        });
+        }));
 
         Ok(())
     }

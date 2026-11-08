@@ -1,4 +1,3 @@
-use proc_macro2::{Ident, Span};
 use syn::{Data, DeriveInput, Meta};
 
 use super::models::{FieldAttributeBuilder, TypeAttributeBuilder};
@@ -15,13 +14,15 @@ impl TraitHandler for HashUnionHandler {
     #[inline]
     fn trait_meta_handler<'a>(
         ast: &'a DeriveInput,
-        _ctx: &mut TraitHandlerContext<'a>,
+        ctx: &mut TraitHandlerContext<'a>,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
     ) -> syn::Result<()> {
         let generated_impl_attributes =
             crate::common::attributes::generated_impl_attributes(&ast.attrs);
+        let mut bindings = ctx.value_bindings(ast);
+        let state = bindings.binding("state");
 
         let type_attribute =
             TypeAttributeBuilder {
@@ -43,11 +44,11 @@ impl TraitHandler for HashUnionHandler {
         }
 
         let ident = &ast.ident;
-        let hasher_ident = crate::common::generics::UsedIdents::new(ast).select("H");
+        let hasher_ident = bindings.fresh("H");
 
         // Hashing the storage as bytes needs nothing from the field types, so the automatic bound stays empty and only an explicit one contributes predicates.
         let bound = type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
-            &ast.generics.params,
+            &ast.generics,
             &syn::parse2(quote_mixed!(::core::hash::Hash)).unwrap(),
             &[],
             &ast.ident,
@@ -58,20 +59,20 @@ impl TraitHandler for HashUnionHandler {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        let data = Ident::new("data", Span::mixed_site());
+        let data = bindings.binding("data");
         let bytes = union_bytes(&data, &quote_mixed!(self));
 
-        token_stream.extend(quote_mixed! {
+        token_stream.extend(bindings.wrap(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::hash::Hash for #ident #ty_generics #where_clause {
                 #[inline]
-                fn hash<#hasher_ident: ::core::hash::Hasher>(&self, state: &mut #hasher_ident) {
+                fn hash<#hasher_ident: ::core::hash::Hasher>(&self, #state: &mut #hasher_ident) {
                     #bytes
 
-                    ::core::hash::Hash::hash(#data, state)
+                    ::core::hash::Hash::hash(#data, #state)
                 }
             }
-        });
+        }));
 
         Ok(())
     }

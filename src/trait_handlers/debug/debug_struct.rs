@@ -22,7 +22,7 @@ pub struct DebugStructHandler;
 impl TraitHandler for DebugStructHandler {
     fn trait_meta_handler<'a>(
         ast: &'a DeriveInput,
-        _ctx: &mut TraitHandlerContext<'a>,
+        ctx: &mut TraitHandlerContext<'a>,
         token_stream: &mut proc_macro2::TokenStream,
         traits: &[Trait],
         meta: &Meta,
@@ -50,7 +50,10 @@ impl TraitHandler for DebugStructHandler {
         .build_from_debug_meta(meta)?;
 
         let name = type_attribute.name.to_ident_by_ident(&ast.ident);
-        let helper_types = super::common::HelperTypes::new(ast);
+        let mut bindings = ctx.value_bindings(ast);
+        let formatter = bindings.binding("formatter");
+        let builder = bindings.binding("builder");
+        let helper_types = super::common::HelperTypes::new(&mut bindings);
         let raw_string_ident = &helper_types.raw_string;
 
         let mut debug_types: Vec<&Type> = Vec::new();
@@ -68,10 +71,11 @@ impl TraitHandler for DebugStructHandler {
 
         if named_field {
             builder_token_stream.extend(if let Some(name) = name {
-                quote_mixed!(let mut builder = f.debug_struct(stringify!(#name));)
+                quote_mixed!(let mut #builder = #formatter.debug_struct(::core::stringify!(#name));)
             } else {
-                let raw_string_type = super::common::create_raw_string_type(raw_string_ident);
-                let map_builder = super::common::create_debug_map_builder();
+                let raw_string_type =
+                    super::common::create_raw_string_type(raw_string_ident, &formatter);
+                let map_builder = super::common::create_debug_map_builder(&formatter, &builder);
 
                 quote_mixed! {
                     #raw_string_type
@@ -87,7 +91,7 @@ impl TraitHandler for DebugStructHandler {
             );
 
             builder_token_stream
-                .extend(quote_mixed!(let mut builder = f.debug_tuple(#name_string);));
+                .extend(quote_mixed!(let mut #builder = #formatter.debug_tuple(#name_string);));
         }
 
         if let Data::Struct(data) = &ast.data {
@@ -127,17 +131,19 @@ impl TraitHandler for DebugStructHandler {
                 let field_ref = borrow_field(is_packed, &this, &field_name);
 
                 let value = if let Some(method) = field_attribute.method {
-                    let arg = super::common::create_format_arg(
+                    let (arg, tokens) = super::common::create_format_arg(
+                        &mut bindings,
+                        &formatter,
                         &helper_types.field,
                         ty,
                         &method,
                         field_ref,
                     );
 
-                    builder_token_stream.extend(arg);
+                    builder_token_stream.extend(tokens);
                     mark_fields.push((ty, method));
 
-                    quote_mixed!(&arg)
+                    quote_mixed!(&#arg)
                 } else {
                     debug_types.push(ty);
 
@@ -145,11 +151,11 @@ impl TraitHandler for DebugStructHandler {
                 };
 
                 builder_token_stream.extend(match (&key, name.is_some()) {
-                    (Some(key), true) => quote_mixed!(builder.field(#key, #value);),
+                    (Some(key), true) => quote_mixed!(#builder.field(#key, #value);),
                     (Some(key), false) => {
-                        quote_mixed!(builder.entry(&#raw_string_ident(#key), #value);)
+                        quote_mixed!(#builder.entry(&#raw_string_ident(#key), #value);)
                     },
-                    (None, _) => quote_mixed!(builder.field(#value);),
+                    (None, _) => quote_mixed!(#builder.field(#value);),
                 });
 
                 has_fields = true;
@@ -163,18 +169,14 @@ impl TraitHandler for DebugStructHandler {
         }
 
         let packed_copy_predicates = if is_packed {
-            type_attribute.bound.packed_copy_predicates(
-                &ast.generics.params,
-                &copy_types,
-                &ast.ident,
-            )
+            type_attribute.bound.packed_copy_predicates(&ast.generics, &copy_types, &ast.ident)
         } else {
             WherePredicates::new()
         };
 
         let mut bound =
             type_attribute.bound.into_where_predicates_by_generic_parameters_check_types(
-                &ast.generics.params,
+                &ast.generics,
                 &syn::parse2(quote_mixed!(::core::fmt::Debug)).unwrap(),
                 &debug_types,
                 &ast.ident,
@@ -187,21 +189,22 @@ impl TraitHandler for DebugStructHandler {
 
         let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-        token_stream.extend(quote_mixed! {
+        token_stream.extend(bindings.wrap(quote_mixed! {
             #generated_impl_attributes
             impl #impl_generics ::core::fmt::Debug for #ident #ty_generics #where_clause {
                 #[inline]
-                fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                fn fmt(&self, #formatter: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
                     #builder_token_stream
 
-                    builder.finish()
+                    #builder.finish()
                 }
             }
-        });
+        }));
 
         for (field_ty, method) in &mark_fields {
-            token_stream
-                .extend(super::common::create_mark_method_used(ast, &generics, field_ty, method));
+            token_stream.extend(super::common::create_mark_method_used(
+                ast, ctx, &generics, field_ty, method,
+            ));
         }
 
         Ok(())
